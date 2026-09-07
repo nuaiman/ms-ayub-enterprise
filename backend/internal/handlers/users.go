@@ -88,7 +88,7 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Value:    refreshToken,
 		HttpOnly: true,
 		Secure:   false,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteLaxMode,
 		Path:     "/",
 		MaxAge:   60 * 60 * 24 * 30,
 	})
@@ -152,7 +152,7 @@ func (h *Handler) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 		Value:    newRefreshToken,
 		HttpOnly: true,
 		Secure:   false,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteLaxMode,
 		Path:     "/",
 		MaxAge:   60 * 60 * 24 * 30,
 	})
