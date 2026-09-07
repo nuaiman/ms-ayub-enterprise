@@ -1,0 +1,167 @@
+@import 'tailwindcss';
+
+/* =========================================================
+   LIGHT THEME
+   ========================================================= */
+
+:root {
+  /* Surfaces */
+  --color-bg: #F4F3F8;
+  --color-surface: #FFFFFF;
+  --color-surface-alt: #E8E7EC;
+  --color-scaffold: #F4F3F8;
+  --color-primary: #FFFFFF;
+  --color-drawer: #FFFFFF;
+  --color-card-primary: #FFFFFF;
+  --color-card-secondary: #E8E7EC;
+  --color-muted-bg: #FAFAFB;
+
+  /* Text */
+  --color-text-primary: #000000;
+  --color-text-secondary: #8F8E93;
+  --color-text-on-muted: #6F6E73;
+
+  /* Icons */
+  --color-icon-primary: #1F1F1F;
+  --color-icon-secondary: #8F8E93;
+  --color-chevron: #AEADB4;
+
+  /* Borders */
+  --color-border: #E6E5EA;
+
+  /* Buttons */
+  --color-button-primary: #000000;
+  --color-on-button-primary: #FFFFFF;
+  --color-button-secondary: #1C1C1E;
+  --color-on-button-secondary: #FFFFFF;
+
+  /* Controls */
+  --color-switch-bg: #DDE3E6;
+
+  /* Semantic */
+  --color-red: #BE0011;
+  --color-green: #008A45;
+  --color-yellow: #9A6800;
+  --color-blue: #0068C7;
+}
+
+
+/* =========================================================
+   DARK THEME
+   ========================================================= */
+
+[data-theme="dark"] {
+  /* Surfaces */
+  --color-bg: #000000;
+  --color-surface: #1C1C1E;
+  --color-surface-alt: #2C2C2E;
+  --color-scaffold: #000000;
+  --color-primary: #1C1C1E;
+  --color-drawer: #1C1C1E;
+  --color-card-primary: #1C1C1E;
+  --color-card-secondary: #2C2C2E;
+  --color-muted-bg: #1D1D1F;
+
+  /* Text */
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #8F8E93;
+  --color-text-on-muted: #AEAEB2;
+
+  /* Icons */
+  --color-icon-primary: #FFFFFF;
+  --color-icon-secondary: #8F8E93;
+  --color-chevron: #636365;
+
+  /* Borders */
+  --color-border: #2C2C2E;
+
+  /* Buttons */
+  --color-button-primary: #FFFFFF;
+  --color-on-button-primary: #000000;
+  --color-button-secondary: #FFFFFF;
+  --color-on-button-secondary: #000000;
+
+  /* Controls */
+  --color-switch-bg: #2F3538;
+
+  /* Semantic */
+  --color-red: #FFB2AB;
+  --color-green: #63F5A5;
+  --color-yellow: #FFD166;
+  --color-blue: #64B5FF;
+}
+
+
+/* =========================================================
+   BASE
+   ========================================================= */
+
+html {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color-scheme: light;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+
+/* =========================================================
+   BROWSER PASSWORD FIELD OVERRIDES
+   ========================================================= */
+
+/* Hide the password reveal button in Edge/IE */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
+/* Hide the autofill credential button in Chrome/Edge */
+input::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+}
+
+
+/* =========================================================
+   ANIMATIONS
+   ========================================================= */
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    overflow: auto; /* Still allows scrolling */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}

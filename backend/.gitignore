@@ -1,0 +1,25 @@
+# SSH files
+ssh.txt
+
+# Upload directories
+bucket/
+data/
+tmp/
+
+# Environment files (if you want to keep them local)
+# .env
+
+# Go build output
+msae-backend
+*.exe
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db

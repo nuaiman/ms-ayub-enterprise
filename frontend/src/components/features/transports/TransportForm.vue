@@ -1,0 +1,558 @@
+<!-- src/components/features/transports/TransportForm.vue -->
+<template>
+    <form @submit.prevent="submit" class="space-y-6">
+        <!-- Transport Information -->
+        <div>
+            <h3 class="text-sm font-semibold text-(--color-text-secondary) uppercase tracking-wider mb-4">
+                Transport Information
+            </h3>
+
+            <!-- Transport Fields -->
+            <TransportFields v-model:customer-id="form.customer_id" v-model:from-location="form.from_location"
+                v-model:to-location="form.to_location" v-model:vehicle-quantity="form.vehicle_quantity"
+                v-model:delivery-type="form.delivery_type" v-model:transport-date="form.transport_date"
+                v-model:office-commission-amount="form.office_commission_amount" v-model:notes="form.notes"
+                :customer-options="customerOptions" :disabled="submitting" :required="true" :standalone="false" />
+        </div>
+
+        <!-- Vehicles Section -->
+        <div class="border-t border-(--color-border) pt-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold text-(--color-text-secondary) uppercase tracking-wider">
+                    Vehicles
+                </h3>
+                <div class="flex items-center gap-3">
+                    <span class="text-xs text-(--color-text-secondary) bg-(--color-muted-bg) px-2.5 py-1 rounded-full">
+                        {{ vehicleForms.length }} vehicle(s)
+                    </span>
+                    <span class="text-xs font-semibold text-(--color-blue)">
+                        Total Charge: {{ formatCurrency(totalCustomerCharge) }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Existing Vehicles (from the transport - EDIT MODE ONLY) -->
+            <div v-if="isEditMode && existingVehicles.length > 0" class="mb-4">
+                <h4 class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider mb-2">
+                    Existing Vehicles
+                </h4>
+                <div class="space-y-2">
+                    <div v-for="vehicle in existingVehicles" :key="vehicle.id"
+                        class="flex items-center justify-between p-3 rounded-lg bg-(--color-muted-bg)/20 border border-(--color-border)">
+                        <div class="flex items-center gap-3">
+                            <span class="text-sm font-medium text-(--color-text-primary)">{{ vehicle.vehicle_number
+                                }}</span>
+                            <span class="text-xs text-(--color-text-secondary)">Broker: {{
+                                getBrokerName(vehicle.broker_id) }}</span>
+                            <span class="text-xs text-(--color-text-secondary)">Driver: {{ vehicle.driver_name || '—'
+                                }}</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-sm font-semibold text-(--color-blue)">
+                                {{ formatCurrency(vehicle.customer_charge) }}
+                            </span>
+                            <button type="button" @click="removeVehicle(vehicle.id)"
+                                class="text-xs text-(--color-red) hover:bg-(--color-red)/10 px-2 py-1 rounded transition-colors">
+                                Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vehicle Forms -->
+            <div v-if="vehicleForms.length > 0" class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">
+                        {{ isEditMode ? 'Add New Vehicles' : 'Vehicle Details' }}
+                    </h4>
+                    <span class="text-xs text-(--color-text-secondary)">
+                        {{ vehicleForms.length }} vehicle(s) required
+                    </span>
+                </div>
+
+                <div class="space-y-4 max-h-96 overflow-y-auto pr-1">
+                    <div v-for="(vehicle, index) in vehicleForms" :key="index"
+                        class="p-4 rounded-lg border border-(--color-border) bg-(--color-muted-bg)/10 hover:border-(--color-blue)/30 transition-all duration-200">
+
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-sm font-medium text-(--color-text-primary) flex items-center gap-2">
+                                <span
+                                    class="w-6 h-6 rounded-full bg-(--color-blue)/10 text-(--color-blue) flex items-center justify-center text-xs font-bold">
+                                    {{ index + 1 }}
+                                </span>
+                                Vehicle #{{ index + 1 }}
+                            </h4>
+                        </div>
+
+                        <!-- Vehicle Fields with ALL fields -->
+                        <VehicleFields v-model:transport-id="vehicle.transport_id"
+                            v-model:vehicle-number="vehicle.vehicle_number" v-model:broker-id="vehicle.broker_id"
+                            v-model:driver-name="vehicle.driver_name" v-model:driver-phone="vehicle.driver_phone"
+                            v-model:joma-cost="vehicle.joma_cost" v-model:vehicle-cost="vehicle.vehicle_cost"
+                            v-model:customer-charge="vehicle.customer_charge" v-model:other-cost="vehicle.other_cost"
+                            v-model:labour-cost="vehicle.labour_cost" v-model:demarage-amount="vehicle.demarage_amount"
+                            v-model:demarage-reason="vehicle.demarage_reason" :broker-options="brokerOptions"
+                            :disabled="submitting" :required="true" :standalone="false" />
+
+                        <!-- Vehicle Summary -->
+                        <div v-if="hasVehicleCosts(index)"
+                            class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 p-2 rounded-lg bg-(--color-muted-bg)/20 border border-(--color-border)">
+                            <div>
+                                <p class="text-xs text-(--color-text-secondary)">Profit/Loss</p>
+                                <p class="text-sm font-semibold"
+                                    :class="vehicleProfit(index) >= 0 ? 'text-(--color-green)' : 'text-(--color-red)'">
+                                    {{ formatCurrency(vehicleProfit(index)) }}
+                                </p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-(--color-text-secondary)">Broker Due</p>
+                                <p class="text-sm font-semibold text-(--color-blue)">
+                                    {{ formatCurrency(vehicleBrokerDue(index)) }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- No vehicles message -->
+            <div v-if="vehicleForms.length === 0"
+                class="text-center py-4 text-sm text-(--color-text-secondary) border border-dashed border-(--color-border) rounded-lg">
+                No vehicles to add. Please set Vehicle Quantity to at least 1.
+            </div>
+
+            <!-- Summary -->
+            <div v-if="totalVehicles > 0"
+                class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-lg bg-(--color-muted-bg)/30 border border-(--color-border)">
+                <div>
+                    <p class="text-xs text-(--color-text-secondary)">Total Vehicles</p>
+                    <p class="text-lg font-bold text-(--color-text-primary)">{{ totalVehicles }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-(--color-text-secondary)">Total Customer Charge</p>
+                    <p class="text-lg font-bold text-(--color-blue)">{{ formatCurrency(totalCustomerCharge) }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-(--color-text-secondary)">Total Broker Due</p>
+                    <p class="text-lg font-bold text-(--color-text-primary)">{{ formatCurrency(totalBrokerDue) }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-(--color-border)">
+            <button type="button" @click="emit('cancel')"
+                class="w-full sm:w-auto px-4 py-2 text-sm font-medium rounded-lg hover:bg-(--color-muted-bg) transition-all duration-200">
+                Cancel
+            </button>
+            <button type="submit" :disabled="submitting || !canSubmit"
+                class="w-full sm:w-auto px-6 py-2 text-sm font-semibold bg-(--color-blue) text-white rounded-lg hover:opacity-90 transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100">
+                <span v-if="submitting" class="inline-flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    {{ isEditMode ? 'Saving...' : 'Creating...' }}
+                </span>
+                <span v-else>{{ isEditMode ? 'Save Changes' : 'Create Transport' }}</span>
+            </button>
+        </div>
+    </form>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, watch, onMounted } from 'vue'
+import type { Transport, DeliveryType } from '@/types/transport'
+import type { Customer } from '@/types/customer'
+import { useTransportsStore } from '@/stores/transports'
+import { useCustomersStore } from '@/stores/customers'
+import { useVehiclesStore } from '@/stores/vehicles'
+import { useBrokersStore } from '@/stores/brokers'
+import { formatDateForBackend } from '@/utils/date'
+import { formatCurrency } from '@/utils/currency'
+import { push } from 'notivue'
+import TransportFields from './TransportFields.vue'
+import VehicleFields from '@/components/features/vehicles/VehicleFields.vue'
+
+interface VehicleRow {
+    transport_id: number | null
+    vehicle_number: string
+    broker_id: number | null
+    driver_name: string
+    driver_phone: string
+    joma_cost: number
+    vehicle_cost: number
+    customer_charge: number
+    other_cost: number
+    labour_cost: number
+    demarage_amount: number
+    demarage_reason: string
+}
+
+const props = defineProps<{
+    transport?: Transport | null
+    mode?: 'create' | 'edit'
+}>()
+
+const emit = defineEmits<{
+    'transport-created': []
+    'transport-updated': []
+    'cancel': []
+}>()
+
+const transportsStore = useTransportsStore()
+const customersStore = useCustomersStore()
+const vehiclesStore = useVehiclesStore()
+const brokersStore = useBrokersStore()
+
+const submitting = ref(false)
+const isEditMode = computed(() => props.mode === 'edit' || !!props.transport)
+
+const customerOptions = computed(() => customersStore.customers)
+const brokerOptions = computed(() => brokersStore.brokers)
+
+// Get existing vehicles for this transport (EDIT MODE only)
+const existingVehicles = computed(() => {
+    if (!props.transport) return []
+    return vehiclesStore.getVehiclesByTransportId(props.transport.id)
+})
+
+// Vehicle forms - controlled by vehicle_quantity
+const vehicleForms = computed(() => {
+    const quantity = form.value.vehicle_quantity || 0
+    const currentForms = form.value.vehicles.length
+
+    if (currentForms < quantity) {
+        // Add more forms
+        const toAdd = quantity - currentForms
+        for (let i = 0; i < toAdd; i++) {
+            form.value.vehicles.push(createEmptyVehicle())
+        }
+    } else if (currentForms > quantity) {
+        // Remove excess forms
+        form.value.vehicles = form.value.vehicles.slice(0, quantity)
+    }
+
+    return form.value.vehicles
+})
+
+// Total vehicles (existing + new forms)
+const totalVehicles = computed(() => {
+    return existingVehicles.value.length + form.value.vehicles.length
+})
+
+// Total customer charge from all vehicles
+const totalCustomerCharge = computed(() => {
+    let total = 0
+
+    // Existing vehicles
+    for (const vehicle of existingVehicles.value) {
+        total += vehicle.customer_charge || 0
+    }
+
+    // New vehicles
+    for (const vehicle of form.value.vehicles) {
+        total += vehicle.customer_charge || 0
+    }
+
+    return total
+})
+
+// Total broker due from all vehicles (joma_cost + vehicle_cost)
+const totalBrokerDue = computed(() => {
+    let total = 0
+
+    // Existing vehicles
+    for (const vehicle of existingVehicles.value) {
+        total += (vehicle.joma_cost || 0) + (vehicle.vehicle_cost || 0)
+    }
+
+    // New vehicles
+    for (const vehicle of form.value.vehicles) {
+        total += (vehicle.joma_cost || 0) + (vehicle.vehicle_cost || 0)
+    }
+
+    return total
+})
+
+// Vehicle calculations for forms
+const vehicleTotalCost = (index: number): number => {
+    const v = form.value.vehicles[index]
+    if (!v) return 0
+    return v.joma_cost + v.vehicle_cost + v.other_cost + v.labour_cost + v.demarage_amount
+}
+
+const vehicleProfit = (index: number): number => {
+    const v = form.value.vehicles[index]
+    if (!v) return 0
+    return v.customer_charge - vehicleTotalCost(index)
+}
+
+const vehicleBrokerDue = (index: number): number => {
+    const v = form.value.vehicles[index]
+    if (!v) return 0
+    return v.joma_cost + v.vehicle_cost
+}
+
+const hasVehicleCosts = (index: number): boolean => {
+    const v = form.value.vehicles[index]
+    if (!v) return false
+    return v.joma_cost > 0 || v.vehicle_cost > 0 || v.other_cost > 0 ||
+        v.labour_cost > 0 || v.demarage_amount > 0 || v.customer_charge > 0
+}
+
+const getBrokerName = (id: number | null): string => {
+    if (!id) return '—'
+    return brokersStore.getBrokerName(id)
+}
+
+const today = new Date().toISOString().slice(0, 10)
+
+const form = ref({
+    customer_id: null as number | null,
+    from_location: '',
+    to_location: '',
+    vehicle_quantity: 1,
+    delivery_type: null as DeliveryType | null,
+    transport_date: today,
+    office_commission_amount: 0,
+    notes: '',
+    vehicles: [] as VehicleRow[],
+})
+
+const createEmptyVehicle = (): VehicleRow => ({
+    transport_id: null,
+    vehicle_number: '',
+    broker_id: null,
+    driver_name: '',
+    driver_phone: '',
+    joma_cost: 0,
+    vehicle_cost: 0,
+    customer_charge: 0,
+    other_cost: 0,
+    labour_cost: 0,
+    demarage_amount: 0,
+    demarage_reason: '',
+})
+
+const canSubmit = computed(() => {
+    if (!form.value.from_location.trim()) return false
+
+    // In edit mode, we can submit without new vehicles
+    if (isEditMode.value) return true
+
+    // In create mode, must have at least one vehicle with a number
+    const hasValidVehicle = form.value.vehicles.some(v => v.vehicle_number.trim() !== '')
+    if (!hasValidVehicle) return false
+
+    return true
+})
+
+const initializeForm = () => {
+    if (props.transport) {
+        const date = props.transport.transport_date ? new Date(props.transport.transport_date).toISOString().slice(0, 10) : today
+
+        form.value = {
+            customer_id: props.transport.customer_id || null,
+            from_location: props.transport.from_location || '',
+            to_location: props.transport.to_location || '',
+            vehicle_quantity: props.transport.vehicle_quantity || 1,
+            delivery_type: props.transport.delivery_type || null,
+            transport_date: date,
+            office_commission_amount: props.transport.office_commission_amount || 0,
+            notes: props.transport.notes || '',
+            vehicles: [],
+        }
+
+        // Initialize vehicles based on quantity
+        const quantity = form.value.vehicle_quantity || 1
+        for (let i = 0; i < quantity; i++) {
+            form.value.vehicles.push(createEmptyVehicle())
+        }
+    } else {
+        form.value = {
+            customer_id: null,
+            from_location: '',
+            to_location: '',
+            vehicle_quantity: 1,
+            delivery_type: null,
+            transport_date: today,
+            office_commission_amount: 0,
+            notes: '',
+            vehicles: [createEmptyVehicle()],
+        }
+    }
+}
+
+watch(() => props.transport, initializeForm, { immediate: true })
+
+const resetForm = () => {
+    if (isEditMode.value && props.transport) {
+        initializeForm()
+    } else {
+        form.value = {
+            customer_id: null,
+            from_location: '',
+            to_location: '',
+            vehicle_quantity: 1,
+            delivery_type: null,
+            transport_date: today,
+            office_commission_amount: 0,
+            notes: '',
+            vehicles: [createEmptyVehicle()],
+        }
+    }
+}
+
+// Remove an existing vehicle from the transport (EDIT MODE only)
+const removeVehicle = async (vehicleId: number) => {
+    if (!confirm('Are you sure you want to remove this vehicle from the transport?')) return
+
+    const success = await vehiclesStore.deleteVehicle(vehicleId)
+    if (success) {
+        push.success('Vehicle removed from transport')
+        await vehiclesStore.fetchVehicles()
+    }
+}
+
+const submit = async () => {
+    if (!form.value.from_location.trim()) {
+        push.error('From location is required')
+        return
+    }
+
+    if (form.value.vehicle_quantity < 1) {
+        push.error('Vehicle quantity must be at least 1')
+        return
+    }
+
+    if (!form.value.transport_date) {
+        push.error('Transport date is required')
+        return
+    }
+
+    // Validate vehicles have numbers
+    const invalidVehicles = form.value.vehicles.filter(v => !v.vehicle_number.trim())
+    if (invalidVehicles.length > 0) {
+        push.error(`Please enter vehicle numbers for all ${form.value.vehicles.length} vehicles`)
+        return
+    }
+
+    submitting.value = true
+
+    const transportDate = formatDateForBackend(form.value.transport_date) || ''
+
+    try {
+        let transportId: number
+
+        if (isEditMode.value && props.transport) {
+            // Update existing transport
+            const success = await transportsStore.updateTransport(props.transport.id, {
+                customer_id: form.value.customer_id,
+                from_location: form.value.from_location.trim(),
+                to_location: form.value.to_location?.trim() || null,
+                vehicle_quantity: form.value.vehicle_quantity,
+                delivery_type: form.value.delivery_type,
+                transport_date: transportDate,
+                office_commission_amount: form.value.office_commission_amount,
+                notes: form.value.notes.trim() || null,
+            })
+
+            if (!success) {
+                submitting.value = false
+                return
+            }
+
+            transportId = props.transport.id
+            push.success('Transport updated successfully!')
+            emit('transport-updated')
+        } else {
+            // Create new transport
+            const newTransport = await transportsStore.createTransport({
+                customer_id: form.value.customer_id,
+                from_location: form.value.from_location.trim(),
+                to_location: form.value.to_location?.trim() || null,
+                vehicle_quantity: form.value.vehicle_quantity,
+                delivery_type: form.value.delivery_type,
+                transport_date: transportDate,
+                office_commission_amount: form.value.office_commission_amount,
+                notes: form.value.notes.trim() || null,
+            })
+
+            if (!newTransport) {
+                submitting.value = false
+                return
+            }
+
+            transportId = newTransport.id
+            push.success('Transport created successfully!')
+            emit('transport-created')
+        }
+
+        // Create vehicles
+        let createdCount = 0
+        let failedCount = 0
+
+        for (const vehicle of form.value.vehicles) {
+            if (!vehicle.vehicle_number.trim()) {
+                failedCount++
+                continue
+            }
+
+            const result = await vehiclesStore.createVehicle({
+                transport_id: transportId,
+                vehicle_number: vehicle.vehicle_number.trim(),
+                broker_id: vehicle.broker_id,
+                driver_name: vehicle.driver_name?.trim() || null,
+                driver_phone: vehicle.driver_phone?.trim() || null,
+                joma_cost: vehicle.joma_cost,
+                vehicle_cost: vehicle.vehicle_cost,
+                customer_charge: vehicle.customer_charge,
+                other_cost: vehicle.other_cost,
+                labour_cost: vehicle.labour_cost,
+                demarage_amount: vehicle.demarage_amount,
+                demarage_reason: vehicle.demarage_reason?.trim() || null,
+            })
+
+            if (result) {
+                createdCount++
+            } else {
+                failedCount++
+            }
+        }
+
+        if (createdCount > 0 && failedCount === 0) {
+            push.success(`${createdCount} vehicle(s) added successfully!`)
+        } else if (createdCount > 0 && failedCount > 0) {
+            push.warning(`${createdCount} vehicle(s) added, ${failedCount} failed`)
+        } else if (failedCount > 0) {
+            push.warning('No vehicles were added')
+        }
+
+        resetForm()
+
+        // Refresh data
+        await Promise.all([
+            transportsStore.fetchTransports(),
+            vehiclesStore.fetchVehicles()
+        ])
+
+    } catch (error) {
+        console.error('Error:', error)
+        push.error(isEditMode.value ? 'Failed to update transport' : 'Failed to create transport')
+    } finally {
+        submitting.value = false
+    }
+}
+
+onMounted(async () => {
+    await Promise.all([
+        transportsStore.fetchTransports(),
+        customersStore.fetchCustomers(),
+        brokersStore.fetchBrokers(),
+        vehiclesStore.fetchVehicles()
+    ])
+})
+</script>

@@ -1,0 +1,318 @@
+// src/stores/brokerVehicleBills.ts
+
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import { useVehiclesStore } from './vehicles'
+import { useBrokersStore } from './brokers'
+import type { BrokerVehicleBill, BrokerVehicleBillSortField, SortDirection } from '@/types/brokerVehicleBill'
+
+export const useBrokerVehicleBillsStore = defineStore('brokerVehicleBills', () => {
+    const vehiclesStore = useVehiclesStore()
+    const brokersStore = useBrokersStore()
+    // Removed unused transportsStore
+
+    const searchQuery = ref('')
+    const statusFilter = ref<'unpaid' | 'paid' | 'cancelled' | ''>('')
+    const sortField = ref<BrokerVehicleBillSortField>('created_at')
+    const sortDirection = ref<SortDirection>('desc')
+
+    // ============= HELPERS =============
+
+    // Calculate bill amount: joma_cost + vehicle_cost
+    const calculateBillAmount = (vehicle: any): number => {
+        return (vehicle.joma_cost || 0) + (vehicle.vehicle_cost || 0)
+    }
+
+    // ============= COMPUTED =============
+
+    // Generate bills for all vehicles with joma_cost or vehicle_cost > 0
+    const bills = computed<BrokerVehicleBill[]>(() => {
+        // Get all vehicles with joma_cost or vehicle_cost > 0
+        const vehicles = vehiclesStore.vehicles.filter(v =>
+            (v.joma_cost || 0) > 0 || (v.vehicle_cost || 0) > 0
+        )
+
+        const result: BrokerVehicleBill[] = []
+
+        for (const vehicle of vehicles) {
+            // Get broker info
+            const brokerName = vehicle.broker_id ? brokersStore.getBrokerName(vehicle.broker_id) : 'No Broker'
+
+            // Calculate bill amount
+            const billAmount = calculateBillAmount(vehicle)
+
+            // Get paid amount from vehicle
+            const paidAmount = vehicle.broker_total_paid || 0
+
+            // Determine status
+            let status: 'unpaid' | 'paid' | 'cancelled' = 'unpaid'
+            if (billAmount > 0 && paidAmount >= billAmount) {
+                status = 'paid'
+            }
+
+            result.push({
+                id: vehicle.id,
+                vehicle_id: vehicle.id,
+                transport_id: vehicle.transport_id,
+                vehicle_number: vehicle.vehicle_number,
+                broker_id: vehicle.broker_id,
+                broker_name: brokerName,
+                joma_cost: vehicle.joma_cost || 0,
+                vehicle_cost: vehicle.vehicle_cost || 0,
+                bill_amount: billAmount,
+                paid_amount: paidAmount,
+                status: status,
+                payment_date: status === 'paid' ? new Date().toISOString() : null,
+                notes: null,
+                created_at: vehicle.created_at,
+                updated_at: vehicle.updated_at,
+            })
+        }
+
+        return result
+    })
+
+    const filteredBills = computed(() => {
+        let result = [...bills.value]
+
+        // Filter by search query
+        if (searchQuery.value) {
+            const query = searchQuery.value.toLowerCase()
+            result = result.filter(bill =>
+                bill.vehicle_number.toLowerCase().includes(query) ||
+                bill.broker_name.toLowerCase().includes(query) ||
+                String(bill.transport_id).includes(query) ||
+                bill.status.toLowerCase().includes(query)
+            )
+        }
+
+        // Filter by status
+        if (statusFilter.value) {
+            result = result.filter(bill => bill.status === statusFilter.value)
+        }
+
+        // Sort
+        result.sort((a, b) => {
+            let comparison = 0
+            switch (sortField.value) {
+                case 'vehicle_number':
+                    comparison = a.vehicle_number.localeCompare(b.vehicle_number)
+                    break
+                case 'broker_name':
+                    comparison = a.broker_name.localeCompare(b.broker_name)
+                    break
+                case 'transport_id':
+                    comparison = a.transport_id - b.transport_id
+                    break
+                case 'bill_amount':
+                    comparison = a.bill_amount - b.bill_amount
+                    break
+                case 'status':
+                    comparison = a.status.localeCompare(b.status)
+                    break
+                case 'created_at':
+                    comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                    break
+                default:
+                    comparison = 0
+            }
+            return sortDirection.value === 'desc' ? -comparison : comparison
+        })
+
+        return result
+    })
+
+    const totalBills = computed(() => bills.value.length)
+    const totalUnpaid = computed(() => bills.value.filter(b => b.status === 'unpaid').length)
+    const totalPaid = computed(() => bills.value.filter(b => b.status === 'paid').length)
+    const totalAmount = computed(() => bills.value.reduce((sum, b) => sum + b.bill_amount, 0))
+    const totalUnpaidAmount = computed(() => {
+        return bills.value
+            .filter(b => b.status === 'unpaid')
+            .reduce((sum, b) => sum + b.bill_amount, 0)
+    })
+
+    // ============= ACTIONS =============
+
+    // Mark a bill as paid (updates the vehicle's broker_total_paid)
+    const markBillAsPaid = async (vehicleId: number, _payload: {  // Prefix with _ to indicate unused
+        payment_date?: string
+        notes?: string | null
+    }): Promise<boolean> => {
+        try {
+            // Get the vehicle
+            const vehicle = vehiclesStore.getVehicleById(vehicleId)
+            if (!vehicle) {
+                return false
+            }
+
+            // Get the bill
+            const bill = bills.value.find(b => b.vehicle_id === vehicleId)
+            if (!bill) {
+                return false
+            }
+
+            if (bill.status === 'paid') {
+                return true
+            }
+
+            // Calculate new total paid (full amount)
+            const newTotalPaid = bill.bill_amount
+
+            // Update the vehicle's broker_total_paid
+            const result = await vehiclesStore.updateVehicleBrokerPayment(vehicleId, {
+                broker_total_paid: newTotalPaid
+            })
+
+            return result !== null
+        } catch (error) {
+            console.error('Error marking broker vehicle bill as paid:', error)
+            return false
+        }
+    }
+
+    // Cancel a bill (sets joma_cost and vehicle_cost to 0)
+    const cancelBill = async (vehicleId: number): Promise<boolean> => {
+        try {
+            const vehicle = vehiclesStore.getVehicleById(vehicleId)
+            if (!vehicle) {
+                return false
+            }
+
+            // Note: vehicles don't have a 'notes' field, so we don't add notes here
+            const result = await vehiclesStore.updateVehicle(vehicleId, {
+                joma_cost: 0,
+                vehicle_cost: 0,
+            })
+
+            return result !== null
+        } catch (error) {
+            console.error('Error cancelling broker vehicle bill:', error)
+            return false
+        }
+    }
+
+    // ============= SORT =============
+    const setSort = (field: BrokerVehicleBillSortField) => {
+        if (sortField.value === field) {
+            sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
+        } else {
+            sortField.value = field
+            sortDirection.value = 'asc'
+        }
+    }
+
+    // ============= SEARCH =============
+    const setSearchQuery = (query: string) => {
+        searchQuery.value = query
+    }
+
+    const clearSearch = () => {
+        searchQuery.value = ''
+    }
+
+    const setStatusFilter = (status: 'unpaid' | 'paid' | 'cancelled' | '') => {
+        statusFilter.value = status
+    }
+
+    // ============= UTILITIES =============
+
+    const getBillById = (id: number): BrokerVehicleBill | undefined => {
+        return bills.value.find(b => b.id === id)
+    }
+
+    const getBillsByVehicleId = (vehicleId: number): BrokerVehicleBill | undefined => {
+        return bills.value.find(b => b.vehicle_id === vehicleId)
+    }
+
+    const getBillsByBrokerId = (brokerId: number): BrokerVehicleBill[] => {
+        return bills.value.filter(b => b.broker_id === brokerId)
+    }
+
+    const getStatusBadgeClass = (status: string): string => {
+        switch (status) {
+            case 'unpaid':
+                return 'border-(--color-yellow) text-(--color-yellow)'
+            case 'paid':
+                return 'border-(--color-green) text-(--color-green)'
+            case 'cancelled':
+                return 'border-(--color-red) text-(--color-red)'
+            default:
+                return 'border-(--color-border) text-(--color-text-secondary)'
+        }
+    }
+
+    const getStatusDotClass = (status: string): string => {
+        switch (status) {
+            case 'unpaid':
+                return 'bg-(--color-yellow)'
+            case 'paid':
+                return 'bg-(--color-green)'
+            case 'cancelled':
+                return 'bg-(--color-red)'
+            default:
+                return 'bg-(--color-text-secondary)'
+        }
+    }
+
+    const getStatusLabel = (status: string): string => {
+        switch (status) {
+            case 'unpaid':
+                return 'Unpaid'
+            case 'paid':
+                return 'Paid'
+            case 'cancelled':
+                return 'Cancelled'
+            default:
+                return status
+        }
+    }
+
+    const formatBillDate = (dateStr: string): string => {
+        return new Date(dateStr).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        })
+    }
+
+    return {
+        // State
+        searchQuery,
+        statusFilter,
+        sortField,
+        sortDirection,
+
+        // Computed
+        bills,
+        filteredBills,
+        totalBills,
+        totalUnpaid,
+        totalPaid,
+        totalAmount,
+        totalUnpaidAmount,
+
+        // Actions
+        markBillAsPaid,
+        cancelBill,
+
+        // Sort
+        setSort,
+
+        // Search
+        setSearchQuery,
+        clearSearch,
+        setStatusFilter,
+
+        // Utilities
+        getBillById,
+        getBillsByVehicleId,
+        getBillsByBrokerId,
+        getStatusBadgeClass,
+        getStatusDotClass,
+        getStatusLabel,
+        formatBillDate,
+    }
+})

@@ -1,0 +1,1 @@
+var e=e=>e==null||isNaN(e)?`—`:`৳ ${e.toFixed(2)}`;export{e as t};

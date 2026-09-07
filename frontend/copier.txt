@@ -1,0 +1,1 @@
+$f="output.txt"; if(Test-Path $f){Clear-Content $f}; Get-ChildItem -Path ".\src" -Recurse -Include "*.env","*.vue","*.ts" | Sort-Object FullName | ForEach-Object { $rel=$_.FullName.Substring((Get-Location).Path.Length+1); "="*48 >> $f; "FILE: $rel" >> $f; "="*48 >> $f; Get-Content $_.FullName -Raw >> $f; "" >> $f; "" >> $f }; Write-Host "✅ Done! Output saved to $f"

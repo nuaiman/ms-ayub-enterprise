@@ -1,0 +1,21 @@
+// src/composables/useClickOutside.ts
+import { onMounted, onUnmounted, type Ref } from 'vue'
+
+export function useClickOutside(
+    element: Ref<HTMLElement | null>,
+    callback: () => void
+) {
+    const handler = (event: MouseEvent) => {
+        if (element.value && !element.value.contains(event.target as Node)) {
+            callback()
+        }
+    }
+
+    onMounted(() => {
+        document.addEventListener('click', handler)
+    })
+
+    onUnmounted(() => {
+        document.removeEventListener('click', handler)
+    })
+}
