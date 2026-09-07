@@ -7,6 +7,7 @@ import { useItemsStore } from './items'
 import { useCustomersStore } from './customers'
 import { useStoresStore } from './stores'
 import type { CustomerLotBill, CustomerLotBillSortField, SortDirection } from '@/types/customerLotBill'
+import { push } from 'notivue'
 
 export const useCustomerLotBillsStore = defineStore('customerLotBills', () => {
     const lotsStore = useLotsStore()
@@ -178,38 +179,78 @@ export const useCustomerLotBillsStore = defineStore('customerLotBills', () => {
 
     // Mark a bill as paid (updates the lot's customer_paid_unload_amount)
     const markBillAsPaid = async (lotId: number, payload: {
+        amount: number  // Payment amount
         payment_date?: string
         notes?: string | null
     }): Promise<boolean> => {
-        // Get the lot
         const lot = lotsStore.getLotById(lotId)
-        if (!lot) return false
+        if (!lot) {
+            push.error('Lot not found')
+            return false
+        }
 
-        // Get the bill amount
         const bill = bills.value.find(b => b.lot_id === lotId)
-        if (!bill) return false
+        if (!bill) {
+            push.error('Bill not found')
+            return false
+        }
 
-        // Set the payment amount to the bill amount
+        if (bill.status === 'paid') {
+            push.info('Bill is already fully paid')
+            return true
+        }
+
+        // Calculate new total paid (add payment amount to existing paid)
+        const newTotalPaid = (lot.customer_paid_unload_amount || 0) + payload.amount
+
+        // Validate: Cannot pay more than bill amount
+        if (newTotalPaid > bill.bill_amount) {
+            const remaining = bill.bill_amount - bill.paid_amount
+            push.error(`Payment amount exceeds remaining balance of ${remaining.toFixed(2)}`)
+            return false
+        }
+
         const result = await lotsStore.updateLotCustomerUnloadPayment(
             lotId,
-            bill.bill_amount,
+            newTotalPaid,
             payload.payment_date || null
         )
 
-        return result !== null
+        if (result && payload.notes) {
+            await lotsStore.updateLot(lotId, {
+                notes: payload.notes
+            })
+        }
+
+        if (result) {
+            await lotsStore.fetchLots()
+            push.success('Payment recorded successfully')
+            return true
+        }
+
+        return false
     }
 
     // Cancel a bill (sets unload_rate to 0)
     const cancelBill = async (lotId: number): Promise<boolean> => {
         const lot = lotsStore.getLotById(lotId)
-        if (!lot) return false
+        if (!lot) {
+            push.error('Lot not found')
+            return false
+        }
 
         const result = await lotsStore.updateLot(lotId, {
             unload_rate: 0,
             notes: `Bill cancelled at ${new Date().toISOString()}${lot.notes ? ` - ${lot.notes}` : ''}`,
         })
 
-        return result !== null
+        if (result) {
+            await lotsStore.fetchLots()
+            push.success('Bill cancelled successfully')
+            return true
+        }
+
+        return false
     }
 
     // ============= SORT =============

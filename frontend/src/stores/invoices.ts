@@ -117,6 +117,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
         }
 
         if (type === 'transport') {
+            // Transport Bills
             const transportStore = useCustomerTransportBillsStore()
             const transportBills = transportStore.bills.filter(
                 bill => bill.customer_id === customerId && (bill.bill_amount - bill.paid_amount) > 0
@@ -129,7 +130,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
                     source_type: 'transport_bill',
                     item: 'Transport Bill',
                     date: bill.created_at ? new Date(bill.created_at).toLocaleDateString() : '',
-                    description: `${bill.from_location} → ${bill.to_location || 'N/A'}`,
+                    description: `${bill.from_location} → ${bill.to_location || 'N/A'} (${bill.total_vehicles} vehicles)`,
                     quantity: bill.total_vehicles || 1,
                     rate: bill.bill_amount / (bill.total_vehicles || 1),
                     amount: outstanding,

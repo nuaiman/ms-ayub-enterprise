@@ -11,7 +11,6 @@
             </div>
 
             <div class="flex items-center gap-2 flex-wrap">
-                <!-- Search -->
                 <div class="relative flex-1 sm:flex-none w-full sm:w-auto">
                     <input :value="searchQuery" @input="handleSearch" type="text" placeholder="Search bills..."
                         class="w-full sm:w-56 pl-9 pr-8 py-2 rounded-lg text-sm bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent" />
@@ -29,7 +28,6 @@
                     </button>
                 </div>
 
-                <!-- Status Filter -->
                 <select v-model="statusFilter" @change="handleStatusFilterChange"
                     class="px-3 py-2 rounded-lg text-sm bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent">
                     <option value="">All Status</option>
@@ -38,7 +36,6 @@
                     <option value="cancelled">Cancelled</option>
                 </select>
 
-                <!-- Copy Button -->
                 <button @click="handleCopyToClipboard"
                     class="h-9 w-9 flex items-center justify-center border border-(--color-border) rounded-lg text-(--color-text-secondary) hover:bg-(--color-muted-bg) transition-colors relative shrink-0"
                     title="Copy table to clipboard">
@@ -58,7 +55,6 @@
         <!-- Table -->
         <div class="flex-1 min-h-0 overflow-auto">
             <div class="min-w-225">
-                <!-- Header Row -->
                 <div
                     class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wider bg-(--color-muted-bg)/30 rounded-t-lg">
                     <div class="col-span-3 cursor-pointer hover:text-(--color-text-primary) transition-colors"
@@ -108,7 +104,6 @@
                     <div class="col-span-2 flex items-center justify-end">Actions</div>
                 </div>
 
-                <!-- Loading -->
                 <div v-if="loading" class="flex items-center justify-center py-12">
                     <div class="text-center space-y-4">
                         <svg class="animate-spin w-10 h-10 text-(--color-blue) mx-auto" fill="none" viewBox="0 0 24 24">
@@ -120,7 +115,6 @@
                     </div>
                 </div>
 
-                <!-- Empty -->
                 <div v-else-if="filteredBills.length === 0" class="flex items-center justify-center py-12">
                     <div class="text-center space-y-3">
                         <div
@@ -139,7 +133,6 @@
                     </div>
                 </div>
 
-                <!-- Rows -->
                 <div v-else>
                     <CustomerLotBillRow v-for="bill in filteredBills" :key="bill.id" :bill="bill"
                         @view="openDetailDialog" @pay="openPaymentDialog" @cancel="handleCancelBill" />
@@ -147,18 +140,16 @@
             </div>
         </div>
 
-        <!-- Footer -->
         <div v-if="!loading && filteredBills.length > 0"
             class="flex items-center justify-between py-3 px-1 border-t border-(--color-border) shrink-0 mt-auto">
             <p class="text-xs text-(--color-text-secondary)">Showing {{ filteredBills.length }} bills</p>
             <div class="flex items-center gap-4 text-xs text-(--color-text-secondary)">
                 <span>Total Amount: {{ formatCurrency(customerLotBillsStore.totalAmount) }}</span>
                 <span class="text-(--color-yellow)">Unpaid: {{ formatCurrency(customerLotBillsStore.totalUnpaidAmount)
-                }}</span>
+                    }}</span>
             </div>
         </div>
 
-        <!-- Detail Dialog -->
         <BaseDialog v-model="detailDialogOpen" max-width="3xl">
             <CustomerLotBillDetail v-if="selectedBill" :bill="selectedBill" @close="detailDialogOpen = false"
                 @pay="handlePayFromDetail" />
@@ -194,7 +185,6 @@
                         </div>
                     </div>
 
-                    <!-- Amount to Pay -->
                     <div>
                         <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
                             Payment Amount <span class="text-(--color-red)">*</span>
@@ -202,15 +192,15 @@
                         <div class="relative">
                             <span
                                 class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-(--color-text-secondary)">৳</span>
-                            <input v-model.number="paymentForm.amount" type="number" step="0.01" min="0"
-                                :max="selectedBill?.bill_amount" placeholder="0.00" required
+                            <input v-model.number="paymentForm.amount" type="number" step="0.01" min="0.01"
+                                :max="maxPaymentAmount" placeholder="0.00" required
                                 class="w-full pl-7 pr-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent" />
                         </div>
-                        <p class="text-xs text-(--color-text-secondary) mt-1">Max: {{
-                            formatCurrency(selectedBill?.bill_amount) }}</p>
+                        <p class="text-xs text-(--color-text-secondary) mt-1">
+                            Remaining: {{ formatCurrency(maxPaymentAmount) }}
+                        </p>
                     </div>
 
-                    <!-- Payment Date -->
                     <div>
                         <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
                             Payment Date <span class="text-(--color-red)">*</span>
@@ -219,7 +209,6 @@
                             class="w-full px-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent" />
                     </div>
 
-                    <!-- Notes -->
                     <div>
                         <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
                             Notes
@@ -242,7 +231,6 @@
             </template>
         </BaseDialog>
 
-        <!-- Cancel Confirmation Dialog -->
         <BaseDialog v-model="cancelDialogOpen" max-width="sm">
             <div class="flex items-center gap-3">
                 <div
@@ -276,7 +264,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useCustomerLotBillsStore } from '@/stores/customerLotBills'
 import { useLotsStore } from '@/stores/lots'
 import { useItemsStore } from '@/stores/items'
@@ -310,11 +298,12 @@ const paymentForm = ref({
     notes: '',
 })
 
-const filteredBills = computed(() => {
-    let result = customerLotBillsStore.filteredBills
-    return result
+const maxPaymentAmount = computed(() => {
+    if (!selectedBill.value) return 0
+    return selectedBill.value.bill_amount - selectedBill.value.paid_amount
 })
 
+const filteredBills = computed(() => customerLotBillsStore.filteredBills)
 const sortField = computed(() => customerLotBillsStore.sortField)
 const sortDirection = computed(() => customerLotBillsStore.sortDirection)
 
@@ -365,8 +354,9 @@ const openDetailDialog = (bill: CustomerLotBill) => {
 
 const openPaymentDialog = (bill: CustomerLotBill) => {
     selectedBill.value = bill
+    const remaining = bill.bill_amount - bill.paid_amount
     paymentForm.value = {
-        amount: bill.bill_amount - bill.paid_amount,
+        amount: remaining > 0 ? remaining : 0,
         payment_date: new Date().toISOString().slice(0, 10),
         notes: '',
     }
@@ -393,30 +383,25 @@ const confirmPayment = async () => {
         return
     }
 
-    if (paymentForm.value.amount > (selectedBill.value.bill_amount - selectedBill.value.paid_amount)) {
-        push.error('Payment amount exceeds remaining balance')
+    const remainingBalance = selectedBill.value.bill_amount - selectedBill.value.paid_amount
+
+    if (paymentForm.value.amount > remainingBalance) {
+        push.error(`Payment amount exceeds remaining balance of ${formatCurrency(remainingBalance)}`)
         return
     }
 
-    // Calculate new total paid
-    const newTotalPaid = selectedBill.value.paid_amount + paymentForm.value.amount
-
     const paymentDate = formatDateForBackend(paymentForm.value.payment_date)
 
-    // Update the lot's customer_paid_unload_amount
-    const result = await lotsStore.updateLotCustomerUnloadPayment(
+    const result = await customerLotBillsStore.markBillAsPaid(
         selectedBill.value.lot_id,
-        newTotalPaid,
-        paymentDate
+        {
+            amount: paymentForm.value.amount,
+            payment_date: paymentDate,
+            notes: paymentForm.value.notes?.trim() || null,
+        }
     )
 
     if (result) {
-        // Also update notes if provided
-        if (paymentForm.value.notes) {
-            await lotsStore.updateLot(selectedBill.value.lot_id, {
-                notes: paymentForm.value.notes.trim() || null
-            })
-        }
         push.success('Payment recorded successfully!')
         paymentDialogOpen.value = false
         await fetchData()
@@ -432,11 +417,6 @@ const confirmCancel = async () => {
         await fetchData()
     }
 }
-
-// Watch for data changes
-watch(() => customerLotBillsStore.bills, () => {
-    // Data updated
-}, { immediate: true })
 
 onMounted(() => {
     fetchData()

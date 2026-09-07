@@ -5,11 +5,11 @@ import { ref, computed } from 'vue'
 import { useVehiclesStore } from './vehicles'
 import { useBrokersStore } from './brokers'
 import type { BrokerVehicleBill, BrokerVehicleBillSortField, SortDirection } from '@/types/brokerVehicleBill'
+import { push } from 'notivue'
 
 export const useBrokerVehicleBillsStore = defineStore('brokerVehicleBills', () => {
     const vehiclesStore = useVehiclesStore()
     const brokersStore = useBrokersStore()
-    // Removed unused transportsStore
 
     const searchQuery = ref('')
     const statusFilter = ref<'unpaid' | 'paid' | 'cancelled' | ''>('')
@@ -46,7 +46,7 @@ export const useBrokerVehicleBillsStore = defineStore('brokerVehicleBills', () =
 
             // Determine status
             let status: 'unpaid' | 'paid' | 'cancelled' = 'unpaid'
-            if (billAmount > 0 && paidAmount >= billAmount) {
+            if (paidAmount >= billAmount) {
                 status = 'paid'
             }
 
@@ -135,38 +135,53 @@ export const useBrokerVehicleBillsStore = defineStore('brokerVehicleBills', () =
     // ============= ACTIONS =============
 
     // Mark a bill as paid (updates the vehicle's broker_total_paid)
-    const markBillAsPaid = async (vehicleId: number, _payload: {  // Prefix with _ to indicate unused
+    const markBillAsPaid = async (vehicleId: number, payload: {
+        amount: number  // Payment amount
         payment_date?: string
         notes?: string | null
     }): Promise<boolean> => {
         try {
-            // Get the vehicle
             const vehicle = vehiclesStore.getVehicleById(vehicleId)
             if (!vehicle) {
+                push.error('Vehicle not found')
                 return false
             }
 
-            // Get the bill
             const bill = bills.value.find(b => b.vehicle_id === vehicleId)
             if (!bill) {
+                push.error('Bill not found')
                 return false
             }
 
             if (bill.status === 'paid') {
+                push.info('Bill is already fully paid')
                 return true
             }
 
-            // Calculate new total paid (full amount)
-            const newTotalPaid = bill.bill_amount
+            // Calculate new total paid (add payment amount to existing paid)
+            const newTotalPaid = (vehicle.broker_total_paid || 0) + payload.amount
 
-            // Update the vehicle's broker_total_paid
+            // Validate: Cannot pay more than bill amount
+            if (newTotalPaid > bill.bill_amount) {
+                const remaining = bill.bill_amount - bill.paid_amount
+                push.error(`Payment amount exceeds remaining balance of ${remaining.toFixed(2)}`)
+                return false
+            }
+
             const result = await vehiclesStore.updateVehicleBrokerPayment(vehicleId, {
                 broker_total_paid: newTotalPaid
             })
 
-            return result !== null
+            if (result) {
+                await vehiclesStore.fetchVehicles()
+                push.success('Payment recorded successfully')
+                return true
+            }
+
+            return false
         } catch (error) {
             console.error('Error marking broker vehicle bill as paid:', error)
+            push.error('Failed to record payment')
             return false
         }
     }
@@ -176,18 +191,25 @@ export const useBrokerVehicleBillsStore = defineStore('brokerVehicleBills', () =
         try {
             const vehicle = vehiclesStore.getVehicleById(vehicleId)
             if (!vehicle) {
+                push.error('Vehicle not found')
                 return false
             }
 
-            // Note: vehicles don't have a 'notes' field, so we don't add notes here
             const result = await vehiclesStore.updateVehicle(vehicleId, {
                 joma_cost: 0,
                 vehicle_cost: 0,
             })
 
-            return result !== null
+            if (result) {
+                await vehiclesStore.fetchVehicles()
+                push.success('Bill cancelled successfully')
+                return true
+            }
+
+            return false
         } catch (error) {
             console.error('Error cancelling broker vehicle bill:', error)
+            push.error('Failed to cancel bill')
             return false
         }
     }

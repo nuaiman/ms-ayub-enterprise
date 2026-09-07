@@ -116,6 +116,7 @@ import { useDeliveryItemsStore } from '@/stores/deliveryItems'
 import { useTransportsStore } from '@/stores/transports'
 import { useVehiclesStore } from '@/stores/vehicles'
 import { useMajhisStore } from '@/stores/majhis'
+import { useBrokersStore } from '@/stores/brokers'
 import type { Invoice, AvailableItem, InvoiceType } from '@/types/invoice'
 import { push } from 'notivue'
 import InvoiceCustomerSelect from '@/components/features/invoices/InvoiceCustomerSelect.vue'
@@ -134,6 +135,11 @@ const deliveryItemsStore = useDeliveryItemsStore()
 const transportsStore = useTransportsStore()
 const vehiclesStore = useVehiclesStore()
 const majhisStore = useMajhisStore()
+const brokersStore = useBrokersStore()
+const customerStorageBillsStore = useCustomerStorageBillsStore()
+const customerLotBillsStore = useCustomerLotBillsStore()
+const customerDeliveryBillsStore = useCustomerDeliveryBillsStore()
+const customerTransportBillsStore = useCustomerTransportBillsStore()
 
 const step = ref(1)
 const selectedCustomerId = ref<number | null>(null)
@@ -162,6 +168,12 @@ const loadInvoiceData = async () => {
             transportsStore.fetchTransports(),
             vehiclesStore.fetchVehicles(),
             majhisStore.fetchMajhis(),
+            brokersStore.fetchBrokers(),
+            // Load bill stores
+            customerStorageBillsStore.setSearchQuery(''),
+            customerLotBillsStore.setSearchQuery(''),
+            customerDeliveryBillsStore.setSearchQuery(''),
+            customerTransportBillsStore.setSearchQuery(''),
         ])
     } catch (error) {
         console.error('[INVOICE] Error loading data:', error)
@@ -223,10 +235,8 @@ const goToStep3 = () => {
 const goToStep1 = () => { step.value = 1 }
 const goToStep2Back = () => { step.value = 2 }
 
-// Fixed: Properly typed update function
 const updateInvoice = (updates: Partial<Invoice>) => {
     if (currentInvoice.value) {
-        // Update each field individually with proper typing
         Object.keys(updates).forEach((key) => {
             const field = key as keyof Invoice
             const value = updates[field]

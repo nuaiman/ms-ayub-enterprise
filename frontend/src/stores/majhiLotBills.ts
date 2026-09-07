@@ -7,6 +7,7 @@ import { useItemsStore } from './items'
 import { useMajhisStore } from './majhis'
 import { useStoresStore } from './stores'
 import type { MajhiLotBill, MajhiLotBillSortField, SortDirection } from '@/types/majhiLotBill'
+import { push } from 'notivue'
 
 export const useMajhiLotBillsStore = defineStore('majhiLotBills', () => {
     const lotsStore = useLotsStore()
@@ -181,44 +182,55 @@ export const useMajhiLotBillsStore = defineStore('majhiLotBills', () => {
 
     // Mark a bill as paid (updates the lot's majhi_total_paid)
     const markBillAsPaid = async (lotId: number, payload: {
+        amount: number  // Payment amount
         notes?: string | null
     }): Promise<boolean> => {
         try {
-            // Get the lot
             const lot = lotsStore.getLotById(lotId)
             if (!lot) {
+                push.error('Lot not found')
                 return false
             }
 
-            // Get the bill amount
             const bill = bills.value.find(b => b.lot_id === lotId)
             if (!bill) {
+                push.error('Bill not found')
                 return false
             }
 
             if (bill.status === 'paid') {
+                push.info('Bill is already fully paid')
                 return true
             }
 
-            // Calculate new total paid (full amount)
-            const newTotalPaid = bill.bill_amount
+            // Calculate new total paid (add payment amount to existing paid)
+            const newTotalPaid = (lot.majhi_total_paid || 0) + payload.amount
 
-            // Update the lot's majhi_total_paid
+            // Validate: Cannot pay more than bill amount
+            if (newTotalPaid > bill.bill_amount) {
+                const remaining = bill.bill_amount - bill.paid_amount
+                push.error(`Payment amount exceeds remaining balance of ${remaining.toFixed(2)}`)
+                return false
+            }
+
             const result = await lotsStore.updateLotMajhiPayment(lotId, newTotalPaid)
 
+            if (result && payload.notes) {
+                await lotsStore.updateLot(lotId, {
+                    notes: payload.notes
+                })
+            }
+
             if (result) {
-                // Also update the notes if provided
-                if (payload.notes) {
-                    await lotsStore.updateLot(lotId, {
-                        notes: payload.notes
-                    })
-                }
+                await lotsStore.fetchLots()
+                push.success('Payment recorded successfully')
                 return true
             }
 
             return false
         } catch (error) {
             console.error('Error marking majhi bill as paid:', error)
+            push.error('Failed to record payment')
             return false
         }
     }
@@ -228,6 +240,7 @@ export const useMajhiLotBillsStore = defineStore('majhiLotBills', () => {
         try {
             const lot = lotsStore.getLotById(lotId)
             if (!lot) {
+                push.error('Lot not found')
                 return false
             }
 
@@ -237,9 +250,16 @@ export const useMajhiLotBillsStore = defineStore('majhiLotBills', () => {
                 notes: `Majhi bill cancelled at ${new Date().toISOString()}${lot.notes ? ` - ${lot.notes}` : ''}`,
             })
 
-            return result !== null
+            if (result) {
+                await lotsStore.fetchLots()
+                push.success('Bill cancelled successfully')
+                return true
+            }
+
+            return false
         } catch (error) {
             console.error('Error cancelling majhi bill:', error)
+            push.error('Failed to cancel bill')
             return false
         }
     }

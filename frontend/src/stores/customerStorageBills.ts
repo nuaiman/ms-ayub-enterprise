@@ -6,8 +6,9 @@ import { useLotsStore } from './lots'
 import { useStoresStore } from './stores'
 import { useItemsStore } from './items'
 import { useCustomersStore } from './customers'
+import { push } from 'notivue'
 
-interface CustomerStorageBill {
+export interface CustomerStorageBill {
     id: number
     lot_id: number
     item_name: string
@@ -283,16 +284,40 @@ export const useCustomerStorageBillsStore = defineStore('customerStorageBills', 
     // Record payment for a customer (updates lot's customer_last_paid_amount and customer_last_paid_through)
     const recordCustomerPayment = async (lotId: number, amount: number, paidThrough: string | null): Promise<boolean> => {
         const lot = lotsStore.getLotById(lotId)
-        if (!lot) return false
+        if (!lot) {
+            push.error('Lot not found')
+            return false
+        }
 
+        // Get the bill
+        const bill = customerBillData.value.find(b => b.lot_id === lotId)
+        if (!bill) {
+            push.error('Bill not found')
+            return false
+        }
+
+        // Calculate new total paid (add payment amount to existing paid)
         const newTotalPaid = (lot.customer_last_paid_amount || 0) + amount
+
+        // Validate: Cannot pay more than total billed
+        if (newTotalPaid > bill.total_billed) {
+            const remaining = bill.total_billed - bill.total_paid
+            push.error(`Payment amount exceeds remaining balance of ${remaining.toFixed(2)}`)
+            return false
+        }
 
         const result = await lotsStore.updateLot(lotId, {
             customer_last_paid_amount: newTotalPaid,
             customer_last_paid_through: paidThrough,
         })
 
-        return result !== null
+        if (result) {
+            await lotsStore.fetchLots()
+            push.success('Payment recorded successfully')
+            return true
+        }
+
+        return false
     }
 
     return {

@@ -62,9 +62,11 @@
         <div v-else class="space-y-4 max-h-125 overflow-y-auto pr-1">
             <div v-for="(group, groupName) in groupedItems" :key="groupName"
                 class="rounded-xl border border-(--color-border) bg-(--color-surface) overflow-hidden">
+                <!-- Group Header -->
                 <div
                     class="flex items-center justify-between p-4 bg-(--color-muted-bg)/20 border-b border-(--color-border)">
                     <div class="flex items-center gap-3">
+                        <!-- Group checkbox - convenience to select/deselect all -->
                         <input type="checkbox" :checked="group.allSelected"
                             @change="toggleGroup(groupName as string, $event)"
                             class="w-4 h-4 rounded border-(--color-border) text-(--color-blue) focus:ring-2 focus:ring-(--color-blue)/20 focus:ring-offset-0 transition-all duration-200" />
@@ -79,14 +81,21 @@
                         {{ group.selectedCount }} selected
                     </span>
                 </div>
+
+                <!-- Individual Items -->
                 <div class="divide-y divide-(--color-border)">
                     <div v-for="item in group.items" :key="`${item.source_type}_${item.id}`"
-                        class="flex items-start gap-3 p-4 hover:bg-(--color-muted-bg)/20 transition-colors cursor-pointer"
+                        class="flex items-start gap-3 p-4 hover:bg-(--color-muted-bg)/20 transition-colors cursor-pointer group/item"
                         :class="{ 'opacity-50 cursor-not-allowed': !item.selected && selectedCount >= 12 }"
-                        @click="toggleItem(item)">
-                        <input type="checkbox" :checked="item.selected" @change="toggleItem(item)"
-                            :disabled="!item.selected && selectedCount >= 12"
-                            class="mt-1 w-4 h-4 rounded border-(--color-border) text-(--color-blue) focus:ring-2 focus:ring-(--color-blue)/20 focus:ring-offset-0 transition-all duration-200 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed" />
+                        @click="handleItemClick(item, $event)">
+                        <!-- Individual checkbox - clicking this ONLY toggles the checkbox -->
+                        <div @click.stop>
+                            <input type="checkbox" :checked="item.selected" @change="toggleItem(item)"
+                                :disabled="!item.selected && selectedCount >= 12"
+                                class="mt-1 w-4 h-4 rounded border-(--color-border) text-(--color-blue) focus:ring-2 focus:ring-(--color-blue)/20 focus:ring-offset-0 transition-all duration-200 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed" />
+                        </div>
+
+                        <!-- Item Details - clicking this also toggles the item -->
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-3">
                                 <span class="text-sm font-medium text-(--color-text-primary)">{{ item.item }}</span>
@@ -102,20 +111,22 @@
                                 <span class="truncate">{{ item.description }}</span>
                             </div>
                             <div class="flex items-center gap-4 mt-1 text-xs">
-                                <span>Total: <span class="font-medium text-(--color-text-primary)">à§³ {{
-                                        formatAmount(item.total_amount) }}</span></span>
+                                <span>Total: <span class="font-medium text-(--color-text-primary)">৳ {{
+                                    formatAmount(item.total_amount) }}</span></span>
                                 <span v-if="item.paid_amount > 0">
-                                    Paid: <span class="font-medium text-(--color-green)">à§³ {{
+                                    Paid: <span class="font-medium text-(--color-green)">৳ {{
                                         formatAmount(item.paid_amount) }}</span>
                                 </span>
                                 <span>
-                                    Due: <span class="font-medium text-(--color-red)">à§³ {{ formatAmount(item.amount)
-                                        }}</span>
+                                    Due: <span class="font-medium text-(--color-red)">৳ {{ formatAmount(item.amount)
+                                    }}</span>
                                 </span>
                             </div>
                         </div>
+
+                        <!-- Amount -->
                         <div class="text-right shrink-0">
-                            <p class="text-sm font-semibold text-(--color-red)">à§³ {{ formatAmount(item.amount) }}</p>
+                            <p class="text-sm font-semibold text-(--color-red)">৳ {{ formatAmount(item.amount) }}</p>
                         </div>
                     </div>
                 </div>
@@ -130,10 +141,10 @@
                     {{ selectedCount }} of 12 items selected
                 </p>
                 <div class="flex flex-wrap items-center gap-4 text-sm mt-1">
-                    <span>Total Due: <span class="font-semibold text-(--color-red)">à§³ {{ formatAmount(selectedTotal)
-                            }}</span></span>
-                    <span>Already Paid: <span class="font-semibold text-(--color-green)">à§³ {{
-                            formatAmount(selectedPaid) }}</span></span>
+                    <span>Total Due: <span class="font-semibold text-(--color-red)">৳ {{ formatAmount(selectedTotal)
+                    }}</span></span>
+                    <span>Already Paid: <span class="font-semibold text-(--color-green)">৳ {{
+                        formatAmount(selectedPaid) }}</span></span>
                 </div>
                 <div class="w-full mt-2 h-1.5 rounded-full bg-(--color-muted-bg) overflow-hidden">
                     <div class="h-full rounded-full transition-all duration-300"
@@ -163,6 +174,7 @@ import { ref, computed, watch } from 'vue'
 import { useInvoiceStore } from '@/stores/invoices'
 import { useCustomersStore } from '@/stores/customers'
 import type { AvailableItem, InvoiceType } from '@/types/invoice'
+import { push } from 'notivue'
 
 const props = defineProps<{
     type: InvoiceType
@@ -180,6 +192,7 @@ const MAX_ITEMS = 12
 const invoiceStore = useInvoiceStore()
 const customersStore = useCustomersStore()
 
+// Local copy of available items with selection state
 const availableItems = ref<AvailableItem[]>([])
 
 const isGodown = computed(() => props.type === 'godown')
@@ -259,51 +272,73 @@ const getStatusLabel = (item: AvailableItem): string => {
     return 'Unpaid'
 }
 
+// ============================================================
+// FIX: Handle both row click AND checkbox click with proper type checking
+// ============================================================
+const handleItemClick = (item: AvailableItem, event: MouseEvent) => {
+    // Get the target element
+    const target = event.target as HTMLElement
+
+    // Check if the click was on a checkbox input
+    if (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'checkbox') {
+        // Checkbox click - let the @change handler handle it
+        return
+    }
+    // Row click - toggle the item
+    toggleItem(item)
+}
+
+// Toggle individual item
 const toggleItem = (item: AvailableItem) => {
     // If trying to select and already at max, prevent it
     if (!item.selected && selectedCount.value >= MAX_ITEMS) {
+        push.warning(`Maximum ${MAX_ITEMS} items allowed per invoice`)
         return
     }
+
+    // Toggle ONLY this item
     item.selected = !item.selected
+
+    // Emit the updated items list to parent
     emit('update:selectedItems', availableItems.value)
 }
 
+// Toggle all items in a group
 const toggleGroup = (groupName: string, event: Event) => {
     const checked = (event.target as HTMLInputElement).checked
     const group = groupedItems.value[groupName]
     if (!group) return
 
-    // If trying to select all and it would exceed max, only select up to max
+    const unselectedItems = group.items.filter(item => !item.selected)
+    const itemsToSelect = checked ? unselectedItems.length : 0
     const currentSelected = selectedCount.value
-    const itemsInGroup = group.items.length
-    const itemsToSelect = checked ? itemsInGroup : 0
 
     if (checked && currentSelected + itemsToSelect > MAX_ITEMS) {
-        // Calculate how many we can select
         const availableSlots = MAX_ITEMS - currentSelected
-        let selectedCount = 0
+        let selected = 0
         for (const item of group.items) {
-            if (selectedCount < availableSlots && !item.selected) {
+            if (selected < availableSlots && !item.selected) {
                 item.selected = true
-                selectedCount++
+                selected++
             }
         }
-        emit('update:selectedItems', availableItems.value)
-        return
+        if (selected < itemsToSelect) {
+            push.warning(`Only ${selected} of ${itemsToSelect} items selected (max ${MAX_ITEMS})`)
+        }
+    } else {
+        for (const item of group.items) {
+            item.selected = checked
+        }
     }
 
-    for (const item of group.items) {
-        item.selected = checked
-    }
     emit('update:selectedItems', availableItems.value)
 }
 
+// Toggle all items
 const toggleAll = () => {
     const newState = !allSelected.value
 
-    // If trying to select all and it would exceed max
     if (newState && availableItems.value.length > MAX_ITEMS) {
-        // Only select first MAX_ITEMS items
         let count = 0
         for (const item of availableItems.value) {
             if (count < MAX_ITEMS) {
@@ -313,6 +348,7 @@ const toggleAll = () => {
                 item.selected = false
             }
         }
+        push.warning(`Selected ${count} of ${availableItems.value.length} items (max ${MAX_ITEMS})`)
     } else {
         for (const item of availableItems.value) {
             item.selected = newState
@@ -322,21 +358,32 @@ const toggleAll = () => {
 }
 
 const handleNext = () => {
-    if (selectedCount.value > 0 && selectedCount.value <= MAX_ITEMS) {
-        emit('next')
+    if (selectedCount.value === 0) {
+        push.error('Please select at least one item')
+        return
     }
+    if (selectedCount.value > MAX_ITEMS) {
+        push.error(`Maximum ${MAX_ITEMS} items allowed`)
+        return
+    }
+    emit('next')
 }
 
+// Load available items when customer changes
 watch(() => props.customerId, (customerId) => {
     if (customerId) {
         availableItems.value = invoiceStore.getAvailableItemsForCustomer(customerId, props.type)
+        for (const item of availableItems.value) {
+            item.selected = false
+        }
     } else {
         availableItems.value = []
     }
 }, { immediate: true })
 
+// Sync with parent selectedItems
 watch(() => props.selectedItems, (newItems) => {
-    if (newItems.length > 0) {
+    if (newItems.length > 0 && availableItems.value.length > 0) {
         for (const localItem of availableItems.value) {
             const match = newItems.find(item =>
                 item.source_type === localItem.source_type &&

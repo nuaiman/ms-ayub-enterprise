@@ -214,12 +214,13 @@
                         <div class="relative">
                             <span
                                 class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-(--color-text-secondary)">৳</span>
-                            <input v-model.number="paymentForm.amount" type="number" step="0.01" min="0"
-                                :max="selectedBill?.bill_amount" placeholder="0.00" required
+                            <input v-model.number="paymentForm.amount" type="number" step="0.01" min="0.01"
+                                :max="maxPaymentAmount" placeholder="0.00" required
                                 class="w-full pl-7 pr-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent" />
                         </div>
-                        <p class="text-xs text-(--color-text-secondary) mt-1">Max: {{
-                            formatCurrency(selectedBill?.bill_amount) }}</p>
+                        <p class="text-xs text-(--color-text-secondary) mt-1">
+                            Remaining: {{ formatCurrency(maxPaymentAmount) }}
+                        </p>
                     </div>
 
                     <div>
@@ -324,11 +325,12 @@ const paymentForm = ref({
     notes: '',
 })
 
-const filteredBills = computed(() => {
-    let result = customerDeliveryBillsStore.filteredBills
-    return result
+const maxPaymentAmount = computed(() => {
+    if (!selectedBill.value) return 0
+    return selectedBill.value.bill_amount - selectedBill.value.paid_amount
 })
 
+const filteredBills = computed(() => customerDeliveryBillsStore.filteredBills)
 const sortField = computed(() => customerDeliveryBillsStore.sortField)
 const sortDirection = computed(() => customerDeliveryBillsStore.sortDirection)
 
@@ -381,8 +383,9 @@ const openDetailDialog = (bill: CustomerDeliveryBill) => {
 
 const openPaymentDialog = (bill: CustomerDeliveryBill) => {
     selectedBill.value = bill
+    const remaining = bill.bill_amount - bill.paid_amount
     paymentForm.value = {
-        amount: bill.bill_amount - bill.paid_amount,
+        amount: remaining > 0 ? remaining : 0,
         payment_date: new Date().toISOString().slice(0, 10),
         notes: '',
     }
@@ -409,17 +412,23 @@ const confirmPayment = async () => {
         return
     }
 
-    if (paymentForm.value.amount > (selectedBill.value.bill_amount - selectedBill.value.paid_amount)) {
-        push.error('Payment amount exceeds remaining balance')
+    const remainingBalance = selectedBill.value.bill_amount - selectedBill.value.paid_amount
+
+    if (paymentForm.value.amount > remainingBalance) {
+        push.error(`Payment amount exceeds remaining balance of ${formatCurrency(remainingBalance)}`)
         return
     }
 
     const paymentDate = formatDateForBackend(paymentForm.value.payment_date)
 
-    const result = await customerDeliveryBillsStore.markBillAsPaid(selectedBill.value.delivery_item_id, {
-        payment_date: paymentDate,
-        notes: paymentForm.value.notes?.trim() || null,
-    })
+    const result = await customerDeliveryBillsStore.markBillAsPaid(
+        selectedBill.value.delivery_item_id,
+        {
+            amount: paymentForm.value.amount,
+            payment_date: paymentDate,
+            notes: paymentForm.value.notes?.trim() || null,
+        }
+    )
 
     if (result) {
         push.success('Payment recorded successfully!')

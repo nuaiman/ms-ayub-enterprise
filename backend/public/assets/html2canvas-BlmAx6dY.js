@@ -1,0 +1,1 @@
+import{t as e}from"./InvoiceView-DY6vXlge.js";export default e();

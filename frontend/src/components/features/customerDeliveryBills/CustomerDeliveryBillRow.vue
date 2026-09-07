@@ -28,6 +28,9 @@
             <span class="text-sm font-semibold text-(--color-text-primary)">
                 {{ formatCurrency(bill.bill_amount) }}
             </span>
+            <span v-if="outstanding > 0" class="text-xs text-(--color-red) block">
+                {{ formatCurrency(outstanding) }} outstanding
+            </span>
         </div>
 
         <!-- Status - 2 columns -->
@@ -50,7 +53,6 @@
                 </svg>
             </button>
 
-            <!-- Dropdown -->
             <Transition enter-active-class="transition ease-out duration-200"
                 enter-from-class="opacity-0 scale-95 translate-y-1" enter-to-class="opacity-100 scale-100 translate-y-0"
                 leave-active-class="transition ease-in duration-150"
@@ -58,7 +60,6 @@
                 leave-to-class="opacity-0 scale-95 translate-y-1">
                 <div v-if="isOpen"
                     class="absolute right-0 top-9 w-48 bg-(--color-surface) border border-(--color-border) rounded-xl shadow-lg overflow-hidden z-50 py-1">
-                    <!-- View Details -->
                     <button @click="handleView"
                         class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-text-secondary) hover:bg-(--color-muted-bg) transition-colors">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -70,8 +71,7 @@
                         View Details
                     </button>
 
-                    <!-- Record Payment (only if unpaid) -->
-                    <button v-if="bill.status === 'unpaid'" @click="handlePay"
+                    <button v-if="outstanding > 0" @click="handlePay"
                         class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-green) hover:bg-(--color-muted-bg) transition-colors">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -79,8 +79,7 @@
                         Record Payment
                     </button>
 
-                    <!-- Cancel (only if unpaid) -->
-                    <button v-if="bill.status === 'unpaid'" @click="handleCancel"
+                    <button v-if="outstanding > 0" @click="handleCancel"
                         class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-yellow) hover:bg-(--color-muted-bg) transition-colors border-t border-(--color-border) mt-1 pt-1">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -91,14 +90,13 @@
                 </div>
             </Transition>
 
-            <!-- Backdrop -->
             <div v-if="isOpen" class="fixed inset-0 z-40" @click="closeMenu"></div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { CustomerDeliveryBill } from '@/types/customerDeliveryBill'
 import { useCustomerDeliveryBillsStore } from '@/stores/customerDeliveryBills'
 import { formatCurrency } from '@/utils/currency'
@@ -115,6 +113,10 @@ const emit = defineEmits<{
 
 const customerDeliveryBillsStore = useCustomerDeliveryBillsStore()
 const isOpen = ref(false)
+
+const outstanding = computed(() => {
+    return props.bill.bill_amount - props.bill.paid_amount
+})
 
 const getStatusBadgeClass = (status: string): string => {
     return customerDeliveryBillsStore.getStatusBadgeClass(status)

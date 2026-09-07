@@ -7,6 +7,7 @@ import { useVehiclesStore } from './vehicles'
 import { useCustomersStore } from './customers'
 import { useBrokersStore } from './brokers'
 import type { CustomerTransportBill, CustomerTransportBillVehicle, CustomerTransportBillSortField, SortDirection } from '@/types/customerTransportBill'
+import { push } from 'notivue'
 
 export const useCustomerTransportBillsStore = defineStore('customerTransportBills', () => {
     const transportsStore = useTransportsStore()
@@ -160,38 +161,53 @@ export const useCustomerTransportBillsStore = defineStore('customerTransportBill
     // ============= ACTIONS =============
 
     // Mark a bill as paid (updates the transport's customer_total_paid)
-    const markBillAsPaid = async (transportId: number, _payload: {
+    const markBillAsPaid = async (transportId: number, payload: {
+        amount: number  // Payment amount
         payment_date?: string
         notes?: string | null
     }): Promise<boolean> => {
         try {
-            // Get the transport
             const transport = transportsStore.getTransportById(transportId)
             if (!transport) {
+                push.error('Transport not found')
                 return false
             }
 
-            // Get the bill
             const bill = bills.value.find(b => b.transport_id === transportId)
             if (!bill) {
+                push.error('Bill not found')
                 return false
             }
 
             if (bill.status === 'paid') {
+                push.info('Bill is already fully paid')
                 return true
             }
 
-            // Calculate new total paid (full amount)
-            const newTotalPaid = bill.bill_amount
+            // Calculate new total paid (add payment amount to existing paid)
+            const newTotalPaid = (transport.customer_total_paid || 0) + payload.amount
 
-            // Update the transport's customer_total_paid
+            // Validate: Cannot pay more than bill amount
+            if (newTotalPaid > bill.bill_amount) {
+                const remaining = bill.bill_amount - bill.paid_amount
+                push.error(`Payment amount exceeds remaining balance of ${remaining.toFixed(2)}`)
+                return false
+            }
+
             const result = await transportsStore.updateCustomerPayment(transportId, {
                 customer_total_paid: newTotalPaid
             })
 
-            return result !== null
+            if (result) {
+                await transportsStore.fetchTransports()
+                push.success('Payment recorded successfully')
+                return true
+            }
+
+            return false
         } catch (error) {
             console.error('Error marking customer transport bill as paid:', error)
+            push.error('Failed to record payment')
             return false
         }
     }
@@ -201,6 +217,7 @@ export const useCustomerTransportBillsStore = defineStore('customerTransportBill
         try {
             const transport = transportsStore.getTransportById(transportId)
             if (!transport) {
+                push.error('Transport not found')
                 return false
             }
 
@@ -219,13 +236,20 @@ export const useCustomerTransportBillsStore = defineStore('customerTransportBill
             }
 
             if (successCount === vehicles.length) {
+                await transportsStore.fetchTransports()
+                await vehiclesStore.fetchVehicles()
+                push.success('Bill cancelled successfully')
                 return true
-            } else {
-                console.warn(`Cancelled ${successCount}/${vehicles.length} vehicles`)
-                return successCount > 0
+            } else if (successCount > 0) {
+                push.warning(`Cancelled ${successCount}/${vehicles.length} vehicles`)
+                return true
             }
+
+            push.error('Failed to cancel bill')
+            return false
         } catch (error) {
             console.error('Error cancelling customer transport bill:', error)
+            push.error('Failed to cancel bill')
             return false
         }
     }

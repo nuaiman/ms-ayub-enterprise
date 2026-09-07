@@ -9,8 +9,6 @@ import (
 	"backend/internal/models"
 	"backend/internal/router"
 	"log"
-	"os"
-	"path/filepath"
 )
 
 func main() {
@@ -31,30 +29,30 @@ func main() {
 
 	// SEED DATABASE (Uncomment to run seed)
 	// =============================================
-	log.Println("🌱 Seeding database...")
+	// log.Println("🌱 Seeding database...")
 
-	seedPath := filepath.Join("internal", "db", "schema", "seed.sql")
+	// seedPath := filepath.Join("internal", "db", "schema", "seed.sql")
 
-	if _, err := os.Stat(seedPath); os.IsNotExist(err) {
-		log.Fatalf("❌ Seed file not found: %s", seedPath)
-	}
+	// if _, err := os.Stat(seedPath); os.IsNotExist(err) {
+	// 	log.Fatalf("❌ Seed file not found: %s", seedPath)
+	// }
 
-	seedData, err := os.ReadFile(seedPath)
-	if err != nil {
-		log.Fatalf("❌ Failed to read seed file: %v", err)
-	}
+	// seedData, err := os.ReadFile(seedPath)
+	// if err != nil {
+	// 	log.Fatalf("❌ Failed to read seed file: %v", err)
+	// }
 
-	_, err = dbPool.Exec(string(seedData))
-	if err != nil {
-		log.Fatalf("❌ Failed to execute seed: %v", err)
-	}
+	// _, err = dbPool.Exec(string(seedData))
+	// if err != nil {
+	// 	log.Fatalf("❌ Failed to execute seed: %v", err)
+	// }
 
-	log.Println("✅ Seed data imported successfully!")
-	log.Println("📝 Default login credentials:")
-	log.Println("   Admin:    admin / password")
-	log.Println("   Manager:  manager1 / password")
-	log.Println("   Accounts: accounts1 / password")
-	log.Println("   Staff:    staff1 / password")
+	// log.Println("✅ Seed data imported successfully!")
+	// log.Println("📝 Default login credentials:")
+	// log.Println("   Admin:    admin / password")
+	// log.Println("   Manager:  manager1 / password")
+	// log.Println("   Accounts: accounts1 / password")
+	// log.Println("   Staff:    staff1 / password")
 	// =============================================
 
 	h := handlers.New(&a)

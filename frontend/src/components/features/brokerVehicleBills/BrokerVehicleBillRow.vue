@@ -2,21 +2,21 @@
 <template>
     <div class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) transition-all duration-200 hover:bg-(--color-muted-bg)/30 cursor-pointer"
         @click="handleView">
-        <!-- Vehicle - 2 columns -->
-        <div class="col-span-2 min-w-0">
+        <!-- Vehicle - 3 columns -->
+        <div class="col-span-3 min-w-0">
             <div class="font-medium text-(--color-text-primary) truncate text-sm">
                 {{ bill.vehicle_number }}
             </div>
         </div>
 
-        <!-- Broker - 2 columns -->
-        <div class="col-span-2 min-w-0">
+        <!-- Broker - 3 columns -->
+        <div class="col-span-3 min-w-0">
             <span class="text-sm text-(--color-text-secondary) truncate block">
                 {{ bill.broker_name }}
             </span>
         </div>
 
-        <!-- Transport - 1 columns -->
+        <!-- Transport - 1 column -->
         <div class="col-span-1">
             <span class="text-sm text-(--color-text-secondary)">
                 #{{ bill.transport_id }}
@@ -25,16 +25,16 @@
 
         <!-- Amount - 3 columns -->
         <div class="col-span-3">
-            <span class="text-sm font-semibold text-(--color-blue)">
+            <span class="text-sm font-semibold text-(--color-text-primary)">
                 {{ formatCurrency(bill.bill_amount) }}
             </span>
-            <span class="text-xs text-(--color-text-secondary) block">
-                {{ formatCurrency(bill.paid_amount) }} paid
+            <span v-if="outstanding > 0" class="text-xs text-(--color-red) block">
+                {{ formatCurrency(outstanding) }} outstanding
             </span>
         </div>
 
-        <!-- Status - 2 columns -->
-        <div class="col-span-2">
+        <!-- Status - 1 column -->
+        <div class="col-span-1">
             <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border"
                 :class="getStatusBadgeClass(bill.status)">
                 <span class="w-1.5 h-1.5 rounded-full" :class="getStatusDotClass(bill.status)"></span>
@@ -42,8 +42,8 @@
             </span>
         </div>
 
-        <!-- Actions - 2 columns, right aligned -->
-        <div class="col-span-2 flex items-center justify-end relative" @click.stop>
+        <!-- Actions - 1 column, right aligned -->
+        <div class="col-span-1 flex items-center justify-end relative" @click.stop>
             <button @click="toggleMenu"
                 class="w-7 h-7 flex items-center justify-center border border-(--color-border) rounded-md hover:bg-(--color-muted-bg) transition-all duration-200">
                 <svg class="w-3.5 h-3.5 text-(--color-text-secondary)" fill="currentColor" viewBox="0 0 24 24">
@@ -53,7 +53,6 @@
                 </svg>
             </button>
 
-            <!-- Dropdown -->
             <Transition enter-active-class="transition ease-out duration-200"
                 enter-from-class="opacity-0 scale-95 translate-y-1" enter-to-class="opacity-100 scale-100 translate-y-0"
                 leave-active-class="transition ease-in duration-150"
@@ -61,7 +60,6 @@
                 leave-to-class="opacity-0 scale-95 translate-y-1">
                 <div v-if="isOpen"
                     class="absolute right-0 top-9 w-48 bg-(--color-surface) border border-(--color-border) rounded-xl shadow-lg overflow-hidden z-50 py-1">
-                    <!-- View Details -->
                     <button @click="handleView"
                         class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-text-secondary) hover:bg-(--color-muted-bg) transition-colors">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -73,8 +71,7 @@
                         View Details
                     </button>
 
-                    <!-- Record Payment (only if unpaid) -->
-                    <button v-if="bill.status === 'unpaid'" @click="handlePay"
+                    <button v-if="outstanding > 0" @click="handlePay"
                         class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-green) hover:bg-(--color-muted-bg) transition-colors">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -82,8 +79,7 @@
                         Record Payment
                     </button>
 
-                    <!-- Cancel (only if unpaid) -->
-                    <button v-if="bill.status === 'unpaid'" @click="handleCancel"
+                    <button v-if="outstanding > 0" @click="handleCancel"
                         class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-yellow) hover:bg-(--color-muted-bg) transition-colors border-t border-(--color-border) mt-1 pt-1">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -94,14 +90,13 @@
                 </div>
             </Transition>
 
-            <!-- Backdrop -->
             <div v-if="isOpen" class="fixed inset-0 z-40" @click="closeMenu"></div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { BrokerVehicleBill } from '@/types/brokerVehicleBill'
 import { useBrokerVehicleBillsStore } from '@/stores/brokerVehicleBills'
 import { formatCurrency } from '@/utils/currency'
@@ -116,19 +111,23 @@ const emit = defineEmits<{
     'cancel': [bill: BrokerVehicleBill]
 }>()
 
-const store = useBrokerVehicleBillsStore()
+const brokerVehicleBillsStore = useBrokerVehicleBillsStore()
 const isOpen = ref(false)
 
+const outstanding = computed(() => {
+    return props.bill.bill_amount - props.bill.paid_amount
+})
+
 const getStatusBadgeClass = (status: string): string => {
-    return store.getStatusBadgeClass(status)
+    return brokerVehicleBillsStore.getStatusBadgeClass(status)
 }
 
 const getStatusDotClass = (status: string): string => {
-    return store.getStatusDotClass(status)
+    return brokerVehicleBillsStore.getStatusDotClass(status)
 }
 
 const getStatusLabel = (status: string): string => {
-    return store.getStatusLabel(status)
+    return brokerVehicleBillsStore.getStatusLabel(status)
 }
 
 const toggleMenu = () => {
