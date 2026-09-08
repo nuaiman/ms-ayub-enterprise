@@ -8,22 +8,18 @@
         isOpen ? 'translate-x-0' : '-translate-x-full',
         // Desktop: always visible
         'lg:translate-x-0 lg:static',
-        // Width based on state
-        isMobile ? 'w-70' : (isCollapsed ? 'lg:w-17' : 'lg:w-60'),
-        'w-70'  // Mobile: full width
+        // Fixed width - no collapse
+        'w-60 lg:w-60'
     ]">
-        <!-- Logo -->
-        <!-- ✅ On mobile, always show full logo (collapsed=false) -->
-        <AppSidebarLogo :collapsed="isMobile ? false : isCollapsed" />
+        <!-- Logo - always full -->
+        <AppSidebarLogo :collapsed="false" />
 
-        <!-- Navigation -->
-        <!-- ✅ On mobile, always show full nav (collapsed=false) -->
-        <AppSidebarNav :collapsed="isMobile ? false : isCollapsed" :menu-groups="menuGroups" @close="closeSidebar" />
+        <!-- Navigation - always full -->
+        <AppSidebarNav :collapsed="false" :menu-groups="menuGroups" @close="closeSidebar" />
 
-        <!-- User Card - Hidden on mobile (shown in header) -->
-        <div class="hidden lg:block">
-            <!-- ✅ On desktop only, use isCollapsed -->
-            <AppSidebarUser :collapsed="isCollapsed" @logout="handleLogout" @change-password="handleChangePassword"
+        <!-- User Card - always visible -->
+        <div>
+            <AppSidebarUser :collapsed="false" @logout="handleLogout" @change-password="handleChangePassword"
                 @reset-all-passwords="handleResetAllPasswords" @download-backup="handleDownloadBackup" />
         </div>
     </aside>
@@ -36,7 +32,7 @@ import AppSidebarUser from './AppSidebarUser.vue'
 
 defineProps<{
     isOpen: boolean
-    isCollapsed: boolean
+    isCollapsed: boolean // Keep prop for compatibility but don't use
     isMobile: boolean
     menuGroups: any[]
 }>()
