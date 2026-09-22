@@ -141,7 +141,7 @@
                 <div v-else>
                     <CustomerRow v-for="customer in filteredCustomers" :key="customer.id" :customer="customer"
                         @view="openDetailDialog" @edit="handleEditCustomer" @delete="handleDeleteCustomer"
-                        @updated="fetchCustomers" />
+                        @view-ledger="handleViewLedger" @updated="fetchCustomers" />
                 </div>
             </div>
         </div>
@@ -166,7 +166,13 @@
         <!-- Detail Dialog -->
         <BaseDialog v-model="detailDialogOpen" max-width="3xl">
             <CustomerDetail v-if="selectedCustomer" :customer="selectedCustomer" @close="closeDetailDialog"
-                @edit="handleEditCustomerFromDetail" @updated="fetchCustomers" />
+                @edit="handleEditCustomerFromDetail" @view-ledger="handleViewLedgerFromDetail"
+                @updated="fetchCustomers" />
+        </BaseDialog>
+
+        <!-- Ledger Dialog -->
+        <BaseDialog v-model="ledgerDialogOpen" max-width="3xl">
+            <CustomerLedger v-if="ledgerCustomerId" :customer-id="ledgerCustomerId" @close="ledgerDialogOpen = false" />
         </BaseDialog>
 
         <!-- Edit Dialog -->
@@ -208,34 +214,52 @@
     </div>
 </template>
 
+
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useCustomersStore } from '@/stores/customers'
 import { useAuthStore } from '@/stores/auth'
 import { useClipboardStore } from '@/stores/clipboard'
+import { useLotsStore } from '@/stores/lots'
+import { useStoresStore } from '@/stores/stores'
+import { useDeliveriesStore } from '@/stores/deliveries'
+import { useDeliveryItemsStore } from '@/stores/deliveryItems'
+import { useDamagesStore } from '@/stores/damages'
+import { useTransportsStore } from '@/stores/transports'
+import { useVehiclesStore } from '@/stores/vehicles'
+import { useGodownsStore } from '@/stores/godowns'
 import type { Customer, CustomerSortField, SortDirection } from '@/types/customer'
 import CustomerRow from './CustomerRow.vue'
 import CustomerForm from './CustomerForm.vue'
 import CustomerDetail from './CustomerDetail.vue'
+import CustomerLedger from './CustomerLedger.vue'
 import BaseDialog from '@/components/ui/BaseDialog.vue'
-import { push } from 'notivue'
 
 const customersStore = useCustomersStore()
 const auth = useAuthStore()
 const clipboardStore = useClipboardStore()
+const lotsStore = useLotsStore()
+const storesStore = useStoresStore()
+const deliveriesStore = useDeliveriesStore()
+const deliveryItemsStore = useDeliveryItemsStore()
+const damagesStore = useDamagesStore()
+const transportsStore = useTransportsStore()
+const vehiclesStore = useVehiclesStore()
+const godownsStore = useGodownsStore()
 
 const loading = ref(true)
 const searchQuery = ref('')
 const sortField = ref<CustomerSortField>('company_name')
 const sortDirection = ref<SortDirection>('asc')
 
-// Dialogs
 const createDialogOpen = ref(false)
 const detailDialogOpen = ref(false)
+const ledgerDialogOpen = ref(false)
 const editDialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
 
 const selectedCustomer = ref<Customer | null>(null)
+const ledgerCustomerId = ref<number | null>(null)
 
 const canManageCustomers = computed(() => {
     const role = auth.user?.role
@@ -295,7 +319,17 @@ const getCustomerDisplayName = (customer: Customer | null): string => {
 const fetchCustomers = async () => {
     loading.value = true
     try {
-        await customersStore.fetchCustomers()
+        await Promise.all([
+            customersStore.fetchCustomers(),
+            lotsStore.fetchLots(),
+            storesStore.fetchStores(),
+            deliveriesStore.fetchDeliveries(),
+            deliveryItemsStore.fetchDeliveryItems(),
+            damagesStore.fetchDamages(),
+            transportsStore.fetchTransports(),
+            vehiclesStore.fetchVehicles(),
+            godownsStore.fetchGodowns(),
+        ])
     } finally {
         loading.value = false
     }
@@ -327,7 +361,6 @@ const handleCopyToClipboard = async () => {
     await clipboardStore.copyToClipboard(headers + '\n' + rows.join('\n'))
 }
 
-// Dialog handlers
 const openDetailDialog = (customer: Customer) => {
     selectedCustomer.value = customer
     detailDialogOpen.value = true
@@ -348,6 +381,19 @@ const handleEditCustomerFromDetail = (customer: Customer) => {
     setTimeout(() => {
         selectedCustomer.value = customer
         editDialogOpen.value = true
+    }, 300)
+}
+
+const handleViewLedger = (customer: Customer) => {
+    ledgerCustomerId.value = customer.id
+    ledgerDialogOpen.value = true
+}
+
+const handleViewLedgerFromDetail = (customer: Customer) => {
+    detailDialogOpen.value = false
+    setTimeout(() => {
+        ledgerCustomerId.value = customer.id
+        ledgerDialogOpen.value = true
     }, 300)
 }
 

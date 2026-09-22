@@ -73,7 +73,7 @@ func main() {
 ADDR=:8080
 JWT_KEY=supersecretkey
 
-RATE_LIMIT=100
+RATE_LIMIT=1000
 RATE_INTERVAL=1m
 
 DB_PATH=./data
@@ -491,35 +491,17 @@ CREATE INDEX IF NOT EXISTS idx_customers_company ON customers(company_name);
 CREATE INDEX IF NOT EXISTS idx_customers_contact_person ON customers(contact_person);
 
 -- =====================================================
--- 8. ITEMS
+-- 8. LOTS
 -- =====================================================
-CREATE TABLE IF NOT EXISTS items (
+-- Lots are now the top of the product hierarchy. They carry the
+-- product identity (name, category) and the customer, previously
+-- held on the items table.
+CREATE TABLE IF NOT EXISTS lots (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     customer_id INTEGER,
     product_name TEXT,
     category TEXT,
-    is_active INTEGER NOT NULL DEFAULT 1,
-    notes TEXT,
-    image_url TEXT,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_items_user_id ON items(user_id);
-CREATE INDEX IF NOT EXISTS idx_items_customer_id ON items(customer_id);
-CREATE INDEX IF NOT EXISTS idx_items_product_name ON items(product_name);
-CREATE INDEX IF NOT EXISTS idx_items_category ON items(category);
-CREATE INDEX IF NOT EXISTS idx_items_is_active ON items(is_active);
-
--- =====================================================
--- 9. LOTS
--- =====================================================
-CREATE TABLE IF NOT EXISTS lots (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    item_id INTEGER NOT NULL,
     lot_number INTEGER NOT NULL,
     customer_charge_type TEXT NOT NULL DEFAULT 'quantity' CHECK (customer_charge_type IN ('weight', 'quantity')),
     majhi_bill_type TEXT NOT NULL DEFAULT 'quantity' CHECK (majhi_bill_type IN ('weight', 'quantity', 'job')),
@@ -536,19 +518,25 @@ CREATE TABLE IF NOT EXISTS lots (
     majhi_total_paid REAL NOT NULL DEFAULT 0 CHECK (majhi_total_paid >= 0),
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
-    FOREIGN KEY (majhi_id) REFERENCES majhis(id) ON DELETE SET NULL,
-    UNIQUE(item_id, lot_number)
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL,
+    FOREIGN KEY (majhi_id) REFERENCES majhis(id) ON DELETE SET NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_lots_item_id ON lots(item_id);
-CREATE INDEX IF NOT EXISTS idx_lots_lot_number ON lots(item_id, lot_number);
+CREATE INDEX IF NOT EXISTS idx_lots_user_id ON lots(user_id);
+CREATE INDEX IF NOT EXISTS idx_lots_customer_id ON lots(customer_id);
+CREATE INDEX IF NOT EXISTS idx_lots_product_name ON lots(product_name);
+CREATE INDEX IF NOT EXISTS idx_lots_category ON lots(category);
+CREATE INDEX IF NOT EXISTS idx_lots_lot_number ON lots(lot_number);
 CREATE INDEX IF NOT EXISTS idx_lots_majhi_id ON lots(majhi_id);
 CREATE INDEX IF NOT EXISTS idx_lots_is_active ON lots(is_active);
 
 -- =====================================================
--- 10. STORES
+-- 9. STORES
 -- =====================================================
+-- A lot can have multiple stores in the same godown
+-- (i.e. multiple arrivals of the same lot). Each row represents
+-- one distinct arrival with its own billing_start.
 CREATE TABLE IF NOT EXISTS stores (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     lot_id INTEGER NOT NULL,
@@ -569,7 +557,6 @@ CREATE TABLE IF NOT EXISTS stores (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (lot_id) REFERENCES lots(id) ON DELETE CASCADE,
     FOREIGN KEY (godown_id) REFERENCES godowns(id) ON DELETE RESTRICT,
-    UNIQUE(lot_id, godown_id),
     CHECK (billing_end IS NULL OR billing_start <= billing_end)
 );
 
@@ -581,7 +568,7 @@ CREATE INDEX IF NOT EXISTS idx_stores_billing_end ON stores(billing_end);
 CREATE INDEX IF NOT EXISTS idx_stores_is_active ON stores(is_active);
 
 -- =====================================================
--- 11. DAMAGES
+-- 10. DAMAGES
 -- =====================================================
 CREATE TABLE IF NOT EXISTS damages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -609,7 +596,7 @@ CREATE INDEX IF NOT EXISTS idx_damages_damage_date ON damages(damage_date);
 CREATE INDEX IF NOT EXISTS idx_damages_created_at ON damages(created_at);
 
 -- =====================================================
--- 12. DELIVERIES (Master)
+-- 11. DELIVERIES (Master)
 -- =====================================================
 CREATE TABLE IF NOT EXISTS deliveries (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -635,14 +622,13 @@ CREATE INDEX IF NOT EXISTS idx_deliveries_receiver_name ON deliveries(receiver_n
 CREATE INDEX IF NOT EXISTS idx_deliveries_receiver_phone ON deliveries(receiver_phone);
 
 -- =====================================================
--- 13. DELIVERY ITEMS (Detail)
+-- 12. DELIVERY ITEMS (Detail)
 -- =====================================================
 CREATE TABLE IF NOT EXISTS delivery_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     delivery_id INTEGER NOT NULL,
     store_id INTEGER NOT NULL,
     majhi_id INTEGER,
-    item_id INTEGER NOT NULL,
     lot_id INTEGER NOT NULL,
     vehicle_number TEXT,
     driver_number TEXT,
@@ -662,20 +648,18 @@ CREATE TABLE IF NOT EXISTS delivery_items (
     FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE CASCADE,
     FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE RESTRICT,
     FOREIGN KEY (majhi_id) REFERENCES majhis(id) ON DELETE SET NULL,
-    FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE RESTRICT,
     FOREIGN KEY (lot_id) REFERENCES lots(id) ON DELETE RESTRICT
 );
 
 CREATE INDEX IF NOT EXISTS idx_delivery_items_delivery_id ON delivery_items(delivery_id);
 CREATE INDEX IF NOT EXISTS idx_delivery_items_store_id ON delivery_items(store_id);
 CREATE INDEX IF NOT EXISTS idx_delivery_items_majhi_id ON delivery_items(majhi_id);
-CREATE INDEX IF NOT EXISTS idx_delivery_items_item_id ON delivery_items(item_id);
 CREATE INDEX IF NOT EXISTS idx_delivery_items_lot_id ON delivery_items(lot_id);
 CREATE INDEX IF NOT EXISTS idx_delivery_items_vehicle_number ON delivery_items(vehicle_number);
 CREATE INDEX IF NOT EXISTS idx_delivery_items_driver_number ON delivery_items(driver_number);
 
 -- =====================================================
--- 14. TRANSPORTS
+-- 13. TRANSPORTS
 -- =====================================================
 CREATE TABLE IF NOT EXISTS transports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -709,7 +693,7 @@ CREATE INDEX IF NOT EXISTS idx_transports_delivery_type ON transports(delivery_t
 CREATE INDEX IF NOT EXISTS idx_transports_vehicle_quantity ON transports(vehicle_quantity);
 
 -- =====================================================
--- 15. VEHICLES
+-- 14. VEHICLES
 -- =====================================================
 CREATE TABLE IF NOT EXISTS vehicles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -744,7 +728,7 @@ CREATE INDEX IF NOT EXISTS idx_vehicles_driver_name ON vehicles(driver_name);
 CREATE INDEX IF NOT EXISTS idx_vehicles_driver_phone ON vehicles(driver_phone);
 
 -- =====================================================
--- 16. EXPENSES
+-- 15. EXPENSES
 -- =====================================================
 CREATE TABLE IF NOT EXISTS expenses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -762,7 +746,7 @@ CREATE TABLE IF NOT EXISTS expenses (
 CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(expense_date);
 
 -- =====================================================
--- 17. LOGS
+-- 16. LOGS
 -- =====================================================
 CREATE TABLE IF NOT EXISTS logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -868,6 +852,48 @@ BEGIN
         WHEN NEW.weight < 0 THEN 
             RAISE(ABORT, 'Cannot have negative weight in store')
     END;
+END;
+
+-- =====================================================
+-- AUTO-DEACTIVATION CASCADE
+-- =====================================================
+-- When a store's quantity and weight both reach 0, deactivate the store
+-- and stamp its billing_end. Then, if every store of the lot is empty,
+-- deactivate the lot. No item-level cascade because items no longer exist.
+-- No auto-reactivation is performed.
+
+CREATE TRIGGER IF NOT EXISTS deactivate_empty_store
+AFTER UPDATE ON stores
+WHEN NEW.quantity = 0
+  AND NEW.weight = 0
+  AND NEW.is_active = 1
+  AND (OLD.quantity > 0 OR OLD.weight > 0)
+BEGIN
+    UPDATE stores
+    SET
+        is_active = 0,
+        billing_end = COALESCE(billing_end, CURRENT_TIMESTAMP),
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS deactivate_lot_if_all_stores_empty
+AFTER UPDATE ON stores
+WHEN NEW.quantity = 0
+  AND NEW.weight = 0
+  AND (OLD.quantity > 0 OR OLD.weight > 0)
+BEGIN
+    UPDATE lots
+    SET
+        is_active = 0,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = NEW.lot_id
+      AND is_active = 1
+      AND NOT EXISTS (
+          SELECT 1 FROM stores
+          WHERE lot_id = NEW.lot_id
+            AND (quantity > 0 OR weight > 0)
+      );
 END;
 
 -- =====================================================
@@ -1032,12 +1058,6 @@ CREATE TRIGGER IF NOT EXISTS update_customers_timestamp
 AFTER UPDATE ON customers
 BEGIN
     UPDATE customers SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
-END;
-
-CREATE TRIGGER IF NOT EXISTS update_items_timestamp
-AFTER UPDATE ON items
-BEGIN
-    UPDATE items SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS update_lots_timestamp
@@ -2860,7 +2880,6 @@ func (h *Handler) CreateDeliveryItemHandler(w http.ResponseWriter, r *http.Reque
 		DeliveryID               int64    `json:"delivery_id"`
 		StoreID                  int64    `json:"store_id"`
 		MajhiID                  *int64   `json:"majhi_id,omitempty"`
-		ItemID                   int64    `json:"item_id"`
 		LotID                    int64    `json:"lot_id"`
 		VehicleNumber            *string  `json:"vehicle_number,omitempty"`
 		DriverNumber             *string  `json:"driver_number,omitempty"`
@@ -2892,10 +2911,6 @@ func (h *Handler) CreateDeliveryItemHandler(w http.ResponseWriter, r *http.Reque
 	}
 	if req.StoreID == 0 {
 		utils.ErrorJson(w, http.StatusBadRequest, "store_id is required")
-		return
-	}
-	if req.ItemID == 0 {
-		utils.ErrorJson(w, http.StatusBadRequest, "item_id is required")
 		return
 	}
 	if req.LotID == 0 {
@@ -2939,19 +2954,7 @@ func (h *Handler) CreateDeliveryItemHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Check if item exists
-	exists, err = h.app.Models.Item.Exists(r.Context(), req.ItemID)
-	if err != nil {
-		log.Printf("[DELIVERY_ITEMS] CreateDeliveryItemHandler ERROR: failed to verify item - %v", err)
-		utils.ErrorJson(w, http.StatusInternalServerError, "failed to verify item")
-		return
-	}
-	if !exists {
-		utils.ErrorJson(w, http.StatusNotFound, "item not found")
-		return
-	}
-
-	// Check if lot exists and belongs to item
+	// Check if lot exists and belongs to the store
 	lot, err := h.app.Models.Lot.GetByID(r.Context(), req.LotID)
 	if err != nil {
 		log.Printf("[DELIVERY_ITEMS] CreateDeliveryItemHandler ERROR: failed to fetch lot - %v", err)
@@ -2962,13 +2965,13 @@ func (h *Handler) CreateDeliveryItemHandler(w http.ResponseWriter, r *http.Reque
 		utils.ErrorJson(w, http.StatusNotFound, "lot not found")
 		return
 	}
-	if lot.ItemID != req.ItemID {
-		utils.ErrorJson(w, http.StatusBadRequest, "lot does not belong to the specified item")
+	if store.LotID != req.LotID {
+		utils.ErrorJson(w, http.StatusBadRequest, "store does not belong to the specified lot")
 		return
 	}
 
 	// Check if majhi exists if provided
-	if req.MajhiID != nil {
+	if req.MajhiID != nil && *req.MajhiID != 0 {
 		exists, err := h.app.Models.Majhi.Exists(r.Context(), *req.MajhiID)
 		if err != nil {
 			log.Printf("[DELIVERY_ITEMS] CreateDeliveryItemHandler ERROR: failed to verify majhi - %v", err)
@@ -3040,7 +3043,6 @@ func (h *Handler) CreateDeliveryItemHandler(w http.ResponseWriter, r *http.Reque
 		DeliveryID:               req.DeliveryID,
 		StoreID:                  req.StoreID,
 		MajhiID:                  req.MajhiID,
-		ItemID:                   req.ItemID,
 		LotID:                    req.LotID,
 		VehicleNumber:            req.VehicleNumber,
 		DriverNumber:             req.DriverNumber,
@@ -3386,7 +3388,6 @@ func (h *Handler) DeleteDeliveryItemHandler(w http.ResponseWriter, r *http.Reque
 }
 
 // UpdateDeliveryItemCustomerUnloadPaymentHandler - PATCH /api/delivery-items/{id}/customer-unload-payment
-// Updates the customer unload payment amount for a specific delivery item
 func (h *Handler) UpdateDeliveryItemCustomerUnloadPaymentHandler(w http.ResponseWriter, r *http.Request) {
 	id, ok := utils.GetParamID(w, r)
 	if !ok {
@@ -3413,7 +3414,6 @@ func (h *Handler) UpdateDeliveryItemCustomerUnloadPaymentHandler(w http.Response
 		return
 	}
 
-	// Check if delivery item exists
 	item, err := h.app.Models.DeliveryItem.GetByID(r.Context(), id)
 	if err != nil {
 		log.Printf("[DELIVERY_ITEMS] UpdateDeliveryItemCustomerUnloadPaymentHandler ERROR: failed to fetch delivery item - %v", err)
@@ -3434,7 +3434,6 @@ func (h *Handler) UpdateDeliveryItemCustomerUnloadPaymentHandler(w http.Response
 
 	log.Printf("[DELIVERY_ITEMS] UpdateDeliveryItemCustomerUnloadPaymentHandler SUCCESS: updated customer unload payment for delivery item ID=%d", id)
 
-	// Audit log
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
@@ -3453,7 +3452,6 @@ func (h *Handler) UpdateDeliveryItemCustomerUnloadPaymentHandler(w http.Response
 }
 
 // UpdateDeliveryItemMajhiPaymentHandler - PATCH /api/delivery-items/{id}/majhi-payment
-// Updates the majhi payment amount for a specific delivery item
 func (h *Handler) UpdateDeliveryItemMajhiPaymentHandler(w http.ResponseWriter, r *http.Request) {
 	id, ok := utils.GetParamID(w, r)
 	if !ok {
@@ -3480,7 +3478,6 @@ func (h *Handler) UpdateDeliveryItemMajhiPaymentHandler(w http.ResponseWriter, r
 		return
 	}
 
-	// Check if delivery item exists
 	item, err := h.app.Models.DeliveryItem.GetByID(r.Context(), id)
 	if err != nil {
 		log.Printf("[DELIVERY_ITEMS] UpdateDeliveryItemMajhiPaymentHandler ERROR: failed to fetch delivery item - %v", err)
@@ -3501,7 +3498,6 @@ func (h *Handler) UpdateDeliveryItemMajhiPaymentHandler(w http.ResponseWriter, r
 
 	log.Printf("[DELIVERY_ITEMS] UpdateDeliveryItemMajhiPaymentHandler SUCCESS: updated majhi payment for delivery item ID=%d", id)
 
-	// Audit log
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
@@ -4307,31 +4303,6 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 
 		basePath = filepath.Join("bucket", "users", strconv.FormatInt(id, 10))
 
-	case "items":
-		item, err := h.app.Models.Item.GetByID(r.Context(), id)
-		if err != nil {
-			log.Printf("[IMAGES] ERROR: Error fetching item: %v", err)
-			utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch item")
-			return
-		}
-		if item == nil {
-			utils.ErrorJson(w, http.StatusNotFound, "item not found")
-			return
-		}
-
-		if item.UserID != userID {
-			if currentUser.Role != "admin" && currentUser.Role != "manager" {
-				utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
-				return
-			}
-		}
-
-		if item.ImageURL != nil && *item.ImageURL != "" {
-			oldImagePath = "." + *item.ImageURL
-		}
-
-		basePath = filepath.Join("bucket", "items", strconv.FormatInt(id, 10))
-
 	case "lots":
 		lot, err := h.app.Models.Lot.GetByID(r.Context(), id)
 		if err != nil {
@@ -4344,7 +4315,6 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Only admin/manager can upload images for lots
 		if currentUser.Role != "admin" && currentUser.Role != "manager" {
 			utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
 			return
@@ -4393,7 +4363,6 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Only admin/manager can upload images for deliveries
 		if currentUser.Role != "admin" && currentUser.Role != "manager" {
 			utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
 			return
@@ -4456,7 +4425,7 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 		basePath = filepath.Join("bucket", "expenses", strconv.FormatInt(id, 10))
 
 	default:
-		utils.ErrorJson(w, http.StatusBadRequest, "invalid type. Supported: users, items, lots, damages, deliveries, transports, expenses")
+		utils.ErrorJson(w, http.StatusBadRequest, "invalid type. Supported: users, lots, damages, deliveries, transports, expenses")
 		return
 	}
 
@@ -4490,8 +4459,6 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 	switch entityType {
 	case "users":
 		err = h.app.Models.User.UpdateImage(r.Context(), id, &imageURL)
-	case "items":
-		err = h.app.Models.Item.UpdateImage(r.Context(), id, &imageURL)
 	case "lots":
 		err = h.app.Models.Lot.UpdateImage(r.Context(), id, &imageURL)
 	case "damages":
@@ -4571,29 +4538,6 @@ func (h *Handler) DeleteImageHandler(w http.ResponseWriter, r *http.Request) {
 
 		if user.ImageURL != nil {
 			imageURL = *user.ImageURL
-		}
-
-	case "items":
-		item, err := h.app.Models.Item.GetByID(r.Context(), id)
-		if err != nil {
-			log.Printf("[IMAGES] ERROR: Error fetching item: %v", err)
-			utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch item")
-			return
-		}
-		if item == nil {
-			utils.ErrorJson(w, http.StatusNotFound, "item not found")
-			return
-		}
-
-		if item.UserID != userID {
-			if currentUser.Role != "admin" && currentUser.Role != "manager" {
-				utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
-				return
-			}
-		}
-
-		if item.ImageURL != nil {
-			imageURL = *item.ImageURL
 		}
 
 	case "lots":
@@ -4708,7 +4652,7 @@ func (h *Handler) DeleteImageHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 	default:
-		utils.ErrorJson(w, http.StatusBadRequest, "invalid type. Supported: users, items, lots, damages, deliveries, transports, expenses")
+		utils.ErrorJson(w, http.StatusBadRequest, "invalid type. Supported: users, lots, damages, deliveries, transports, expenses")
 		return
 	}
 
@@ -4724,8 +4668,6 @@ func (h *Handler) DeleteImageHandler(w http.ResponseWriter, r *http.Request) {
 	switch entityType {
 	case "users":
 		err = h.app.Models.User.UpdateImage(r.Context(), id, nil)
-	case "items":
-		err = h.app.Models.Item.UpdateImage(r.Context(), id, nil)
 	case "lots":
 		err = h.app.Models.Lot.UpdateImage(r.Context(), id, nil)
 	case "damages":
@@ -4746,366 +4688,6 @@ func (h *Handler) DeleteImageHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[IMAGES] SUCCESS: Image deleted for %s ID=%d", entityType, id)
 	utils.SuccessJson(w, http.StatusOK, "image deleted", nil)
-}
-
-
-
-===== C:\Users\ashiq\Documents\Projects\MS Ayub Enterprise Project\MS Ayub Enterprise\backend\internal\handlers\items.go =====
-package handlers
-
-import (
-	"backend/internal/middlewares"
-	"backend/internal/models"
-	"backend/internal/utils"
-	"log"
-	"net/http"
-	"strconv"
-)
-
-// =============================================================================
-// ITEM MANAGEMENT
-// =============================================================================
-
-// CreateItemHandler - POST /api/items
-func (h *Handler) CreateItemHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("[ITEMS] CreateItemHandler called - Method: %s, Path: %s", r.Method, r.URL.Path)
-
-	type request struct {
-		CustomerID  *int64  `json:"customer_id,omitempty"`
-		ProductName *string `json:"product_name,omitempty"`
-		Category    *string `json:"category,omitempty"`
-		Notes       *string `json:"notes,omitempty"`
-	}
-
-	var req request
-
-	if err := utils.ReadJson(w, r, &req); err != nil {
-		log.Printf("[ITEMS] CreateItemHandler ERROR: invalid request body - %v", err)
-		utils.ErrorJson(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-
-	// Validate - at least product_name or category is required
-	if (req.ProductName == nil || *req.ProductName == "") && (req.Category == nil || *req.Category == "") {
-		utils.ErrorJson(w, http.StatusBadRequest, "either product_name or category is required")
-		return
-	}
-
-	// Check if customer exists if provided
-	if req.CustomerID != nil {
-		exists, err := h.app.Models.Customer.Exists(r.Context(), *req.CustomerID)
-		if err != nil {
-			log.Printf("[ITEMS] CreateItemHandler ERROR: failed to verify customer - %v", err)
-			utils.ErrorJson(w, http.StatusInternalServerError, "failed to verify customer")
-			return
-		}
-		if !exists {
-			utils.ErrorJson(w, http.StatusNotFound, "customer not found")
-			return
-		}
-	}
-
-	// Get current user ID
-	userID, ok := r.Context().Value(middlewares.UserIDKey).(int64)
-	if !ok {
-		log.Printf("[ITEMS] CreateItemHandler ERROR: invalid user context")
-		utils.ErrorJson(w, http.StatusUnauthorized, "invalid user context")
-		return
-	}
-
-	item := &models.Item{
-		UserID:      userID,
-		CustomerID:  req.CustomerID,
-		ProductName: req.ProductName,
-		Category:    req.Category,
-		IsActive:    true, // Default to active
-		Notes:       req.Notes,
-	}
-
-	id, err := h.app.Models.Item.Insert(r.Context(), item)
-	if err != nil {
-		log.Printf("[ITEMS] CreateItemHandler ERROR: failed to insert item - %v", err)
-		utils.ErrorJson(w, http.StatusInternalServerError, "failed to create item")
-		return
-	}
-
-	item.ID = id
-
-	log.Printf("[ITEMS] CreateItemHandler SUCCESS: created item ID=%d", id)
-
-	// Audit log
-	ip := r.RemoteAddr
-	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
-		UserID:      userID,
-		Action:      "create",
-		Description: "Created item #" + strconv.FormatInt(id, 10),
-		EntityType:  "items",
-		EntityID:    id,
-		IPAddress:   &ip,
-		UserAgent:   &ua,
-	})
-
-	utils.SuccessJson(w, http.StatusCreated, "item created successfully", item)
-}
-
-// GetItemHandler - GET /api/items/{id}
-func (h *Handler) GetItemHandler(w http.ResponseWriter, r *http.Request) {
-	id, ok := utils.GetParamID(w, r)
-	if !ok {
-		log.Printf("[ITEMS] GetItemHandler ERROR: invalid parameter")
-		return
-	}
-
-	log.Printf("[ITEMS] GetItemHandler called - ID: %d", id)
-
-	item, err := h.app.Models.Item.GetByID(r.Context(), id)
-	if err != nil {
-		log.Printf("[ITEMS] GetItemHandler ERROR: failed to fetch item - %v", err)
-		utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch item")
-		return
-	}
-
-	if item == nil {
-		log.Printf("[ITEMS] GetItemHandler NOT FOUND: ID=%d", id)
-		utils.ErrorJson(w, http.StatusNotFound, "item not found")
-		return
-	}
-
-	log.Printf("[ITEMS] GetItemHandler SUCCESS: ID=%d", id)
-	utils.SuccessJson(w, http.StatusOK, "item details fetched", item)
-}
-
-// GetAllItemsHandler - GET /api/items
-func (h *Handler) GetAllItemsHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("[ITEMS] GetAllItemsHandler called - Method: %s, Path: %s", r.Method, r.URL.Path)
-
-	search := r.URL.Query().Get("search")
-	userID := r.URL.Query().Get("user_id")
-	customerID := r.URL.Query().Get("customer_id")
-	activeOnly := r.URL.Query().Get("active") == "true"
-
-	var items []models.Item
-	var err error
-
-	switch {
-	case search != "":
-		items, err = h.app.Models.Item.Search(r.Context(), search)
-	case userID != "":
-		id, _ := strconv.ParseInt(userID, 10, 64)
-		items, err = h.app.Models.Item.GetByUserID(r.Context(), id)
-	case customerID != "":
-		id, _ := strconv.ParseInt(customerID, 10, 64)
-		items, err = h.app.Models.Item.GetByCustomerID(r.Context(), id)
-	case activeOnly:
-		items, err = h.app.Models.Item.GetActive(r.Context())
-	default:
-		items, err = h.app.Models.Item.GetAll(r.Context())
-	}
-
-	if err != nil {
-		log.Printf("[ITEMS] GetAllItemsHandler ERROR: %v", err)
-		utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch items")
-		return
-	}
-
-	if items == nil {
-		items = []models.Item{}
-	}
-
-	log.Printf("[ITEMS] GetAllItemsHandler SUCCESS: fetched %d items", len(items))
-	utils.SuccessJson(w, http.StatusOK, "items fetched successfully", items)
-}
-
-// UpdateItemHandler - PATCH /api/items/{id}
-func (h *Handler) UpdateItemHandler(w http.ResponseWriter, r *http.Request) {
-	id, ok := utils.GetParamID(w, r)
-	if !ok {
-		log.Printf("[ITEMS] UpdateItemHandler ERROR: invalid parameter")
-		return
-	}
-
-	log.Printf("[ITEMS] UpdateItemHandler called - ID: %d", id)
-
-	type request struct {
-		CustomerID  *int64  `json:"customer_id,omitempty"`
-		ProductName *string `json:"product_name,omitempty"`
-		Category    *string `json:"category,omitempty"`
-		Notes       *string `json:"notes,omitempty"`
-	}
-
-	var req request
-
-	if err := utils.ReadJson(w, r, &req); err != nil {
-		log.Printf("[ITEMS] UpdateItemHandler ERROR: invalid request body - %v", err)
-		utils.ErrorJson(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-
-	// Get existing item
-	item, err := h.app.Models.Item.GetByID(r.Context(), id)
-	if err != nil {
-		log.Printf("[ITEMS] UpdateItemHandler ERROR: failed to fetch item - %v", err)
-		utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch item")
-		return
-	}
-	if item == nil {
-		log.Printf("[ITEMS] UpdateItemHandler NOT FOUND: ID=%d", id)
-		utils.ErrorJson(w, http.StatusNotFound, "item not found")
-		return
-	}
-
-	// Check if customer exists if provided
-	if req.CustomerID != nil {
-		exists, err := h.app.Models.Customer.Exists(r.Context(), *req.CustomerID)
-		if err != nil {
-			log.Printf("[ITEMS] UpdateItemHandler ERROR: failed to verify customer - %v", err)
-			utils.ErrorJson(w, http.StatusInternalServerError, "failed to verify customer")
-			return
-		}
-		if !exists {
-			utils.ErrorJson(w, http.StatusNotFound, "customer not found")
-			return
-		}
-		item.CustomerID = req.CustomerID
-	}
-
-	if req.ProductName != nil {
-		item.ProductName = req.ProductName
-	}
-	if req.Category != nil {
-		item.Category = req.Category
-	}
-	if req.Notes != nil {
-		item.Notes = req.Notes
-	}
-
-	if err := h.app.Models.Item.Update(r.Context(), item); err != nil {
-		log.Printf("[ITEMS] UpdateItemHandler ERROR: failed to update item - %v", err)
-		utils.ErrorJson(w, http.StatusInternalServerError, "failed to update item")
-		return
-	}
-
-	log.Printf("[ITEMS] UpdateItemHandler SUCCESS: updated item ID=%d", id)
-
-	// Audit log
-	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
-	ip := r.RemoteAddr
-	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
-		UserID:      userID,
-		Action:      "update",
-		Description: "Updated item #" + strconv.FormatInt(id, 10),
-		EntityType:  "items",
-		EntityID:    id,
-		IPAddress:   &ip,
-		UserAgent:   &ua,
-	})
-
-	// Fetch updated item
-	updatedItem, _ := h.app.Models.Item.GetByID(r.Context(), id)
-	utils.SuccessJson(w, http.StatusOK, "item updated successfully", updatedItem)
-}
-
-// ToggleItemActiveHandler - PATCH /api/items/{id}/toggle-active
-func (h *Handler) ToggleItemActiveHandler(w http.ResponseWriter, r *http.Request) {
-	id, ok := utils.GetParamID(w, r)
-	if !ok {
-		log.Printf("[ITEMS] ToggleItemActiveHandler ERROR: invalid parameter")
-		return
-	}
-
-	log.Printf("[ITEMS] ToggleItemActiveHandler called - ID: %d", id)
-
-	item, err := h.app.Models.Item.GetByID(r.Context(), id)
-	if err != nil {
-		log.Printf("[ITEMS] ToggleItemActiveHandler ERROR: failed to fetch item - %v", err)
-		utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch item")
-		return
-	}
-	if item == nil {
-		log.Printf("[ITEMS] ToggleItemActiveHandler NOT FOUND: ID=%d", id)
-		utils.ErrorJson(w, http.StatusNotFound, "item not found")
-		return
-	}
-
-	newStatus := !item.IsActive
-
-	if err := h.app.Models.Item.ToggleActive(r.Context(), id, newStatus); err != nil {
-		log.Printf("[ITEMS] ToggleItemActiveHandler ERROR: failed to toggle status - %v", err)
-		utils.ErrorJson(w, http.StatusInternalServerError, "failed to update item status")
-		return
-	}
-
-	log.Printf("[ITEMS] ToggleItemActiveHandler SUCCESS: item ID=%d now active=%v", id, newStatus)
-
-	// Audit log
-	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
-	ip := r.RemoteAddr
-	ua := r.UserAgent()
-	action := "deactivated"
-	if newStatus {
-		action = "activated"
-	}
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
-		UserID:      userID,
-		Action:      "update",
-		Description: "Item " + action + ": #" + strconv.FormatInt(id, 10),
-		EntityType:  "items",
-		EntityID:    id,
-		IPAddress:   &ip,
-		UserAgent:   &ua,
-	})
-
-	item.IsActive = newStatus
-	utils.SuccessJson(w, http.StatusOK, "item status updated successfully", item)
-}
-
-// DeleteItemHandler - DELETE /api/items/{id}
-func (h *Handler) DeleteItemHandler(w http.ResponseWriter, r *http.Request) {
-	id, ok := utils.GetParamID(w, r)
-	if !ok {
-		log.Printf("[ITEMS] DeleteItemHandler ERROR: invalid parameter")
-		return
-	}
-
-	log.Printf("[ITEMS] DeleteItemHandler called - ID: %d", id)
-
-	item, err := h.app.Models.Item.GetByID(r.Context(), id)
-	if err != nil {
-		log.Printf("[ITEMS] DeleteItemHandler ERROR: failed to fetch item - %v", err)
-		utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch item")
-		return
-	}
-	if item == nil {
-		log.Printf("[ITEMS] DeleteItemHandler NOT FOUND: ID=%d", id)
-		utils.ErrorJson(w, http.StatusNotFound, "item not found")
-		return
-	}
-
-	if err := h.app.Models.Item.Delete(r.Context(), id); err != nil {
-		log.Printf("[ITEMS] DeleteItemHandler ERROR: failed to delete item - %v", err)
-		utils.ErrorJson(w, http.StatusInternalServerError, "failed to delete item")
-		return
-	}
-
-	log.Printf("[ITEMS] DeleteItemHandler SUCCESS: deleted item ID=%d", id)
-
-	// Audit log
-	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
-	ip := r.RemoteAddr
-	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
-		UserID:      userID,
-		Action:      "delete",
-		Description: "Deleted item: #" + strconv.FormatInt(id, 10),
-		EntityType:  "items",
-		EntityID:    id,
-		IPAddress:   &ip,
-		UserAgent:   &ua,
-	})
-
-	utils.SuccessJson(w, http.StatusOK, "item deleted successfully", nil)
 }
 
 
@@ -5162,7 +4744,9 @@ func (h *Handler) CreateLotHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[LOTS] CreateLotHandler called - Method: %s, Path: %s", r.Method, r.URL.Path)
 
 	type request struct {
-		ItemID                   int64      `json:"item_id"`
+		CustomerID               *int64     `json:"customer_id,omitempty"`
+		ProductName              *string    `json:"product_name,omitempty"`
+		Category                 *string    `json:"category,omitempty"`
 		LotNumber                int64      `json:"lot_number"`
 		CustomerChargeType       string     `json:"customer_charge_type"`
 		MajhiBillType            string     `json:"majhi_bill_type"`
@@ -5186,8 +4770,8 @@ func (h *Handler) CreateLotHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate required fields
-	if req.ItemID == 0 {
-		utils.ErrorJson(w, http.StatusBadRequest, "item_id is required")
+	if req.ProductName == nil || *req.ProductName == "" {
+		utils.ErrorJson(w, http.StatusBadRequest, "product_name is required")
 		return
 	}
 	if req.LotNumber <= 0 {
@@ -5208,6 +4792,18 @@ func (h *Handler) CreateLotHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate amounts
+	if req.CustomerStorageRate < 0 {
+		utils.ErrorJson(w, http.StatusBadRequest, "customer_storage_rate cannot be negative")
+		return
+	}
+	if req.UnloadRate < 0 {
+		utils.ErrorJson(w, http.StatusBadRequest, "unload_rate cannot be negative")
+		return
+	}
+	if req.MajhiCut < 0 {
+		utils.ErrorJson(w, http.StatusBadRequest, "majhi_cut cannot be negative")
+		return
+	}
 	if req.CustomerLastPaidAmount < 0 {
 		utils.ErrorJson(w, http.StatusBadRequest, "customer_last_paid_amount cannot be negative")
 		return
@@ -5221,20 +4817,22 @@ func (h *Handler) CreateLotHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if item exists
-	exists, err := h.app.Models.Item.Exists(r.Context(), req.ItemID)
-	if err != nil {
-		log.Printf("[LOTS] CreateLotHandler ERROR: failed to verify item - %v", err)
-		utils.ErrorJson(w, http.StatusInternalServerError, "failed to verify item")
-		return
-	}
-	if !exists {
-		utils.ErrorJson(w, http.StatusNotFound, "item not found")
-		return
+	// Check if customer exists if provided
+	if req.CustomerID != nil && *req.CustomerID != 0 {
+		exists, err := h.app.Models.Customer.Exists(r.Context(), *req.CustomerID)
+		if err != nil {
+			log.Printf("[LOTS] CreateLotHandler ERROR: failed to verify customer - %v", err)
+			utils.ErrorJson(w, http.StatusInternalServerError, "failed to verify customer")
+			return
+		}
+		if !exists {
+			utils.ErrorJson(w, http.StatusNotFound, "customer not found")
+			return
+		}
 	}
 
 	// Check if majhi exists if provided
-	if req.MajhiID != nil {
+	if req.MajhiID != nil && *req.MajhiID != 0 {
 		exists, err := h.app.Models.Majhi.Exists(r.Context(), *req.MajhiID)
 		if err != nil {
 			log.Printf("[LOTS] CreateLotHandler ERROR: failed to verify majhi - %v", err)
@@ -5247,16 +4845,18 @@ func (h *Handler) CreateLotHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Check if lot already exists for this item
-	exists, err = h.app.Models.Lot.ExistsByItemAndLot(r.Context(), req.ItemID, req.LotNumber)
-	if err != nil {
-		log.Printf("[LOTS] CreateLotHandler ERROR: failed to check existing lot - %v", err)
-		utils.ErrorJson(w, http.StatusInternalServerError, "failed to verify lot")
-		return
-	}
-	if exists {
-		utils.ErrorJson(w, http.StatusConflict, "lot already exists for this item")
-		return
+	// Check if lot already exists for this customer
+	if req.CustomerID != nil && *req.CustomerID != 0 {
+		exists, err := h.app.Models.Lot.ExistsByCustomerAndLot(r.Context(), *req.CustomerID, req.LotNumber)
+		if err != nil {
+			log.Printf("[LOTS] CreateLotHandler ERROR: failed to check existing lot - %v", err)
+			utils.ErrorJson(w, http.StatusInternalServerError, "failed to verify lot")
+			return
+		}
+		if exists {
+			utils.ErrorJson(w, http.StatusConflict, "lot already exists for this customer")
+			return
+		}
 	}
 
 	// Get current user ID for audit
@@ -5268,7 +4868,10 @@ func (h *Handler) CreateLotHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	lot := &models.Lot{
-		ItemID:                   req.ItemID,
+		UserID:                   userID,
+		CustomerID:               req.CustomerID,
+		ProductName:              req.ProductName,
+		Category:                 req.Category,
 		LotNumber:                req.LotNumber,
 		CustomerChargeType:       req.CustomerChargeType,
 		MajhiBillType:            req.MajhiBillType,
@@ -5293,7 +4896,7 @@ func (h *Handler) CreateLotHandler(w http.ResponseWriter, r *http.Request) {
 
 	lot.ID = id
 
-	log.Printf("[LOTS] CreateLotHandler SUCCESS: created lot ID=%d for item ID=%d", id, req.ItemID)
+	log.Printf("[LOTS] CreateLotHandler SUCCESS: created lot ID=%d", id)
 
 	// Audit log
 	ip := r.RemoteAddr
@@ -5301,7 +4904,7 @@ func (h *Handler) CreateLotHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
 		UserID:      userID,
 		Action:      "create",
-		Description: "Created lot #" + strconv.FormatInt(id, 10) + " for item #" + strconv.FormatInt(req.ItemID, 10),
+		Description: "Created lot #" + strconv.FormatInt(id, 10),
 		EntityType:  "lots",
 		EntityID:    id,
 		IPAddress:   &ip,
@@ -5343,7 +4946,7 @@ func (h *Handler) GetAllLotsHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[LOTS] GetAllLotsHandler called - Method: %s, Path: %s", r.Method, r.URL.Path)
 
 	search := r.URL.Query().Get("search")
-	itemID := r.URL.Query().Get("item_id")
+	customerID := r.URL.Query().Get("customer_id")
 	activeOnly := r.URL.Query().Get("active") == "true"
 
 	var lots []models.Lot
@@ -5352,9 +4955,9 @@ func (h *Handler) GetAllLotsHandler(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case search != "":
 		lots, err = h.app.Models.Lot.Search(r.Context(), search)
-	case itemID != "":
-		id, _ := strconv.ParseInt(itemID, 10, 64)
-		lots, err = h.app.Models.Lot.GetByItemID(r.Context(), id)
+	case customerID != "":
+		id, _ := strconv.ParseInt(customerID, 10, 64)
+		lots, err = h.app.Models.Lot.GetByCustomerID(r.Context(), id)
 	case activeOnly:
 		lots, err = h.app.Models.Lot.GetActive(r.Context())
 	default:
@@ -5386,6 +4989,9 @@ func (h *Handler) UpdateLotHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[LOTS] UpdateLotHandler called - ID: %d", id)
 
 	type request struct {
+		CustomerID               *int64     `json:"customer_id,omitempty"`
+		ProductName              *string    `json:"product_name,omitempty"`
+		Category                 *string    `json:"category,omitempty"`
 		CustomerChargeType       *string    `json:"customer_charge_type,omitempty"`
 		MajhiBillType            *string    `json:"majhi_bill_type,omitempty"`
 		CustomerStorageRate      *float64   `json:"customer_storage_rate,omitempty"`
@@ -5420,8 +5026,22 @@ func (h *Handler) UpdateLotHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if majhi exists if provided
-	if req.MajhiID != nil {
+	// Validate customer if provided and non-zero
+	if req.CustomerID != nil && *req.CustomerID != 0 {
+		exists, err := h.app.Models.Customer.Exists(r.Context(), *req.CustomerID)
+		if err != nil {
+			log.Printf("[LOTS] UpdateLotHandler ERROR: failed to verify customer - %v", err)
+			utils.ErrorJson(w, http.StatusInternalServerError, "failed to verify customer")
+			return
+		}
+		if !exists {
+			utils.ErrorJson(w, http.StatusNotFound, "customer not found")
+			return
+		}
+	}
+
+	// Check if majhi exists if provided and non-zero
+	if req.MajhiID != nil && *req.MajhiID != 0 {
 		exists, err := h.app.Models.Majhi.Exists(r.Context(), *req.MajhiID)
 		if err != nil {
 			log.Printf("[LOTS] UpdateLotHandler ERROR: failed to verify majhi - %v", err)
@@ -5435,6 +5055,23 @@ func (h *Handler) UpdateLotHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Apply updates
+	if req.CustomerID != nil {
+		if *req.CustomerID == 0 {
+			lot.CustomerID = nil
+		} else {
+			lot.CustomerID = req.CustomerID
+		}
+	}
+	if req.ProductName != nil {
+		if *req.ProductName == "" {
+			utils.ErrorJson(w, http.StatusBadRequest, "product_name cannot be empty")
+			return
+		}
+		lot.ProductName = req.ProductName
+	}
+	if req.Category != nil {
+		lot.Category = req.Category
+	}
 	if req.CustomerChargeType != nil {
 		if *req.CustomerChargeType != "weight" && *req.CustomerChargeType != "quantity" {
 			utils.ErrorJson(w, http.StatusBadRequest, "customer_charge_type must be 'weight' or 'quantity'")
@@ -5464,7 +5101,11 @@ func (h *Handler) UpdateLotHandler(w http.ResponseWriter, r *http.Request) {
 		lot.UnloadRate = *req.UnloadRate
 	}
 	if req.MajhiID != nil {
-		lot.MajhiID = req.MajhiID
+		if *req.MajhiID == 0 {
+			lot.MajhiID = nil
+		} else {
+			lot.MajhiID = req.MajhiID
+		}
 	}
 	if req.MajhiCut != nil {
 		if *req.MajhiCut < 0 {
@@ -5634,7 +5275,6 @@ func (h *Handler) DeleteLotHandler(w http.ResponseWriter, r *http.Request) {
 // =============================================================================
 
 // UpdateLotCustomerPaymentHandler - PATCH /api/lots/{id}/customer-payment
-// Updates customer payment tracking (storage bills)
 func (h *Handler) UpdateLotCustomerPaymentHandler(w http.ResponseWriter, r *http.Request) {
 	id, ok := utils.GetParamID(w, r)
 	if !ok {
@@ -5662,7 +5302,6 @@ func (h *Handler) UpdateLotCustomerPaymentHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	// Get existing lot
 	lot, err := h.app.Models.Lot.GetByID(r.Context(), id)
 	if err != nil {
 		log.Printf("[LOTS] UpdateLotCustomerPaymentHandler ERROR: failed to fetch lot - %v", err)
@@ -5683,7 +5322,6 @@ func (h *Handler) UpdateLotCustomerPaymentHandler(w http.ResponseWriter, r *http
 
 	log.Printf("[LOTS] UpdateLotCustomerPaymentHandler SUCCESS: updated customer payment for lot ID=%d", id)
 
-	// Audit log
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
@@ -5702,7 +5340,6 @@ func (h *Handler) UpdateLotCustomerPaymentHandler(w http.ResponseWriter, r *http
 }
 
 // UpdateLotCustomerUnloadPaymentHandler - PATCH /api/lots/{id}/customer-unload-payment
-// Updates customer unload payment amount (for one-time unload bills)
 func (h *Handler) UpdateLotCustomerUnloadPaymentHandler(w http.ResponseWriter, r *http.Request) {
 	id, ok := utils.GetParamID(w, r)
 	if !ok {
@@ -5730,7 +5367,6 @@ func (h *Handler) UpdateLotCustomerUnloadPaymentHandler(w http.ResponseWriter, r
 		return
 	}
 
-	// Get existing lot
 	lot, err := h.app.Models.Lot.GetByID(r.Context(), id)
 	if err != nil {
 		log.Printf("[LOTS] UpdateLotCustomerUnloadPaymentHandler ERROR: failed to fetch lot - %v", err)
@@ -5749,9 +5385,7 @@ func (h *Handler) UpdateLotCustomerUnloadPaymentHandler(w http.ResponseWriter, r
 		return
 	}
 
-	// Also update customer_last_paid_through if provided
 	if req.PaidThrough != nil {
-		// Get current lot data to preserve customer_last_paid_amount
 		current, err := h.app.Models.Lot.GetByID(r.Context(), id)
 		if err == nil && current != nil {
 			_ = h.app.Models.Lot.UpdateCustomerPayment(r.Context(), id, req.PaidThrough, current.CustomerLastPaidAmount)
@@ -5760,7 +5394,6 @@ func (h *Handler) UpdateLotCustomerUnloadPaymentHandler(w http.ResponseWriter, r
 
 	log.Printf("[LOTS] UpdateLotCustomerUnloadPaymentHandler SUCCESS: updated customer unload payment for lot ID=%d", id)
 
-	// Audit log
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
@@ -5779,7 +5412,6 @@ func (h *Handler) UpdateLotCustomerUnloadPaymentHandler(w http.ResponseWriter, r
 }
 
 // UpdateLotMajhiPaymentHandler - PATCH /api/lots/{id}/majhi-payment
-// Updates majhi payment tracking
 func (h *Handler) UpdateLotMajhiPaymentHandler(w http.ResponseWriter, r *http.Request) {
 	id, ok := utils.GetParamID(w, r)
 	if !ok {
@@ -5806,7 +5438,6 @@ func (h *Handler) UpdateLotMajhiPaymentHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Get existing lot
 	lot, err := h.app.Models.Lot.GetByID(r.Context(), id)
 	if err != nil {
 		log.Printf("[LOTS] UpdateLotMajhiPaymentHandler ERROR: failed to fetch lot - %v", err)
@@ -5827,7 +5458,6 @@ func (h *Handler) UpdateLotMajhiPaymentHandler(w http.ResponseWriter, r *http.Re
 
 	log.Printf("[LOTS] UpdateLotMajhiPaymentHandler SUCCESS: updated majhi payment for lot ID=%d", id)
 
-	// Audit log
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
@@ -7358,7 +6988,7 @@ import (
 )
 
 // =============================================================================
-// STORE MANAGEMENT
+// GODOWN MANAGEMENT
 // =============================================================================
 
 // CreateStoreHandler - POST /api/stores
@@ -7434,18 +7064,6 @@ func (h *Handler) CreateStoreHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if !exists {
 		utils.ErrorJson(w, http.StatusNotFound, "godown not found")
-		return
-	}
-
-	// Check if store already exists for this lot and godown
-	exists, err = h.app.Models.Store.ExistsByLotAndGodown(r.Context(), req.LotID, req.GodownID)
-	if err != nil {
-		log.Printf("[STORES] CreateStoreHandler ERROR: failed to check existing store - %v", err)
-		utils.ErrorJson(w, http.StatusInternalServerError, "failed to verify store")
-		return
-	}
-	if exists {
-		utils.ErrorJson(w, http.StatusConflict, "store already exists for this lot and godown")
 		return
 	}
 
@@ -11180,7 +10798,6 @@ type DeliveryItem struct {
 	DeliveryID               int64     `json:"delivery_id"`
 	StoreID                  int64     `json:"store_id"`
 	MajhiID                  *int64    `json:"majhi_id,omitempty"`
-	ItemID                   int64     `json:"item_id"`
 	LotID                    int64     `json:"lot_id"`
 	VehicleNumber            *string   `json:"vehicle_number,omitempty"`
 	DriverNumber             *string   `json:"driver_number,omitempty"`
@@ -11210,19 +10827,18 @@ type DeliveryItemModel struct {
 func (m *DeliveryItemModel) Insert(ctx context.Context, item *DeliveryItem) (int64, error) {
 	query := `
 		INSERT INTO delivery_items (
-			delivery_id, store_id, majhi_id, item_id, lot_id,
+			delivery_id, store_id, majhi_id, lot_id,
 			vehicle_number, driver_number, quantity, quantity_unit,
 			weight, weight_unit, loading_rate, majhi_cut, notes,
 			customer_charge_type, customer_paid_unload_amount,
 			majhi_bill_type, majhi_total_paid
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	res, err := m.DB.ExecContext(ctx, query,
 		item.DeliveryID,
 		item.StoreID,
 		item.MajhiID,
-		item.ItemID,
 		item.LotID,
 		item.VehicleNumber,
 		item.DriverNumber,
@@ -11251,7 +10867,7 @@ func (m *DeliveryItemModel) Insert(ctx context.Context, item *DeliveryItem) (int
 
 func (m *DeliveryItemModel) GetByID(ctx context.Context, id int64) (*DeliveryItem, error) {
 	query := `
-		SELECT id, delivery_id, store_id, majhi_id, item_id, lot_id,
+		SELECT id, delivery_id, store_id, majhi_id, lot_id,
 		       vehicle_number, driver_number, quantity, quantity_unit,
 		       weight, weight_unit, loading_rate, majhi_cut, notes,
 		       customer_charge_type, customer_paid_unload_amount,
@@ -11267,7 +10883,7 @@ func (m *DeliveryItemModel) GetByID(ctx context.Context, id int64) (*DeliveryIte
 
 func (m *DeliveryItemModel) GetByDeliveryID(ctx context.Context, deliveryID int64) ([]DeliveryItem, error) {
 	query := `
-		SELECT id, delivery_id, store_id, majhi_id, item_id, lot_id,
+		SELECT id, delivery_id, store_id, majhi_id, lot_id,
 		       vehicle_number, driver_number, quantity, quantity_unit,
 		       weight, weight_unit, loading_rate, majhi_cut, notes,
 		       customer_charge_type, customer_paid_unload_amount,
@@ -11298,7 +10914,7 @@ func (m *DeliveryItemModel) GetByDeliveryID(ctx context.Context, deliveryID int6
 
 func (m *DeliveryItemModel) GetByStoreID(ctx context.Context, storeID int64) ([]DeliveryItem, error) {
 	query := `
-		SELECT id, delivery_id, store_id, majhi_id, item_id, lot_id,
+		SELECT id, delivery_id, store_id, majhi_id, lot_id,
 		       vehicle_number, driver_number, quantity, quantity_unit,
 		       weight, weight_unit, loading_rate, majhi_cut, notes,
 		       customer_charge_type, customer_paid_unload_amount,
@@ -11329,7 +10945,7 @@ func (m *DeliveryItemModel) GetByStoreID(ctx context.Context, storeID int64) ([]
 
 func (m *DeliveryItemModel) GetByLotID(ctx context.Context, lotID int64) ([]DeliveryItem, error) {
 	query := `
-		SELECT id, delivery_id, store_id, majhi_id, item_id, lot_id,
+		SELECT id, delivery_id, store_id, majhi_id, lot_id,
 		       vehicle_number, driver_number, quantity, quantity_unit,
 		       weight, weight_unit, loading_rate, majhi_cut, notes,
 		       customer_charge_type, customer_paid_unload_amount,
@@ -11360,7 +10976,7 @@ func (m *DeliveryItemModel) GetByLotID(ctx context.Context, lotID int64) ([]Deli
 
 func (m *DeliveryItemModel) GetAll(ctx context.Context) ([]DeliveryItem, error) {
 	query := `
-		SELECT id, delivery_id, store_id, majhi_id, item_id, lot_id,
+		SELECT id, delivery_id, store_id, majhi_id, lot_id,
 		       vehicle_number, driver_number, quantity, quantity_unit,
 		       weight, weight_unit, loading_rate, majhi_cut, notes,
 		       customer_charge_type, customer_paid_unload_amount,
@@ -11534,7 +11150,7 @@ func (m *DeliveryItemModel) GetMajhiBillTotal(ctx context.Context, majhiID int64
 			CASE 
 				WHEN di.majhi_bill_type = 'quantity' THEN di.quantity * di.majhi_cut
 				WHEN di.majhi_bill_type = 'weight' THEN di.weight * di.majhi_cut
-				ELSE di.majhi_cut  -- 'job' type - fixed amount
+				ELSE di.majhi_cut
 			END
 		), 0)
 		FROM delivery_items di
@@ -11557,7 +11173,6 @@ func (m *DeliveryItemModel) scanDeliveryItem(row *sql.Row) (*DeliveryItem, error
 		&item.DeliveryID,
 		&item.StoreID,
 		&item.MajhiID,
-		&item.ItemID,
 		&item.LotID,
 		&item.VehicleNumber,
 		&item.DriverNumber,
@@ -11591,7 +11206,6 @@ func (m *DeliveryItemModel) scanDeliveryItemRow(rows *sql.Rows) (*DeliveryItem, 
 		&item.DeliveryID,
 		&item.StoreID,
 		&item.MajhiID,
-		&item.ItemID,
 		&item.LotID,
 		&item.VehicleNumber,
 		&item.DriverNumber,
@@ -12181,345 +11795,6 @@ func (m *GodownModel) scanGodownRow(rows *sql.Rows) (*Godown, error) {
 
 
 
-===== C:\Users\ashiq\Documents\Projects\MS Ayub Enterprise Project\MS Ayub Enterprise\backend\internal\models\item.go =====
-package models
-
-import (
-	"context"
-	"database/sql"
-	"time"
-)
-
-type Item struct {
-	ID          int64     `json:"id"`
-	UserID      int64     `json:"user_id"`
-	CustomerID  *int64    `json:"customer_id,omitempty"`
-	ProductName *string   `json:"product_name,omitempty"`
-	Category    *string   `json:"category,omitempty"`
-	IsActive    bool      `json:"is_active"`
-	Notes       *string   `json:"notes,omitempty"`
-	ImageURL    *string   `json:"image_url,omitempty"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-}
-
-type ItemModel struct {
-	DB *sql.DB
-}
-
-// =============================================================================
-// CREATE
-// =============================================================================
-
-func (m *ItemModel) Insert(ctx context.Context, item *Item) (int64, error) {
-	query := `
-		INSERT INTO items (user_id, customer_id, product_name, category, is_active, notes, image_url)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`
-
-	isActive := 0
-	if item.IsActive {
-		isActive = 1
-	}
-
-	res, err := m.DB.ExecContext(ctx, query,
-		item.UserID,
-		item.CustomerID,
-		item.ProductName,
-		item.Category,
-		isActive,
-		item.Notes,
-		item.ImageURL,
-	)
-	if err != nil {
-		return 0, err
-	}
-
-	return res.LastInsertId()
-}
-
-// =============================================================================
-// READ
-// =============================================================================
-
-func (m *ItemModel) GetByID(ctx context.Context, id int64) (*Item, error) {
-	query := `
-		SELECT id, user_id, customer_id, product_name, category, is_active, notes, image_url, created_at, updated_at
-		FROM items
-		WHERE id = ?
-	`
-
-	row := m.DB.QueryRowContext(ctx, query, id)
-	return m.scanItem(row)
-}
-
-func (m *ItemModel) GetAll(ctx context.Context) ([]Item, error) {
-	query := `
-		SELECT id, user_id, customer_id, product_name, category, is_active, notes, image_url, created_at, updated_at
-		FROM items
-		ORDER BY product_name ASC
-	`
-
-	rows, err := m.DB.QueryContext(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	items := []Item{}
-	for rows.Next() {
-		item, err := m.scanItemRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		items = append(items, *item)
-	}
-
-	return items, rows.Err()
-}
-
-func (m *ItemModel) GetByUserID(ctx context.Context, userID int64) ([]Item, error) {
-	query := `
-		SELECT id, user_id, customer_id, product_name, category, is_active, notes, image_url, created_at, updated_at
-		FROM items
-		WHERE user_id = ?
-		ORDER BY product_name ASC
-	`
-
-	rows, err := m.DB.QueryContext(ctx, query, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	items := []Item{}
-	for rows.Next() {
-		item, err := m.scanItemRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		items = append(items, *item)
-	}
-
-	return items, rows.Err()
-}
-
-func (m *ItemModel) GetByCustomerID(ctx context.Context, customerID int64) ([]Item, error) {
-	query := `
-		SELECT id, user_id, customer_id, product_name, category, is_active, notes, image_url, created_at, updated_at
-		FROM items
-		WHERE customer_id = ?
-		ORDER BY product_name ASC
-	`
-
-	rows, err := m.DB.QueryContext(ctx, query, customerID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	items := []Item{}
-	for rows.Next() {
-		item, err := m.scanItemRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		items = append(items, *item)
-	}
-
-	return items, rows.Err()
-}
-
-func (m *ItemModel) GetActive(ctx context.Context) ([]Item, error) {
-	query := `
-		SELECT id, user_id, customer_id, product_name, category, is_active, notes, image_url, created_at, updated_at
-		FROM items
-		WHERE is_active = 1
-		ORDER BY product_name ASC
-	`
-
-	rows, err := m.DB.QueryContext(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	items := []Item{}
-	for rows.Next() {
-		item, err := m.scanItemRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		items = append(items, *item)
-	}
-
-	return items, rows.Err()
-}
-
-func (m *ItemModel) Search(ctx context.Context, query string) ([]Item, error) {
-	searchQuery := `
-		SELECT id, user_id, customer_id, product_name, category, is_active, notes, image_url, created_at, updated_at
-		FROM items
-		WHERE product_name LIKE ? OR category LIKE ?
-		ORDER BY product_name ASC
-	`
-
-	searchTerm := "%" + query + "%"
-
-	rows, err := m.DB.QueryContext(ctx, searchQuery, searchTerm, searchTerm)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	items := []Item{}
-	for rows.Next() {
-		item, err := m.scanItemRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		items = append(items, *item)
-	}
-
-	return items, rows.Err()
-}
-
-// =============================================================================
-// UPDATE
-// =============================================================================
-
-func (m *ItemModel) Update(ctx context.Context, item *Item) error {
-	query := `
-		UPDATE items
-		SET 
-			customer_id = ?,
-			product_name = ?,
-			category = ?,
-			is_active = ?,
-			notes = ?,
-			updated_at = CURRENT_TIMESTAMP
-		WHERE id = ?
-	`
-
-	isActive := 0
-	if item.IsActive {
-		isActive = 1
-	}
-
-	_, err := m.DB.ExecContext(ctx, query,
-		item.CustomerID,
-		item.ProductName,
-		item.Category,
-		isActive,
-		item.Notes,
-		item.ID,
-	)
-	return err
-}
-
-func (m *ItemModel) UpdateImage(ctx context.Context, id int64, imageURL *string) error {
-	query := `
-		UPDATE items
-		SET image_url = ?, updated_at = CURRENT_TIMESTAMP
-		WHERE id = ?
-	`
-
-	_, err := m.DB.ExecContext(ctx, query, imageURL, id)
-	return err
-}
-
-func (m *ItemModel) ToggleActive(ctx context.Context, id int64, isActive bool) error {
-	active := 0
-	if isActive {
-		active = 1
-	}
-
-	query := `
-		UPDATE items
-		SET is_active = ?, updated_at = CURRENT_TIMESTAMP
-		WHERE id = ?
-	`
-
-	_, err := m.DB.ExecContext(ctx, query, active, id)
-	return err
-}
-
-// =============================================================================
-// DELETE
-// =============================================================================
-
-func (m *ItemModel) Delete(ctx context.Context, id int64) error {
-	query := `DELETE FROM items WHERE id = ?`
-	_, err := m.DB.ExecContext(ctx, query, id)
-	return err
-}
-
-// =============================================================================
-// UTILITY
-// =============================================================================
-
-func (m *ItemModel) Exists(ctx context.Context, id int64) (bool, error) {
-	query := `SELECT EXISTS(SELECT 1 FROM items WHERE id = ?)`
-
-	var exists bool
-	err := m.DB.QueryRowContext(ctx, query, id).Scan(&exists)
-	return exists, err
-}
-
-func (m *ItemModel) CountByUser(ctx context.Context, userID int64) (int, error) {
-	query := `SELECT COUNT(*) FROM items WHERE user_id = ?`
-
-	var count int
-	err := m.DB.QueryRowContext(ctx, query, userID).Scan(&count)
-	return count, err
-}
-
-// =============================================================================
-// SCANNERS
-// =============================================================================
-
-func (m *ItemModel) scanItem(row *sql.Row) (*Item, error) {
-	item := &Item{}
-	err := row.Scan(
-		&item.ID,
-		&item.UserID,
-		&item.CustomerID,
-		&item.ProductName,
-		&item.Category,
-		&item.IsActive,
-		&item.Notes,
-		&item.ImageURL,
-		&item.CreatedAt,
-		&item.UpdatedAt,
-	)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return item, nil
-}
-
-func (m *ItemModel) scanItemRow(rows *sql.Rows) (*Item, error) {
-	item := &Item{}
-	err := rows.Scan(
-		&item.ID,
-		&item.UserID,
-		&item.CustomerID,
-		&item.ProductName,
-		&item.Category,
-		&item.IsActive,
-		&item.Notes,
-		&item.ImageURL,
-		&item.CreatedAt,
-		&item.UpdatedAt,
-	)
-	return item, err
-}
-
-
-
 ===== C:\Users\ashiq\Documents\Projects\MS Ayub Enterprise Project\MS Ayub Enterprise\backend\internal\models\logs.go =====
 package models
 
@@ -12665,7 +11940,10 @@ import (
 
 type Lot struct {
 	ID                       int64      `json:"id"`
-	ItemID                   int64      `json:"item_id"`
+	UserID                   int64      `json:"user_id"`
+	CustomerID               *int64     `json:"customer_id,omitempty"`
+	ProductName              *string    `json:"product_name,omitempty"`
+	Category                 *string    `json:"category,omitempty"`
 	LotNumber                int64      `json:"lot_number"`
 	CustomerChargeType       string     `json:"customer_charge_type"` // weight or quantity
 	MajhiBillType            string     `json:"majhi_bill_type"`      // weight, quantity, or job
@@ -12695,11 +11973,13 @@ type LotModel struct {
 func (m *LotModel) Insert(ctx context.Context, lot *Lot) (int64, error) {
 	query := `
 		INSERT INTO lots (
-			item_id, lot_number, customer_charge_type, majhi_bill_type,
+			user_id, customer_id, product_name, category, lot_number,
+			customer_charge_type, majhi_bill_type,
 			customer_storage_rate, unload_rate, majhi_id, majhi_cut,
 			is_active, notes, image_url,
-			customer_last_paid_through, customer_last_paid_amount, customer_paid_unload_amount, majhi_total_paid
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			customer_last_paid_through, customer_last_paid_amount,
+			customer_paid_unload_amount, majhi_total_paid
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	isActive := 0
@@ -12708,7 +11988,10 @@ func (m *LotModel) Insert(ctx context.Context, lot *Lot) (int64, error) {
 	}
 
 	res, err := m.DB.ExecContext(ctx, query,
-		lot.ItemID,
+		lot.UserID,
+		lot.CustomerID,
+		lot.ProductName,
+		lot.Category,
 		lot.LotNumber,
 		lot.CustomerChargeType,
 		lot.MajhiBillType,
@@ -12737,10 +12020,12 @@ func (m *LotModel) Insert(ctx context.Context, lot *Lot) (int64, error) {
 
 func (m *LotModel) GetByID(ctx context.Context, id int64) (*Lot, error) {
 	query := `
-		SELECT id, item_id, lot_number, customer_charge_type, majhi_bill_type,
+		SELECT id, user_id, customer_id, product_name, category, lot_number,
+		       customer_charge_type, majhi_bill_type,
 		       customer_storage_rate, unload_rate, majhi_id, majhi_cut,
 		       is_active, notes, image_url,
-		       customer_last_paid_through, customer_last_paid_amount, customer_paid_unload_amount, majhi_total_paid,
+		       customer_last_paid_through, customer_last_paid_amount,
+		       customer_paid_unload_amount, majhi_total_paid,
 		       created_at, updated_at
 		FROM lots
 		WHERE id = ?
@@ -12750,19 +12035,21 @@ func (m *LotModel) GetByID(ctx context.Context, id int64) (*Lot, error) {
 	return m.scanLot(row)
 }
 
-func (m *LotModel) GetByItemID(ctx context.Context, itemID int64) ([]Lot, error) {
+func (m *LotModel) GetByCustomerID(ctx context.Context, customerID int64) ([]Lot, error) {
 	query := `
-		SELECT id, item_id, lot_number, customer_charge_type, majhi_bill_type,
+		SELECT id, user_id, customer_id, product_name, category, lot_number,
+		       customer_charge_type, majhi_bill_type,
 		       customer_storage_rate, unload_rate, majhi_id, majhi_cut,
 		       is_active, notes, image_url,
-		       customer_last_paid_through, customer_last_paid_amount, customer_paid_unload_amount, majhi_total_paid,
+		       customer_last_paid_through, customer_last_paid_amount,
+		       customer_paid_unload_amount, majhi_total_paid,
 		       created_at, updated_at
 		FROM lots
-		WHERE item_id = ?
+		WHERE customer_id = ?
 		ORDER BY lot_number ASC
 	`
 
-	rows, err := m.DB.QueryContext(ctx, query, itemID)
+	rows, err := m.DB.QueryContext(ctx, query, customerID)
 	if err != nil {
 		return nil, err
 	}
@@ -12780,30 +12067,34 @@ func (m *LotModel) GetByItemID(ctx context.Context, itemID int64) ([]Lot, error)
 	return lots, rows.Err()
 }
 
-func (m *LotModel) GetByItemAndLotNumber(ctx context.Context, itemID int64, lotNumber int64) (*Lot, error) {
+func (m *LotModel) GetByLotNumber(ctx context.Context, lotNumber int64) (*Lot, error) {
 	query := `
-		SELECT id, item_id, lot_number, customer_charge_type, majhi_bill_type,
+		SELECT id, user_id, customer_id, product_name, category, lot_number,
+		       customer_charge_type, majhi_bill_type,
 		       customer_storage_rate, unload_rate, majhi_id, majhi_cut,
 		       is_active, notes, image_url,
-		       customer_last_paid_through, customer_last_paid_amount, customer_paid_unload_amount, majhi_total_paid,
+		       customer_last_paid_through, customer_last_paid_amount,
+		       customer_paid_unload_amount, majhi_total_paid,
 		       created_at, updated_at
 		FROM lots
-		WHERE item_id = ? AND lot_number = ?
+		WHERE lot_number = ?
 	`
 
-	row := m.DB.QueryRowContext(ctx, query, itemID, lotNumber)
+	row := m.DB.QueryRowContext(ctx, query, lotNumber)
 	return m.scanLot(row)
 }
 
 func (m *LotModel) GetAll(ctx context.Context) ([]Lot, error) {
 	query := `
-		SELECT id, item_id, lot_number, customer_charge_type, majhi_bill_type,
+		SELECT id, user_id, customer_id, product_name, category, lot_number,
+		       customer_charge_type, majhi_bill_type,
 		       customer_storage_rate, unload_rate, majhi_id, majhi_cut,
 		       is_active, notes, image_url,
-		       customer_last_paid_through, customer_last_paid_amount, customer_paid_unload_amount, majhi_total_paid,
+		       customer_last_paid_through, customer_last_paid_amount,
+		       customer_paid_unload_amount, majhi_total_paid,
 		       created_at, updated_at
 		FROM lots
-		ORDER BY item_id, lot_number ASC
+		ORDER BY lot_number ASC
 	`
 
 	rows, err := m.DB.QueryContext(ctx, query)
@@ -12826,14 +12117,16 @@ func (m *LotModel) GetAll(ctx context.Context) ([]Lot, error) {
 
 func (m *LotModel) GetActive(ctx context.Context) ([]Lot, error) {
 	query := `
-		SELECT id, item_id, lot_number, customer_charge_type, majhi_bill_type,
+		SELECT id, user_id, customer_id, product_name, category, lot_number,
+		       customer_charge_type, majhi_bill_type,
 		       customer_storage_rate, unload_rate, majhi_id, majhi_cut,
 		       is_active, notes, image_url,
-		       customer_last_paid_through, customer_last_paid_amount, customer_paid_unload_amount, majhi_total_paid,
+		       customer_last_paid_through, customer_last_paid_amount,
+		       customer_paid_unload_amount, majhi_total_paid,
 		       created_at, updated_at
 		FROM lots
 		WHERE is_active = 1
-		ORDER BY item_id, lot_number ASC
+		ORDER BY lot_number ASC
 	`
 
 	rows, err := m.DB.QueryContext(ctx, query)
@@ -12856,15 +12149,16 @@ func (m *LotModel) GetActive(ctx context.Context) ([]Lot, error) {
 
 func (m *LotModel) Search(ctx context.Context, query string) ([]Lot, error) {
 	searchQuery := `
-		SELECT l.id, l.item_id, l.lot_number, l.customer_charge_type, l.majhi_bill_type,
-		       l.customer_storage_rate, l.unload_rate, l.majhi_id, l.majhi_cut,
-		       l.is_active, l.notes, l.image_url,
-		       l.customer_last_paid_through, l.customer_last_paid_amount, l.customer_paid_unload_amount, l.majhi_total_paid,
-		       l.created_at, l.updated_at
-		FROM lots l
-		INNER JOIN items i ON l.item_id = i.id
-		WHERE i.product_name LIKE ? OR i.category LIKE ? OR l.lot_number LIKE ?
-		ORDER BY l.item_id, l.lot_number ASC
+		SELECT id, user_id, customer_id, product_name, category, lot_number,
+		       customer_charge_type, majhi_bill_type,
+		       customer_storage_rate, unload_rate, majhi_id, majhi_cut,
+		       is_active, notes, image_url,
+		       customer_last_paid_through, customer_last_paid_amount,
+		       customer_paid_unload_amount, majhi_total_paid,
+		       created_at, updated_at
+		FROM lots
+		WHERE product_name LIKE ? OR category LIKE ? OR lot_number LIKE ?
+		ORDER BY lot_number ASC
 	`
 
 	searchTerm := "%" + query + "%"
@@ -12895,6 +12189,9 @@ func (m *LotModel) Update(ctx context.Context, lot *Lot) error {
 	query := `
 		UPDATE lots
 		SET 
+			customer_id = ?,
+			product_name = ?,
+			category = ?,
 			customer_charge_type = ?,
 			majhi_bill_type = ?,
 			customer_storage_rate = ?,
@@ -12917,6 +12214,9 @@ func (m *LotModel) Update(ctx context.Context, lot *Lot) error {
 	}
 
 	_, err := m.DB.ExecContext(ctx, query,
+		lot.CustomerID,
+		lot.ProductName,
+		lot.Category,
 		lot.CustomerChargeType,
 		lot.MajhiBillType,
 		lot.CustomerStorageRate,
@@ -13026,22 +12326,6 @@ func (m *LotModel) Exists(ctx context.Context, id int64) (bool, error) {
 	return exists, err
 }
 
-func (m *LotModel) ExistsByItemAndLot(ctx context.Context, itemID int64, lotNumber int64) (bool, error) {
-	query := `SELECT EXISTS(SELECT 1 FROM lots WHERE item_id = ? AND lot_number = ?)`
-
-	var exists bool
-	err := m.DB.QueryRowContext(ctx, query, itemID, lotNumber).Scan(&exists)
-	return exists, err
-}
-
-func (m *LotModel) CountByItem(ctx context.Context, itemID int64) (int, error) {
-	query := `SELECT COUNT(*) FROM lots WHERE item_id = ?`
-
-	var count int
-	err := m.DB.QueryRowContext(ctx, query, itemID).Scan(&count)
-	return count, err
-}
-
 // GetTotalUnloadAmountByCustomer returns total unload bill amount for a customer
 func (m *LotModel) GetTotalUnloadAmountByCustomer(ctx context.Context, customerID int64) (float64, error) {
 	query := `
@@ -13052,9 +12336,8 @@ func (m *LotModel) GetTotalUnloadAmountByCustomer(ctx context.Context, customerI
 			END
 		), 0)
 		FROM lots l
-		INNER JOIN items i ON l.item_id = i.id
 		INNER JOIN stores s ON s.lot_id = l.id
-		WHERE i.customer_id = ? AND l.is_active = 1 AND l.unload_rate > 0
+		WHERE l.customer_id = ? AND l.is_active = 1 AND l.unload_rate > 0
 	`
 
 	var total float64
@@ -13071,7 +12354,10 @@ func (m *LotModel) scanLot(row *sql.Row) (*Lot, error) {
 	var isActive int
 	err := row.Scan(
 		&lot.ID,
-		&lot.ItemID,
+		&lot.UserID,
+		&lot.CustomerID,
+		&lot.ProductName,
+		&lot.Category,
 		&lot.LotNumber,
 		&lot.CustomerChargeType,
 		&lot.MajhiBillType,
@@ -13104,7 +12390,10 @@ func (m *LotModel) scanLotRow(rows *sql.Rows) (*Lot, error) {
 	var isActive int
 	err := rows.Scan(
 		&lot.ID,
-		&lot.ItemID,
+		&lot.UserID,
+		&lot.CustomerID,
+		&lot.ProductName,
+		&lot.Category,
 		&lot.LotNumber,
 		&lot.CustomerChargeType,
 		&lot.MajhiBillType,
@@ -13127,6 +12416,14 @@ func (m *LotModel) scanLotRow(rows *sql.Rows) (*Lot, error) {
 	}
 	lot.IsActive = isActive == 1
 	return lot, nil
+}
+
+func (m *LotModel) ExistsByCustomerAndLot(ctx context.Context, customerID, lotNumber int64) (bool, error) {
+	query := `SELECT EXISTS(SELECT 1 FROM lots WHERE customer_id = ? AND lot_number = ?)`
+
+	var exists bool
+	err := m.DB.QueryRowContext(ctx, query, customerID, lotNumber).Scan(&exists)
+	return exists, err
 }
 
 
@@ -13347,7 +12644,6 @@ type Models struct {
 	Godown       GodownModel
 	Rent         RentModel
 	Customer     CustomerModel
-	Item         ItemModel
 	Lot          LotModel
 	Store        StoreModel
 	Damage       DamageModel
@@ -13368,7 +12664,6 @@ func NewModel(db *sql.DB) Models {
 		Godown:       GodownModel{DB: db},
 		Rent:         RentModel{DB: db},
 		Customer:     CustomerModel{DB: db},
-		Item:         ItemModel{DB: db},
 		Lot:          LotModel{DB: db},
 		Store:        StoreModel{DB: db},
 		Damage:       DamageModel{DB: db},
@@ -14315,19 +13610,6 @@ func (m *StoreModel) GetByID(ctx context.Context, id int64) (*Store, error) {
 	return m.scanStore(row)
 }
 
-func (m *StoreModel) GetByLotAndGodown(ctx context.Context, lotID, godownID int64) (*Store, error) {
-	query := `
-		SELECT id, lot_id, godown_id, store_bill_type, godown_cut, quantity, quantity_unit,
-		       weight, weight_unit, is_active, billing_start, billing_end,
-		       last_paid_through, last_paid_amount, notes, created_at, updated_at
-		FROM stores
-		WHERE lot_id = ? AND godown_id = ?
-	`
-
-	row := m.DB.QueryRowContext(ctx, query, lotID, godownID)
-	return m.scanStore(row)
-}
-
 func (m *StoreModel) GetByLotID(ctx context.Context, lotID int64) ([]Store, error) {
 	query := `
 		SELECT id, lot_id, godown_id, store_bill_type, godown_cut, quantity, quantity_unit,
@@ -14335,7 +13617,7 @@ func (m *StoreModel) GetByLotID(ctx context.Context, lotID int64) ([]Store, erro
 		       last_paid_through, last_paid_amount, notes, created_at, updated_at
 		FROM stores
 		WHERE lot_id = ?
-		ORDER BY godown_id ASC
+		ORDER BY godown_id ASC, id ASC
 	`
 
 	rows, err := m.DB.QueryContext(ctx, query, lotID)
@@ -14363,7 +13645,7 @@ func (m *StoreModel) GetByGodownID(ctx context.Context, godownID int64) ([]Store
 		       last_paid_through, last_paid_amount, notes, created_at, updated_at
 		FROM stores
 		WHERE godown_id = ?
-		ORDER BY lot_id ASC
+		ORDER BY lot_id ASC, id ASC
 	`
 
 	rows, err := m.DB.QueryContext(ctx, query, godownID)
@@ -14390,7 +13672,7 @@ func (m *StoreModel) GetAll(ctx context.Context) ([]Store, error) {
 		       weight, weight_unit, is_active, billing_start, billing_end,
 		       last_paid_through, last_paid_amount, notes, created_at, updated_at
 		FROM stores
-		ORDER BY lot_id, godown_id ASC
+		ORDER BY lot_id, godown_id ASC, id ASC
 	`
 
 	rows, err := m.DB.QueryContext(ctx, query)
@@ -14418,7 +13700,7 @@ func (m *StoreModel) GetActive(ctx context.Context) ([]Store, error) {
 		       last_paid_through, last_paid_amount, notes, created_at, updated_at
 		FROM stores
 		WHERE is_active = 1
-		ORDER BY lot_id, godown_id ASC
+		ORDER BY lot_id, godown_id ASC, id ASC
 	`
 
 	rows, err := m.DB.QueryContext(ctx, query)
@@ -14446,7 +13728,7 @@ func (m *StoreModel) GetWithInventory(ctx context.Context) ([]Store, error) {
 		       last_paid_through, last_paid_amount, notes, created_at, updated_at
 		FROM stores
 		WHERE quantity > 0 OR weight > 0
-		ORDER BY lot_id, godown_id ASC
+		ORDER BY lot_id, godown_id ASC, id ASC
 	`
 
 	rows, err := m.DB.QueryContext(ctx, query)
@@ -14514,6 +13796,9 @@ func (m *StoreModel) Update(ctx context.Context, store *Store) error {
 	return err
 }
 
+// UpdateInventory updates a store's quantity/weight. The cascade to
+// deactivate the store (and the lot if all its stores are empty) is
+// performed by the SQLite triggers on the stores table.
 func (m *StoreModel) UpdateInventory(ctx context.Context, id int64, quantity, weight float64) error {
 	query := `
 		UPDATE stores
@@ -14594,14 +13879,6 @@ func (m *StoreModel) Exists(ctx context.Context, id int64) (bool, error) {
 	return exists, err
 }
 
-func (m *StoreModel) ExistsByLotAndGodown(ctx context.Context, lotID, godownID int64) (bool, error) {
-	query := `SELECT EXISTS(SELECT 1 FROM stores WHERE lot_id = ? AND godown_id = ?)`
-
-	var exists bool
-	err := m.DB.QueryRowContext(ctx, query, lotID, godownID).Scan(&exists)
-	return exists, err
-}
-
 func (m *StoreModel) GetTotalQuantityByLot(ctx context.Context, lotID int64) (float64, error) {
 	query := `SELECT COALESCE(SUM(quantity), 0) FROM stores WHERE lot_id = ?`
 
@@ -14674,6 +13951,14 @@ func (m *StoreModel) scanStoreRow(rows *sql.Rows) (*Store, error) {
 		&store.UpdatedAt,
 	)
 	return store, err
+}
+
+func (m *StoreModel) ExistsByLotAndGodown(ctx context.Context, lotID, godownID int64) (bool, error) {
+	query := `SELECT EXISTS(SELECT 1 FROM stores WHERE lot_id = ? AND godown_id = ?)`
+
+	var exists bool
+	err := m.DB.QueryRowContext(ctx, query, lotID, godownID).Scan(&exists)
+	return exists, err
 }
 
 
@@ -16042,19 +15327,6 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 			r.Get("/{id}", higherManagementOnly(handler.GetCustomerHandler))
 			r.Patch("/{id}", higherManagementOnly(handler.UpdateCustomerHandler))
 			r.Delete("/{id}", higherManagementOnly(handler.DeleteCustomerHandler))
-		})
-
-		// =====================================================
-		// ITEMS
-		// =====================================================
-		r.Route("/items", func(r chi.Router) {
-			// Admin/Manager only routes (using higherManagementOnly)
-			r.Get("/", higherManagementOnly(handler.GetAllItemsHandler))
-			r.Post("/", higherManagementOnly(handler.CreateItemHandler))
-			r.Get("/{id}", higherManagementOnly(handler.GetItemHandler))
-			r.Patch("/{id}", higherManagementOnly(handler.UpdateItemHandler))
-			r.Patch("/{id}/toggle-active", higherManagementOnly(handler.ToggleItemActiveHandler))
-			r.Delete("/{id}", higherManagementOnly(handler.DeleteItemHandler))
 		})
 
 		// =====================================================

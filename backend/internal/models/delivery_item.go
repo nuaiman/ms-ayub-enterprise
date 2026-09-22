@@ -11,7 +11,6 @@ type DeliveryItem struct {
 	DeliveryID               int64     `json:"delivery_id"`
 	StoreID                  int64     `json:"store_id"`
 	MajhiID                  *int64    `json:"majhi_id,omitempty"`
-	ItemID                   int64     `json:"item_id"`
 	LotID                    int64     `json:"lot_id"`
 	VehicleNumber            *string   `json:"vehicle_number,omitempty"`
 	DriverNumber             *string   `json:"driver_number,omitempty"`
@@ -41,19 +40,18 @@ type DeliveryItemModel struct {
 func (m *DeliveryItemModel) Insert(ctx context.Context, item *DeliveryItem) (int64, error) {
 	query := `
 		INSERT INTO delivery_items (
-			delivery_id, store_id, majhi_id, item_id, lot_id,
+			delivery_id, store_id, majhi_id, lot_id,
 			vehicle_number, driver_number, quantity, quantity_unit,
 			weight, weight_unit, loading_rate, majhi_cut, notes,
 			customer_charge_type, customer_paid_unload_amount,
 			majhi_bill_type, majhi_total_paid
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	res, err := m.DB.ExecContext(ctx, query,
 		item.DeliveryID,
 		item.StoreID,
 		item.MajhiID,
-		item.ItemID,
 		item.LotID,
 		item.VehicleNumber,
 		item.DriverNumber,
@@ -82,7 +80,7 @@ func (m *DeliveryItemModel) Insert(ctx context.Context, item *DeliveryItem) (int
 
 func (m *DeliveryItemModel) GetByID(ctx context.Context, id int64) (*DeliveryItem, error) {
 	query := `
-		SELECT id, delivery_id, store_id, majhi_id, item_id, lot_id,
+		SELECT id, delivery_id, store_id, majhi_id, lot_id,
 		       vehicle_number, driver_number, quantity, quantity_unit,
 		       weight, weight_unit, loading_rate, majhi_cut, notes,
 		       customer_charge_type, customer_paid_unload_amount,
@@ -98,7 +96,7 @@ func (m *DeliveryItemModel) GetByID(ctx context.Context, id int64) (*DeliveryIte
 
 func (m *DeliveryItemModel) GetByDeliveryID(ctx context.Context, deliveryID int64) ([]DeliveryItem, error) {
 	query := `
-		SELECT id, delivery_id, store_id, majhi_id, item_id, lot_id,
+		SELECT id, delivery_id, store_id, majhi_id, lot_id,
 		       vehicle_number, driver_number, quantity, quantity_unit,
 		       weight, weight_unit, loading_rate, majhi_cut, notes,
 		       customer_charge_type, customer_paid_unload_amount,
@@ -129,7 +127,7 @@ func (m *DeliveryItemModel) GetByDeliveryID(ctx context.Context, deliveryID int6
 
 func (m *DeliveryItemModel) GetByStoreID(ctx context.Context, storeID int64) ([]DeliveryItem, error) {
 	query := `
-		SELECT id, delivery_id, store_id, majhi_id, item_id, lot_id,
+		SELECT id, delivery_id, store_id, majhi_id, lot_id,
 		       vehicle_number, driver_number, quantity, quantity_unit,
 		       weight, weight_unit, loading_rate, majhi_cut, notes,
 		       customer_charge_type, customer_paid_unload_amount,
@@ -160,7 +158,7 @@ func (m *DeliveryItemModel) GetByStoreID(ctx context.Context, storeID int64) ([]
 
 func (m *DeliveryItemModel) GetByLotID(ctx context.Context, lotID int64) ([]DeliveryItem, error) {
 	query := `
-		SELECT id, delivery_id, store_id, majhi_id, item_id, lot_id,
+		SELECT id, delivery_id, store_id, majhi_id, lot_id,
 		       vehicle_number, driver_number, quantity, quantity_unit,
 		       weight, weight_unit, loading_rate, majhi_cut, notes,
 		       customer_charge_type, customer_paid_unload_amount,
@@ -191,7 +189,7 @@ func (m *DeliveryItemModel) GetByLotID(ctx context.Context, lotID int64) ([]Deli
 
 func (m *DeliveryItemModel) GetAll(ctx context.Context) ([]DeliveryItem, error) {
 	query := `
-		SELECT id, delivery_id, store_id, majhi_id, item_id, lot_id,
+		SELECT id, delivery_id, store_id, majhi_id, lot_id,
 		       vehicle_number, driver_number, quantity, quantity_unit,
 		       weight, weight_unit, loading_rate, majhi_cut, notes,
 		       customer_charge_type, customer_paid_unload_amount,
@@ -365,7 +363,7 @@ func (m *DeliveryItemModel) GetMajhiBillTotal(ctx context.Context, majhiID int64
 			CASE 
 				WHEN di.majhi_bill_type = 'quantity' THEN di.quantity * di.majhi_cut
 				WHEN di.majhi_bill_type = 'weight' THEN di.weight * di.majhi_cut
-				ELSE di.majhi_cut  -- 'job' type - fixed amount
+				ELSE di.majhi_cut
 			END
 		), 0)
 		FROM delivery_items di
@@ -388,7 +386,6 @@ func (m *DeliveryItemModel) scanDeliveryItem(row *sql.Row) (*DeliveryItem, error
 		&item.DeliveryID,
 		&item.StoreID,
 		&item.MajhiID,
-		&item.ItemID,
 		&item.LotID,
 		&item.VehicleNumber,
 		&item.DriverNumber,
@@ -422,7 +419,6 @@ func (m *DeliveryItemModel) scanDeliveryItemRow(rows *sql.Rows) (*DeliveryItem, 
 		&item.DeliveryID,
 		&item.StoreID,
 		&item.MajhiID,
-		&item.ItemID,
 		&item.LotID,
 		&item.VehicleNumber,
 		&item.DriverNumber,

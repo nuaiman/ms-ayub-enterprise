@@ -6,8 +6,7 @@
             <header class="company-header">
                 <div class="logo-area">
                     <div class="logo-box">
-                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231e3a8a'/%3E%3Ctext x='50' y='60' font-family='Arial' font-size='20' fill='white' text-anchor='middle'%3EA%3C/text%3E%3C/svg%3E"
-                            alt="logo" />
+                        <img src="@/assets/logo.png" alt="logo" />
                     </div>
                     <div>
                         <div class="company-name">M/S. AYUB ENTERPRISE</div>
@@ -89,7 +88,7 @@
                         <div class="totals-row bg-light">
                             <span class="label">Already Paid</span>
                             <span class="value" style="color: #15803d;">BDT. {{ formatMoney(invoice?.received || 0)
-                                }}</span>
+                            }}</span>
                         </div>
                         <div class="totals-row">
                             <span class="label">Total Invoice</span>

@@ -173,7 +173,7 @@
                     <div>
                         <h2 class="text-lg font-bold text-(--color-text-primary)">Record Payment</h2>
                         <p class="text-xs text-(--color-text-secondary)">Update payment for {{ selectedStore?.lot_name
-                        }}</p>
+                            }}</p>
                     </div>
                 </div>
 
@@ -374,7 +374,6 @@ import { useGodownStoreBillsStore } from '@/stores/godownStoreBills'
 import { useStoresStore } from '@/stores/stores'
 import { useLotsStore } from '@/stores/lots'
 import { useGodownsStore } from '@/stores/godowns'
-import { useItemsStore } from '@/stores/items'
 import { useCustomersStore } from '@/stores/customers'
 import type { GodownStoreBillStore, GodownStoreBillSortField } from '@/types/godownStoreBill'
 import GodownStoreBillRow from './GodownStoreBillRow.vue'
@@ -389,7 +388,6 @@ const godownStoreBillsStore = useGodownStoreBillsStore()
 const storesStore = useStoresStore()
 const lotsStore = useLotsStore()
 const godownsStore = useGodownsStore()
-const itemsStore = useItemsStore()
 const customersStore = useCustomersStore()
 
 const loading = ref(true)
@@ -435,7 +433,6 @@ const fetchData = async () => {
             storesStore.fetchStores(),
             lotsStore.fetchLots(),
             godownsStore.fetchGodowns(),
-            itemsStore.fetchItems(),
             customersStore.fetchCustomers()
         ])
     } finally {

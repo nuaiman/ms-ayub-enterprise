@@ -7,12 +7,13 @@
                 <img src="@/assets/logo.png" alt="MS Ayub Enterprise"
                     class="w-full h-full block object-cover rounded-md" />
             </div>
-            <!-- ✅ Show text when NOT collapsed -->
             <div v-if="!collapsed" class="flex flex-col whitespace-nowrap">
-                <span class="text-sm font-semibold tracking-tight text-(--color-text-primary) leading-tight">MS
-                    Ayub</span>
-                <span
-                    class="text-[10px] font-medium text-(--color-text-secondary)/60 tracking-[0.15em] uppercase">Enterprise</span>
+                <span class="text-sm font-semibold tracking-tight text-(--color-text-primary) leading-tight">
+                    MS Ayub
+                </span>
+                <span class="text-[10px] font-medium text-(--color-text-secondary)/60 tracking-[0.15em] uppercase">
+                    Enterprise
+                </span>
             </div>
         </div>
     </div>

@@ -6,9 +6,7 @@
         <button @click="$emit('toggleSidebar')"
             class="lg:hidden p-2 -ml-2 rounded-lg text-(--color-text-secondary) hover:bg-(--color-muted-bg) hover:text-(--color-text-primary) transition-colors"
             aria-label="Toggle sidebar">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+            <Menu class="w-5 h-5" :stroke-width="2" />
         </button>
 
         <!-- Breadcrumbs -->
@@ -22,10 +20,8 @@
                     <span v-else class="text-(--color-text-primary) font-medium truncate max-w-32">
                         {{ crumb.label }}
                     </span>
-                    <svg v-if="idx < breadcrumbs.length - 1" class="w-3 h-3 text-(--color-border) shrink-0" fill="none"
-                        stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                    </svg>
+                    <ChevronRight v-if="idx < breadcrumbs.length - 1" class="w-3 h-3 text-(--color-border) shrink-0"
+                        :stroke-width="2" />
                 </div>
             </nav>
         </div>
@@ -49,9 +45,11 @@
                                 {{ userInitials }}
                             </div>
                             <div class="min-w-0">
-                                <div class="text-sm font-semibold text-(--color-text-primary) truncate">{{
-                                    auth.user?.name }}</div>
-                                <div class="text-xs text-(--color-text-secondary) truncate">@{{ auth.user?.username }}
+                                <div class="text-sm font-semibold text-(--color-text-primary) truncate">
+                                    {{ auth.user?.name }}
+                                </div>
+                                <div class="text-xs text-(--color-text-secondary) truncate">
+                                    @{{ auth.user?.username }}
                                 </div>
                                 <span
                                     class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium capitalize mt-0.5"
@@ -62,7 +60,7 @@
                         </div>
                     </div>
 
-                    <!-- Menu Items - Shared Component -->
+                    <!-- Menu Items -->
                     <UserMenuItems @change-password="handleChangePassword"
                         @reset-all-passwords="handleResetAllPasswords" @download-backup="handleDownloadBackup"
                         @logout="handleLogout" />
@@ -75,6 +73,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { Menu, ChevronRight } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { useClickOutside } from '@/composables/useClickOutside'
 import UserMenuItems from './UserMenuItems.vue'
@@ -111,14 +110,22 @@ onUnmounted(() => {
 
 const userInitials = computed(() => {
     if (!auth.user?.name) return '?'
-    return auth.user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+    return auth.user.name
+        .split(' ')
+        .map(w => w[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
 })
 
 const getRoleBadgeClass = (role: string): string => {
     switch (role) {
-        case 'admin': return 'bg-(--color-blue)/10 text-(--color-blue)'
-        case 'manager': return 'bg-(--color-yellow)/10 text-(--color-yellow)'
-        default: return 'bg-(--color-muted-bg) text-(--color-text-secondary)'
+        case 'admin':
+            return 'bg-(--color-blue)/10 text-(--color-blue)'
+        case 'manager':
+            return 'bg-(--color-yellow)/10 text-(--color-yellow)'
+        default:
+            return 'bg-(--color-muted-bg) text-(--color-text-secondary)'
     }
 }
 
@@ -153,7 +160,6 @@ const pageTitle = computed(() => {
         '/brokers': 'Brokers',
         '/majhis': 'Majhis',
         '/godowns': 'Godowns',
-        '/items': 'Items',
         '/lots': 'Lots',
         '/stores': 'Stores',
         '/damages': 'Damages',
@@ -163,7 +169,7 @@ const pageTitle = computed(() => {
         '/vehicles': 'Vehicles',
         '/godown-store-bills': 'Godown Store Bills',
         '/customer-storage-bills': 'Customer Storage Bills',
-        '/customer-lot-bills': 'Customer Lot Bills',
+        '/customer-lot-bills': 'Customer Unload Bills',
         '/majhi-lot-bills': 'Majhi Lot Bills',
         '/customer-delivery-bills': 'Customer Delivery Bills',
         '/majhi-loading-bills': 'Majhi Loading Bills',

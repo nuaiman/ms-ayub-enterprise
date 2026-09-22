@@ -8,7 +8,10 @@ import (
 
 type Lot struct {
 	ID                       int64      `json:"id"`
-	ItemID                   int64      `json:"item_id"`
+	UserID                   int64      `json:"user_id"`
+	CustomerID               *int64     `json:"customer_id,omitempty"`
+	ProductName              *string    `json:"product_name,omitempty"`
+	Category                 *string    `json:"category,omitempty"`
 	LotNumber                int64      `json:"lot_number"`
 	CustomerChargeType       string     `json:"customer_charge_type"` // weight or quantity
 	MajhiBillType            string     `json:"majhi_bill_type"`      // weight, quantity, or job
@@ -38,11 +41,13 @@ type LotModel struct {
 func (m *LotModel) Insert(ctx context.Context, lot *Lot) (int64, error) {
 	query := `
 		INSERT INTO lots (
-			item_id, lot_number, customer_charge_type, majhi_bill_type,
+			user_id, customer_id, product_name, category, lot_number,
+			customer_charge_type, majhi_bill_type,
 			customer_storage_rate, unload_rate, majhi_id, majhi_cut,
 			is_active, notes, image_url,
-			customer_last_paid_through, customer_last_paid_amount, customer_paid_unload_amount, majhi_total_paid
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			customer_last_paid_through, customer_last_paid_amount,
+			customer_paid_unload_amount, majhi_total_paid
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	isActive := 0
@@ -51,7 +56,10 @@ func (m *LotModel) Insert(ctx context.Context, lot *Lot) (int64, error) {
 	}
 
 	res, err := m.DB.ExecContext(ctx, query,
-		lot.ItemID,
+		lot.UserID,
+		lot.CustomerID,
+		lot.ProductName,
+		lot.Category,
 		lot.LotNumber,
 		lot.CustomerChargeType,
 		lot.MajhiBillType,
@@ -80,10 +88,12 @@ func (m *LotModel) Insert(ctx context.Context, lot *Lot) (int64, error) {
 
 func (m *LotModel) GetByID(ctx context.Context, id int64) (*Lot, error) {
 	query := `
-		SELECT id, item_id, lot_number, customer_charge_type, majhi_bill_type,
+		SELECT id, user_id, customer_id, product_name, category, lot_number,
+		       customer_charge_type, majhi_bill_type,
 		       customer_storage_rate, unload_rate, majhi_id, majhi_cut,
 		       is_active, notes, image_url,
-		       customer_last_paid_through, customer_last_paid_amount, customer_paid_unload_amount, majhi_total_paid,
+		       customer_last_paid_through, customer_last_paid_amount,
+		       customer_paid_unload_amount, majhi_total_paid,
 		       created_at, updated_at
 		FROM lots
 		WHERE id = ?
@@ -93,19 +103,21 @@ func (m *LotModel) GetByID(ctx context.Context, id int64) (*Lot, error) {
 	return m.scanLot(row)
 }
 
-func (m *LotModel) GetByItemID(ctx context.Context, itemID int64) ([]Lot, error) {
+func (m *LotModel) GetByCustomerID(ctx context.Context, customerID int64) ([]Lot, error) {
 	query := `
-		SELECT id, item_id, lot_number, customer_charge_type, majhi_bill_type,
+		SELECT id, user_id, customer_id, product_name, category, lot_number,
+		       customer_charge_type, majhi_bill_type,
 		       customer_storage_rate, unload_rate, majhi_id, majhi_cut,
 		       is_active, notes, image_url,
-		       customer_last_paid_through, customer_last_paid_amount, customer_paid_unload_amount, majhi_total_paid,
+		       customer_last_paid_through, customer_last_paid_amount,
+		       customer_paid_unload_amount, majhi_total_paid,
 		       created_at, updated_at
 		FROM lots
-		WHERE item_id = ?
+		WHERE customer_id = ?
 		ORDER BY lot_number ASC
 	`
 
-	rows, err := m.DB.QueryContext(ctx, query, itemID)
+	rows, err := m.DB.QueryContext(ctx, query, customerID)
 	if err != nil {
 		return nil, err
 	}
@@ -123,30 +135,34 @@ func (m *LotModel) GetByItemID(ctx context.Context, itemID int64) ([]Lot, error)
 	return lots, rows.Err()
 }
 
-func (m *LotModel) GetByItemAndLotNumber(ctx context.Context, itemID int64, lotNumber int64) (*Lot, error) {
+func (m *LotModel) GetByLotNumber(ctx context.Context, lotNumber int64) (*Lot, error) {
 	query := `
-		SELECT id, item_id, lot_number, customer_charge_type, majhi_bill_type,
+		SELECT id, user_id, customer_id, product_name, category, lot_number,
+		       customer_charge_type, majhi_bill_type,
 		       customer_storage_rate, unload_rate, majhi_id, majhi_cut,
 		       is_active, notes, image_url,
-		       customer_last_paid_through, customer_last_paid_amount, customer_paid_unload_amount, majhi_total_paid,
+		       customer_last_paid_through, customer_last_paid_amount,
+		       customer_paid_unload_amount, majhi_total_paid,
 		       created_at, updated_at
 		FROM lots
-		WHERE item_id = ? AND lot_number = ?
+		WHERE lot_number = ?
 	`
 
-	row := m.DB.QueryRowContext(ctx, query, itemID, lotNumber)
+	row := m.DB.QueryRowContext(ctx, query, lotNumber)
 	return m.scanLot(row)
 }
 
 func (m *LotModel) GetAll(ctx context.Context) ([]Lot, error) {
 	query := `
-		SELECT id, item_id, lot_number, customer_charge_type, majhi_bill_type,
+		SELECT id, user_id, customer_id, product_name, category, lot_number,
+		       customer_charge_type, majhi_bill_type,
 		       customer_storage_rate, unload_rate, majhi_id, majhi_cut,
 		       is_active, notes, image_url,
-		       customer_last_paid_through, customer_last_paid_amount, customer_paid_unload_amount, majhi_total_paid,
+		       customer_last_paid_through, customer_last_paid_amount,
+		       customer_paid_unload_amount, majhi_total_paid,
 		       created_at, updated_at
 		FROM lots
-		ORDER BY item_id, lot_number ASC
+		ORDER BY lot_number ASC
 	`
 
 	rows, err := m.DB.QueryContext(ctx, query)
@@ -169,14 +185,16 @@ func (m *LotModel) GetAll(ctx context.Context) ([]Lot, error) {
 
 func (m *LotModel) GetActive(ctx context.Context) ([]Lot, error) {
 	query := `
-		SELECT id, item_id, lot_number, customer_charge_type, majhi_bill_type,
+		SELECT id, user_id, customer_id, product_name, category, lot_number,
+		       customer_charge_type, majhi_bill_type,
 		       customer_storage_rate, unload_rate, majhi_id, majhi_cut,
 		       is_active, notes, image_url,
-		       customer_last_paid_through, customer_last_paid_amount, customer_paid_unload_amount, majhi_total_paid,
+		       customer_last_paid_through, customer_last_paid_amount,
+		       customer_paid_unload_amount, majhi_total_paid,
 		       created_at, updated_at
 		FROM lots
 		WHERE is_active = 1
-		ORDER BY item_id, lot_number ASC
+		ORDER BY lot_number ASC
 	`
 
 	rows, err := m.DB.QueryContext(ctx, query)
@@ -199,15 +217,16 @@ func (m *LotModel) GetActive(ctx context.Context) ([]Lot, error) {
 
 func (m *LotModel) Search(ctx context.Context, query string) ([]Lot, error) {
 	searchQuery := `
-		SELECT l.id, l.item_id, l.lot_number, l.customer_charge_type, l.majhi_bill_type,
-		       l.customer_storage_rate, l.unload_rate, l.majhi_id, l.majhi_cut,
-		       l.is_active, l.notes, l.image_url,
-		       l.customer_last_paid_through, l.customer_last_paid_amount, l.customer_paid_unload_amount, l.majhi_total_paid,
-		       l.created_at, l.updated_at
-		FROM lots l
-		INNER JOIN items i ON l.item_id = i.id
-		WHERE i.product_name LIKE ? OR i.category LIKE ? OR l.lot_number LIKE ?
-		ORDER BY l.item_id, l.lot_number ASC
+		SELECT id, user_id, customer_id, product_name, category, lot_number,
+		       customer_charge_type, majhi_bill_type,
+		       customer_storage_rate, unload_rate, majhi_id, majhi_cut,
+		       is_active, notes, image_url,
+		       customer_last_paid_through, customer_last_paid_amount,
+		       customer_paid_unload_amount, majhi_total_paid,
+		       created_at, updated_at
+		FROM lots
+		WHERE product_name LIKE ? OR category LIKE ? OR lot_number LIKE ?
+		ORDER BY lot_number ASC
 	`
 
 	searchTerm := "%" + query + "%"
@@ -238,6 +257,9 @@ func (m *LotModel) Update(ctx context.Context, lot *Lot) error {
 	query := `
 		UPDATE lots
 		SET 
+			customer_id = ?,
+			product_name = ?,
+			category = ?,
 			customer_charge_type = ?,
 			majhi_bill_type = ?,
 			customer_storage_rate = ?,
@@ -260,6 +282,9 @@ func (m *LotModel) Update(ctx context.Context, lot *Lot) error {
 	}
 
 	_, err := m.DB.ExecContext(ctx, query,
+		lot.CustomerID,
+		lot.ProductName,
+		lot.Category,
 		lot.CustomerChargeType,
 		lot.MajhiBillType,
 		lot.CustomerStorageRate,
@@ -369,22 +394,6 @@ func (m *LotModel) Exists(ctx context.Context, id int64) (bool, error) {
 	return exists, err
 }
 
-func (m *LotModel) ExistsByItemAndLot(ctx context.Context, itemID int64, lotNumber int64) (bool, error) {
-	query := `SELECT EXISTS(SELECT 1 FROM lots WHERE item_id = ? AND lot_number = ?)`
-
-	var exists bool
-	err := m.DB.QueryRowContext(ctx, query, itemID, lotNumber).Scan(&exists)
-	return exists, err
-}
-
-func (m *LotModel) CountByItem(ctx context.Context, itemID int64) (int, error) {
-	query := `SELECT COUNT(*) FROM lots WHERE item_id = ?`
-
-	var count int
-	err := m.DB.QueryRowContext(ctx, query, itemID).Scan(&count)
-	return count, err
-}
-
 // GetTotalUnloadAmountByCustomer returns total unload bill amount for a customer
 func (m *LotModel) GetTotalUnloadAmountByCustomer(ctx context.Context, customerID int64) (float64, error) {
 	query := `
@@ -395,9 +404,8 @@ func (m *LotModel) GetTotalUnloadAmountByCustomer(ctx context.Context, customerI
 			END
 		), 0)
 		FROM lots l
-		INNER JOIN items i ON l.item_id = i.id
 		INNER JOIN stores s ON s.lot_id = l.id
-		WHERE i.customer_id = ? AND l.is_active = 1 AND l.unload_rate > 0
+		WHERE l.customer_id = ? AND l.is_active = 1 AND l.unload_rate > 0
 	`
 
 	var total float64
@@ -414,7 +422,10 @@ func (m *LotModel) scanLot(row *sql.Row) (*Lot, error) {
 	var isActive int
 	err := row.Scan(
 		&lot.ID,
-		&lot.ItemID,
+		&lot.UserID,
+		&lot.CustomerID,
+		&lot.ProductName,
+		&lot.Category,
 		&lot.LotNumber,
 		&lot.CustomerChargeType,
 		&lot.MajhiBillType,
@@ -447,7 +458,10 @@ func (m *LotModel) scanLotRow(rows *sql.Rows) (*Lot, error) {
 	var isActive int
 	err := rows.Scan(
 		&lot.ID,
-		&lot.ItemID,
+		&lot.UserID,
+		&lot.CustomerID,
+		&lot.ProductName,
+		&lot.Category,
 		&lot.LotNumber,
 		&lot.CustomerChargeType,
 		&lot.MajhiBillType,
@@ -470,4 +484,12 @@ func (m *LotModel) scanLotRow(rows *sql.Rows) (*Lot, error) {
 	}
 	lot.IsActive = isActive == 1
 	return lot, nil
+}
+
+func (m *LotModel) ExistsByCustomerAndLot(ctx context.Context, customerID, lotNumber int64) (bool, error) {
+	query := `SELECT EXISTS(SELECT 1 FROM lots WHERE customer_id = ? AND lot_number = ?)`
+
+	var exists bool
+	err := m.DB.QueryRowContext(ctx, query, customerID, lotNumber).Scan(&exists)
+	return exists, err
 }

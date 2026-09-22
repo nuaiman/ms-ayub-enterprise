@@ -19,7 +19,9 @@ func (h *Handler) CreateLotHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[LOTS] CreateLotHandler called - Method: %s, Path: %s", r.Method, r.URL.Path)
 
 	type request struct {
-		ItemID                   int64      `json:"item_id"`
+		CustomerID               *int64     `json:"customer_id,omitempty"`
+		ProductName              *string    `json:"product_name,omitempty"`
+		Category                 *string    `json:"category,omitempty"`
 		LotNumber                int64      `json:"lot_number"`
 		CustomerChargeType       string     `json:"customer_charge_type"`
 		MajhiBillType            string     `json:"majhi_bill_type"`
@@ -43,8 +45,8 @@ func (h *Handler) CreateLotHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate required fields
-	if req.ItemID == 0 {
-		utils.ErrorJson(w, http.StatusBadRequest, "item_id is required")
+	if req.ProductName == nil || *req.ProductName == "" {
+		utils.ErrorJson(w, http.StatusBadRequest, "product_name is required")
 		return
 	}
 	if req.LotNumber <= 0 {
@@ -65,6 +67,18 @@ func (h *Handler) CreateLotHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate amounts
+	if req.CustomerStorageRate < 0 {
+		utils.ErrorJson(w, http.StatusBadRequest, "customer_storage_rate cannot be negative")
+		return
+	}
+	if req.UnloadRate < 0 {
+		utils.ErrorJson(w, http.StatusBadRequest, "unload_rate cannot be negative")
+		return
+	}
+	if req.MajhiCut < 0 {
+		utils.ErrorJson(w, http.StatusBadRequest, "majhi_cut cannot be negative")
+		return
+	}
 	if req.CustomerLastPaidAmount < 0 {
 		utils.ErrorJson(w, http.StatusBadRequest, "customer_last_paid_amount cannot be negative")
 		return
@@ -78,20 +92,22 @@ func (h *Handler) CreateLotHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if item exists
-	exists, err := h.app.Models.Item.Exists(r.Context(), req.ItemID)
-	if err != nil {
-		log.Printf("[LOTS] CreateLotHandler ERROR: failed to verify item - %v", err)
-		utils.ErrorJson(w, http.StatusInternalServerError, "failed to verify item")
-		return
-	}
-	if !exists {
-		utils.ErrorJson(w, http.StatusNotFound, "item not found")
-		return
+	// Check if customer exists if provided
+	if req.CustomerID != nil && *req.CustomerID != 0 {
+		exists, err := h.app.Models.Customer.Exists(r.Context(), *req.CustomerID)
+		if err != nil {
+			log.Printf("[LOTS] CreateLotHandler ERROR: failed to verify customer - %v", err)
+			utils.ErrorJson(w, http.StatusInternalServerError, "failed to verify customer")
+			return
+		}
+		if !exists {
+			utils.ErrorJson(w, http.StatusNotFound, "customer not found")
+			return
+		}
 	}
 
 	// Check if majhi exists if provided
-	if req.MajhiID != nil {
+	if req.MajhiID != nil && *req.MajhiID != 0 {
 		exists, err := h.app.Models.Majhi.Exists(r.Context(), *req.MajhiID)
 		if err != nil {
 			log.Printf("[LOTS] CreateLotHandler ERROR: failed to verify majhi - %v", err)
@@ -104,16 +120,18 @@ func (h *Handler) CreateLotHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Check if lot already exists for this item
-	exists, err = h.app.Models.Lot.ExistsByItemAndLot(r.Context(), req.ItemID, req.LotNumber)
-	if err != nil {
-		log.Printf("[LOTS] CreateLotHandler ERROR: failed to check existing lot - %v", err)
-		utils.ErrorJson(w, http.StatusInternalServerError, "failed to verify lot")
-		return
-	}
-	if exists {
-		utils.ErrorJson(w, http.StatusConflict, "lot already exists for this item")
-		return
+	// Check if lot already exists for this customer
+	if req.CustomerID != nil && *req.CustomerID != 0 {
+		exists, err := h.app.Models.Lot.ExistsByCustomerAndLot(r.Context(), *req.CustomerID, req.LotNumber)
+		if err != nil {
+			log.Printf("[LOTS] CreateLotHandler ERROR: failed to check existing lot - %v", err)
+			utils.ErrorJson(w, http.StatusInternalServerError, "failed to verify lot")
+			return
+		}
+		if exists {
+			utils.ErrorJson(w, http.StatusConflict, "lot already exists for this customer")
+			return
+		}
 	}
 
 	// Get current user ID for audit
@@ -125,7 +143,10 @@ func (h *Handler) CreateLotHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	lot := &models.Lot{
-		ItemID:                   req.ItemID,
+		UserID:                   userID,
+		CustomerID:               req.CustomerID,
+		ProductName:              req.ProductName,
+		Category:                 req.Category,
 		LotNumber:                req.LotNumber,
 		CustomerChargeType:       req.CustomerChargeType,
 		MajhiBillType:            req.MajhiBillType,
@@ -150,7 +171,7 @@ func (h *Handler) CreateLotHandler(w http.ResponseWriter, r *http.Request) {
 
 	lot.ID = id
 
-	log.Printf("[LOTS] CreateLotHandler SUCCESS: created lot ID=%d for item ID=%d", id, req.ItemID)
+	log.Printf("[LOTS] CreateLotHandler SUCCESS: created lot ID=%d", id)
 
 	// Audit log
 	ip := r.RemoteAddr
@@ -158,7 +179,7 @@ func (h *Handler) CreateLotHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
 		UserID:      userID,
 		Action:      "create",
-		Description: "Created lot #" + strconv.FormatInt(id, 10) + " for item #" + strconv.FormatInt(req.ItemID, 10),
+		Description: "Created lot #" + strconv.FormatInt(id, 10),
 		EntityType:  "lots",
 		EntityID:    id,
 		IPAddress:   &ip,
@@ -200,7 +221,7 @@ func (h *Handler) GetAllLotsHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[LOTS] GetAllLotsHandler called - Method: %s, Path: %s", r.Method, r.URL.Path)
 
 	search := r.URL.Query().Get("search")
-	itemID := r.URL.Query().Get("item_id")
+	customerID := r.URL.Query().Get("customer_id")
 	activeOnly := r.URL.Query().Get("active") == "true"
 
 	var lots []models.Lot
@@ -209,9 +230,9 @@ func (h *Handler) GetAllLotsHandler(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case search != "":
 		lots, err = h.app.Models.Lot.Search(r.Context(), search)
-	case itemID != "":
-		id, _ := strconv.ParseInt(itemID, 10, 64)
-		lots, err = h.app.Models.Lot.GetByItemID(r.Context(), id)
+	case customerID != "":
+		id, _ := strconv.ParseInt(customerID, 10, 64)
+		lots, err = h.app.Models.Lot.GetByCustomerID(r.Context(), id)
 	case activeOnly:
 		lots, err = h.app.Models.Lot.GetActive(r.Context())
 	default:
@@ -243,6 +264,9 @@ func (h *Handler) UpdateLotHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[LOTS] UpdateLotHandler called - ID: %d", id)
 
 	type request struct {
+		CustomerID               *int64     `json:"customer_id,omitempty"`
+		ProductName              *string    `json:"product_name,omitempty"`
+		Category                 *string    `json:"category,omitempty"`
 		CustomerChargeType       *string    `json:"customer_charge_type,omitempty"`
 		MajhiBillType            *string    `json:"majhi_bill_type,omitempty"`
 		CustomerStorageRate      *float64   `json:"customer_storage_rate,omitempty"`
@@ -277,8 +301,22 @@ func (h *Handler) UpdateLotHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if majhi exists if provided
-	if req.MajhiID != nil {
+	// Validate customer if provided and non-zero
+	if req.CustomerID != nil && *req.CustomerID != 0 {
+		exists, err := h.app.Models.Customer.Exists(r.Context(), *req.CustomerID)
+		if err != nil {
+			log.Printf("[LOTS] UpdateLotHandler ERROR: failed to verify customer - %v", err)
+			utils.ErrorJson(w, http.StatusInternalServerError, "failed to verify customer")
+			return
+		}
+		if !exists {
+			utils.ErrorJson(w, http.StatusNotFound, "customer not found")
+			return
+		}
+	}
+
+	// Check if majhi exists if provided and non-zero
+	if req.MajhiID != nil && *req.MajhiID != 0 {
 		exists, err := h.app.Models.Majhi.Exists(r.Context(), *req.MajhiID)
 		if err != nil {
 			log.Printf("[LOTS] UpdateLotHandler ERROR: failed to verify majhi - %v", err)
@@ -292,6 +330,23 @@ func (h *Handler) UpdateLotHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Apply updates
+	if req.CustomerID != nil {
+		if *req.CustomerID == 0 {
+			lot.CustomerID = nil
+		} else {
+			lot.CustomerID = req.CustomerID
+		}
+	}
+	if req.ProductName != nil {
+		if *req.ProductName == "" {
+			utils.ErrorJson(w, http.StatusBadRequest, "product_name cannot be empty")
+			return
+		}
+		lot.ProductName = req.ProductName
+	}
+	if req.Category != nil {
+		lot.Category = req.Category
+	}
 	if req.CustomerChargeType != nil {
 		if *req.CustomerChargeType != "weight" && *req.CustomerChargeType != "quantity" {
 			utils.ErrorJson(w, http.StatusBadRequest, "customer_charge_type must be 'weight' or 'quantity'")
@@ -321,7 +376,11 @@ func (h *Handler) UpdateLotHandler(w http.ResponseWriter, r *http.Request) {
 		lot.UnloadRate = *req.UnloadRate
 	}
 	if req.MajhiID != nil {
-		lot.MajhiID = req.MajhiID
+		if *req.MajhiID == 0 {
+			lot.MajhiID = nil
+		} else {
+			lot.MajhiID = req.MajhiID
+		}
 	}
 	if req.MajhiCut != nil {
 		if *req.MajhiCut < 0 {
@@ -491,7 +550,6 @@ func (h *Handler) DeleteLotHandler(w http.ResponseWriter, r *http.Request) {
 // =============================================================================
 
 // UpdateLotCustomerPaymentHandler - PATCH /api/lots/{id}/customer-payment
-// Updates customer payment tracking (storage bills)
 func (h *Handler) UpdateLotCustomerPaymentHandler(w http.ResponseWriter, r *http.Request) {
 	id, ok := utils.GetParamID(w, r)
 	if !ok {
@@ -519,7 +577,6 @@ func (h *Handler) UpdateLotCustomerPaymentHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	// Get existing lot
 	lot, err := h.app.Models.Lot.GetByID(r.Context(), id)
 	if err != nil {
 		log.Printf("[LOTS] UpdateLotCustomerPaymentHandler ERROR: failed to fetch lot - %v", err)
@@ -540,7 +597,6 @@ func (h *Handler) UpdateLotCustomerPaymentHandler(w http.ResponseWriter, r *http
 
 	log.Printf("[LOTS] UpdateLotCustomerPaymentHandler SUCCESS: updated customer payment for lot ID=%d", id)
 
-	// Audit log
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
@@ -559,7 +615,6 @@ func (h *Handler) UpdateLotCustomerPaymentHandler(w http.ResponseWriter, r *http
 }
 
 // UpdateLotCustomerUnloadPaymentHandler - PATCH /api/lots/{id}/customer-unload-payment
-// Updates customer unload payment amount (for one-time unload bills)
 func (h *Handler) UpdateLotCustomerUnloadPaymentHandler(w http.ResponseWriter, r *http.Request) {
 	id, ok := utils.GetParamID(w, r)
 	if !ok {
@@ -587,7 +642,6 @@ func (h *Handler) UpdateLotCustomerUnloadPaymentHandler(w http.ResponseWriter, r
 		return
 	}
 
-	// Get existing lot
 	lot, err := h.app.Models.Lot.GetByID(r.Context(), id)
 	if err != nil {
 		log.Printf("[LOTS] UpdateLotCustomerUnloadPaymentHandler ERROR: failed to fetch lot - %v", err)
@@ -606,9 +660,7 @@ func (h *Handler) UpdateLotCustomerUnloadPaymentHandler(w http.ResponseWriter, r
 		return
 	}
 
-	// Also update customer_last_paid_through if provided
 	if req.PaidThrough != nil {
-		// Get current lot data to preserve customer_last_paid_amount
 		current, err := h.app.Models.Lot.GetByID(r.Context(), id)
 		if err == nil && current != nil {
 			_ = h.app.Models.Lot.UpdateCustomerPayment(r.Context(), id, req.PaidThrough, current.CustomerLastPaidAmount)
@@ -617,7 +669,6 @@ func (h *Handler) UpdateLotCustomerUnloadPaymentHandler(w http.ResponseWriter, r
 
 	log.Printf("[LOTS] UpdateLotCustomerUnloadPaymentHandler SUCCESS: updated customer unload payment for lot ID=%d", id)
 
-	// Audit log
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
@@ -636,7 +687,6 @@ func (h *Handler) UpdateLotCustomerUnloadPaymentHandler(w http.ResponseWriter, r
 }
 
 // UpdateLotMajhiPaymentHandler - PATCH /api/lots/{id}/majhi-payment
-// Updates majhi payment tracking
 func (h *Handler) UpdateLotMajhiPaymentHandler(w http.ResponseWriter, r *http.Request) {
 	id, ok := utils.GetParamID(w, r)
 	if !ok {
@@ -663,7 +713,6 @@ func (h *Handler) UpdateLotMajhiPaymentHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Get existing lot
 	lot, err := h.app.Models.Lot.GetByID(r.Context(), id)
 	if err != nil {
 		log.Printf("[LOTS] UpdateLotMajhiPaymentHandler ERROR: failed to fetch lot - %v", err)
@@ -684,7 +733,6 @@ func (h *Handler) UpdateLotMajhiPaymentHandler(w http.ResponseWriter, r *http.Re
 
 	log.Printf("[LOTS] UpdateLotMajhiPaymentHandler SUCCESS: updated majhi payment for lot ID=%d", id)
 
-	// Audit log
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()

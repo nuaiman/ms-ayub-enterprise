@@ -36,7 +36,6 @@ import { computed, onMounted } from 'vue'
 import { useDeliveryItemsStore } from '@/stores/deliveryItems'
 import { useDeliveriesStore } from '@/stores/deliveries'
 import { useStoresStore } from '@/stores/stores'
-import { useItemsStore } from '@/stores/items'
 import { useLotsStore } from '@/stores/lots'
 import { useMajhisStore } from '@/stores/majhis'
 import AppLayout from '@/components/layouts/AppLayout.vue'
@@ -45,7 +44,6 @@ import DeliveryItemList from '@/components/features/deliveryItems/DeliveryItemLi
 const deliveryItemsStore = useDeliveryItemsStore()
 const deliveriesStore = useDeliveriesStore()
 const storesStore = useStoresStore()
-const itemsStore = useItemsStore()
 const lotsStore = useLotsStore()
 const majhisStore = useMajhisStore()
 
@@ -58,7 +56,6 @@ onMounted(async () => {
         deliveryItemsStore.fetchDeliveryItems(),
         deliveriesStore.fetchDeliveries(),
         storesStore.fetchStores(),
-        itemsStore.fetchItems(),
         lotsStore.fetchLots(),
         majhisStore.fetchMajhis()
     ])

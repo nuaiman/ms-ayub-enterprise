@@ -5,14 +5,13 @@ import { ref, computed } from 'vue'
 import type { GodownStoreBillStore, GodownStoreBillSortField, SortDirection } from '@/types/godownStoreBill'
 import { useStoresStore } from './stores'
 import { useLotsStore } from './lots'
-import { useItemsStore } from './items'
 import { useGodownsStore } from './godowns'
 import { useCustomersStore } from './customers'
+import { getOriginalStock } from '@/utils/storeReconstruction'
 
 export const useGodownStoreBillsStore = defineStore('godownStoreBills', () => {
     const storesStore = useStoresStore()
     const lotsStore = useLotsStore()
-    const itemsStore = useItemsStore()
     const godownsStore = useGodownsStore()
     const customersStore = useCustomersStore()
 
@@ -21,10 +20,7 @@ export const useGodownStoreBillsStore = defineStore('godownStoreBills', () => {
     const sortField = ref<GodownStoreBillSortField>('lot_name')
     const sortDirection = ref<SortDirection>('asc')
 
-    // ============= COMPUTED =============
-
     const storeBillData = computed<GodownStoreBillStore[]>(() => {
-        // Get all active stores with godown_cut > 0 and inventory > 0
         const stores = storesStore.stores.filter(s =>
             s.is_active &&
             s.godown_cut > 0 &&
@@ -33,28 +29,24 @@ export const useGodownStoreBillsStore = defineStore('godownStoreBills', () => {
 
         return stores.map(store => {
             const lot = lotsStore.getLotById(store.lot_id)
-            const item = lot ? itemsStore.getItemById(lot.item_id) : undefined
             const godown = godownsStore.getGodownById(store.godown_id)
-            const customer = item?.customer_id ? customersStore.getCustomerById(item.customer_id) : undefined
+            const customer = lot?.customer_id ? customersStore.getCustomerById(lot.customer_id) : undefined
 
-            // Calculate monthly bill
+            const original = getOriginalStock(store)
             let monthlyBill = 0
             if (store.store_bill_type === 'quantity') {
-                monthlyBill = store.quantity * store.godown_cut
+                monthlyBill = original.quantity * store.godown_cut
             } else {
-                monthlyBill = store.weight * store.godown_cut
+                monthlyBill = original.weight * store.godown_cut
             }
 
-            // Total billed from last_paid_amount
             const totalBilled = store.last_paid_amount || 0
-
-            // Outstanding amount
             const outstanding = monthlyBill - totalBilled
 
             return {
                 ...store,
                 lot_name: lot ? lotsStore.getLotDisplayName(lot) : `Lot #${store.lot_id}`,
-                item_name: item ? itemsStore.getItemDisplayName(item) : 'Unknown',
+                item_name: lot ? lotsStore.getLotDisplayName(lot) : 'Unknown',
                 customer_name: customer ? (customer.company_name || customer.contact_person || `Customer #${customer.id}`) : 'N/A',
                 godown_name: godown ? godown.name : `Godown #${store.godown_id}`,
                 monthly_bill: monthlyBill,
@@ -67,7 +59,6 @@ export const useGodownStoreBillsStore = defineStore('godownStoreBills', () => {
     const filteredStoreBills = computed(() => {
         let result = [...storeBillData.value]
 
-        // Filter by search
         if (searchQuery.value) {
             const query = searchQuery.value.toLowerCase()
             result = result.filter(s =>
@@ -78,7 +69,6 @@ export const useGodownStoreBillsStore = defineStore('godownStoreBills', () => {
             )
         }
 
-        // Filter by month
         if (monthFilter.value) {
             const [year, month] = monthFilter.value.split('-').map(Number)
 
@@ -97,7 +87,6 @@ export const useGodownStoreBillsStore = defineStore('godownStoreBills', () => {
             }
         }
 
-        // Sort
         result.sort((a, b) => {
             let comparison = 0
             switch (sortField.value) {
@@ -158,8 +147,6 @@ export const useGodownStoreBillsStore = defineStore('godownStoreBills', () => {
         return Array.from(months).sort((a, b) => b.localeCompare(a))
     })
 
-    // ============= ACTIONS =============
-
     const setSearchQuery = (query: string) => {
         searchQuery.value = query
     }
@@ -199,13 +186,11 @@ export const useGodownStoreBillsStore = defineStore('godownStoreBills', () => {
     }
 
     return {
-        // State
         searchQuery,
         monthFilter,
         sortField,
         sortDirection,
 
-        // Computed
         storeBillData,
         filteredStoreBills,
         totalOutstanding,
@@ -213,7 +198,6 @@ export const useGodownStoreBillsStore = defineStore('godownStoreBills', () => {
         totalPaid,
         availableMonths,
 
-        // Actions
         setSearchQuery,
         clearSearch,
         setSort,

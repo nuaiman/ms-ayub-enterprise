@@ -3,15 +3,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useLotsStore } from './lots'
-import { useItemsStore } from './items'
 import { useMajhisStore } from './majhis'
 import { useStoresStore } from './stores'
+import { getOriginalStockTotals } from '@/utils/storeReconstruction'
 import type { MajhiLotBill, MajhiLotBillSortField, SortDirection } from '@/types/majhiLotBill'
 import { push } from 'notivue'
 
 export const useMajhiLotBillsStore = defineStore('majhiLotBills', () => {
     const lotsStore = useLotsStore()
-    const itemsStore = useItemsStore()
     const majhisStore = useMajhisStore()
     const storesStore = useStoresStore()
 
@@ -20,37 +19,22 @@ export const useMajhiLotBillsStore = defineStore('majhiLotBills', () => {
     const sortField = ref<MajhiLotBillSortField>('created_at')
     const sortDirection = ref<SortDirection>('desc')
 
-    // ============= HELPERS =============
-
-    // Calculate bill amount for a lot based on majhi_bill_type
     const calculateBillAmount = (lot: any, stores: any[]): number => {
-        let totalQuantity = 0
-        let totalWeight = 0
+        const originals = getOriginalStockTotals(stores)
 
-        // Sum up quantities and weights from all stores
-        for (const store of stores) {
-            totalQuantity += store.quantity
-            totalWeight += store.weight
-        }
-
-        // Calculate based on majhi_bill_type
         switch (lot.majhi_bill_type) {
             case 'quantity':
-                return lot.majhi_cut * totalQuantity
+                return lot.majhi_cut * originals.quantity
             case 'weight':
-                return lot.majhi_cut * totalWeight
+                return lot.majhi_cut * originals.weight
             case 'job':
-                return lot.majhi_cut // Fixed amount for job
+                return lot.majhi_cut
             default:
                 return 0
         }
     }
 
-    // ============= COMPUTED =============
-
-    // Generate bills for all lots with majhi_id and majhi_cut > 0
     const bills = computed<MajhiLotBill[]>(() => {
-        // Get all active lots with majhi_id and majhi_cut > 0
         const activeLots = lotsStore.lots.filter(l =>
             l.is_active &&
             l.majhi_id !== null &&
@@ -60,37 +44,24 @@ export const useMajhiLotBillsStore = defineStore('majhiLotBills', () => {
         const result: MajhiLotBill[] = []
 
         for (const lot of activeLots) {
-            // Get all stores for this lot
             const stores = storesStore.getStoresByLotId(lot.id)
-
-            // Skip if no stores
             if (stores.length === 0) continue
 
-            // Get item and majhi info
-            const item = itemsStore.getItemById(lot.item_id)
             const majhiName = lot.majhi_id ? majhisStore.getMajhiName(lot.majhi_id) : 'No Majhi'
 
-            // Calculate bill amount
             const billAmount = calculateBillAmount(lot, stores)
-
-            // Get paid amount from lot
             const paidAmount = lot.majhi_total_paid || 0
 
-            // Determine status
             let status: 'unpaid' | 'paid' | 'cancelled' = 'unpaid'
             if (paidAmount >= billAmount) {
                 status = 'paid'
             }
 
-            // Sum up quantities and weights
-            let totalQuantity = 0
-            let totalWeight = 0
+            const originals = getOriginalStockTotals(stores)
+
             let quantityUnit = 'units'
             let weightUnit = 'kg'
-
             for (const store of stores) {
-                totalQuantity += store.quantity
-                totalWeight += store.weight
                 if (store.quantity_unit) quantityUnit = store.quantity_unit
                 if (store.weight_unit) weightUnit = store.weight_unit
             }
@@ -98,19 +69,19 @@ export const useMajhiLotBillsStore = defineStore('majhiLotBills', () => {
             result.push({
                 id: lot.id,
                 lot_id: lot.id,
-                item_name: item ? itemsStore.getItemDisplayName(item) : `Item #${lot.item_id}`,
+                item_name: lotsStore.getLotDisplayName(lot),
                 majhi_id: lot.majhi_id,
                 majhi_name: majhiName,
                 majhi_bill_type: lot.majhi_bill_type,
                 majhi_cut: lot.majhi_cut,
-                quantity: totalQuantity,
+                quantity: originals.quantity,
                 quantity_unit: quantityUnit,
-                weight: totalWeight,
+                weight: originals.weight,
                 weight_unit: weightUnit,
                 bill_amount: billAmount,
                 paid_amount: paidAmount,
                 status: status,
-                payment_date: null, // We don't track payment date separately for majhi
+                payment_date: null,
                 notes: lot.notes || null,
                 created_at: lot.created_at,
                 updated_at: lot.updated_at,
@@ -123,7 +94,6 @@ export const useMajhiLotBillsStore = defineStore('majhiLotBills', () => {
     const filteredBills = computed(() => {
         let result = [...bills.value]
 
-        // Filter by search query
         if (searchQuery.value) {
             const query = searchQuery.value.toLowerCase()
             result = result.filter(bill =>
@@ -135,12 +105,10 @@ export const useMajhiLotBillsStore = defineStore('majhiLotBills', () => {
             )
         }
 
-        // Filter by status
         if (statusFilter.value) {
             result = result.filter(bill => bill.status === statusFilter.value)
         }
 
-        // Sort
         result.sort((a, b) => {
             let comparison = 0
             switch (sortField.value) {
@@ -178,11 +146,8 @@ export const useMajhiLotBillsStore = defineStore('majhiLotBills', () => {
             .reduce((sum, b) => sum + b.bill_amount, 0)
     })
 
-    // ============= ACTIONS =============
-
-    // Mark a bill as paid (updates the lot's majhi_total_paid)
     const markBillAsPaid = async (lotId: number, payload: {
-        amount: number  // Payment amount
+        amount: number
         notes?: string | null
     }): Promise<boolean> => {
         try {
@@ -203,10 +168,8 @@ export const useMajhiLotBillsStore = defineStore('majhiLotBills', () => {
                 return true
             }
 
-            // Calculate new total paid (add payment amount to existing paid)
             const newTotalPaid = (lot.majhi_total_paid || 0) + payload.amount
 
-            // Validate: Cannot pay more than bill amount
             if (newTotalPaid > bill.bill_amount) {
                 const remaining = bill.bill_amount - bill.paid_amount
                 push.error(`Payment amount exceeds remaining balance of ${remaining.toFixed(2)}`)
@@ -235,7 +198,6 @@ export const useMajhiLotBillsStore = defineStore('majhiLotBills', () => {
         }
     }
 
-    // Cancel a bill (sets majhi_cut to 0 and removes majhi_id)
     const cancelBill = async (lotId: number): Promise<boolean> => {
         try {
             const lot = lotsStore.getLotById(lotId)
@@ -264,7 +226,6 @@ export const useMajhiLotBillsStore = defineStore('majhiLotBills', () => {
         }
     }
 
-    // ============= SORT =============
     const setSort = (field: MajhiLotBillSortField) => {
         if (sortField.value === field) {
             sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
@@ -274,7 +235,6 @@ export const useMajhiLotBillsStore = defineStore('majhiLotBills', () => {
         }
     }
 
-    // ============= SEARCH =============
     const setSearchQuery = (query: string) => {
         searchQuery.value = query
     }
@@ -286,8 +246,6 @@ export const useMajhiLotBillsStore = defineStore('majhiLotBills', () => {
     const setStatusFilter = (status: 'unpaid' | 'paid' | 'cancelled' | '') => {
         statusFilter.value = status
     }
-
-    // ============= UTILITIES =============
 
     const getBillById = (id: number): MajhiLotBill | undefined => {
         return bills.value.find(b => b.id === id)
@@ -364,13 +322,11 @@ export const useMajhiLotBillsStore = defineStore('majhiLotBills', () => {
     }
 
     return {
-        // State
         searchQuery,
         statusFilter,
         sortField,
         sortDirection,
 
-        // Computed
         bills,
         filteredBills,
         totalBills,
@@ -379,19 +335,14 @@ export const useMajhiLotBillsStore = defineStore('majhiLotBills', () => {
         totalAmount,
         totalUnpaidAmount,
 
-        // Actions
         markBillAsPaid,
         cancelBill,
 
-        // Sort
         setSort,
-
-        // Search
         setSearchQuery,
         clearSearch,
         setStatusFilter,
 
-        // Utilities
         getBillById,
         getBillsByLotId,
         getBillsByMajhiId,

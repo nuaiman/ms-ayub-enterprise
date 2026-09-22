@@ -42,3 +42,20 @@ const auth = useAuthStore()
 auth.initAuth().finally(() => {
     app.mount('#app')
 })
+
+
+
+
+// That's Batch 4 done.
+
+// Next up is Batch 5 — components. This is the biggest one:
+
+// DeliveryItemFields.vue, DeliveryItemForm.vue, DeliveryItemDetail.vue, DeliveryItemRow.vue, DeliveryItemList.vue
+
+// DeliveryForm.vue (inline item handling)
+
+// DamageForm.vue, DamageDetail.vue, DamageRow.vue
+
+// CustomerLedger.vue, CustomerLedgerPrintView.vue
+
+// Say "continue" and I'll start with the Lot* components.

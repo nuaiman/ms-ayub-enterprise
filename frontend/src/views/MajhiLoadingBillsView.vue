@@ -7,7 +7,7 @@
                 <div class="rounded-xl p-4 bg-(--color-surface) border border-(--color-border)">
                     <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Total Bills</p>
                     <p class="text-2xl font-bold text-(--color-text-primary) mt-1">{{ majhiLoadingBillsStore.totalBills
-                        }}</p>
+                    }}</p>
                 </div>
                 <div class="rounded-xl p-4 bg-(--color-surface) border border-(--color-border)">
                     <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Total Amount</p>
@@ -39,7 +39,6 @@ import { onMounted } from 'vue'
 import { useMajhiLoadingBillsStore } from '@/stores/majhiLoadingBills'
 import { useDeliveryItemsStore } from '@/stores/deliveryItems'
 import { useDeliveriesStore } from '@/stores/deliveries'
-import { useItemsStore } from '@/stores/items'
 import { useMajhisStore } from '@/stores/majhis'
 import { useLotsStore } from '@/stores/lots'
 import AppLayout from '@/components/layouts/AppLayout.vue'
@@ -49,7 +48,6 @@ import { formatCurrency } from '@/utils/currency'
 const majhiLoadingBillsStore = useMajhiLoadingBillsStore()
 const deliveryItemsStore = useDeliveryItemsStore()
 const deliveriesStore = useDeliveriesStore()
-const itemsStore = useItemsStore()
 const majhisStore = useMajhisStore()
 const lotsStore = useLotsStore()
 
@@ -57,7 +55,6 @@ onMounted(async () => {
     await Promise.all([
         deliveryItemsStore.fetchDeliveryItems(),
         deliveriesStore.fetchDeliveries(),
-        itemsStore.fetchItems(),
         majhisStore.fetchMajhis(),
         lotsStore.fetchLots(),
     ])

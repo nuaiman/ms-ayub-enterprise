@@ -16,41 +16,41 @@ import type { ApiResponse } from "@/types/api";
 import { push } from "notivue";
 import { useGlobalLoader } from "vue-global-loader";
 import type { AxiosError } from "axios";
-import { useItemsStore } from "./items";
+import { useCustomersStore } from "./customers";
 
 export const useLotsStore = defineStore("lots", () => {
   const { displayLoader, destroyLoader } = useGlobalLoader();
 
-  // ============= STATE =============
   const lots = ref<Lot[]>([]);
   const searchQuery = ref("");
   const sortField = ref<LotSortField>("lot_number");
   const sortDirection = ref<SortDirection>("asc");
 
-  // ============= COMPUTED =============
   const filteredLots = computed(() => {
     let result = [...lots.value];
 
-    // Filter by search query
     if (searchQuery.value) {
       const query = searchQuery.value.toLowerCase();
-      const itemsStore = useItemsStore();
+      const customersStore = useCustomersStore();
       result = result.filter(
         (lot) =>
           String(lot.lot_number).includes(query) ||
+          (lot.product_name && lot.product_name.toLowerCase().includes(query)) ||
+          (lot.category && lot.category.toLowerCase().includes(query)) ||
           lot.customer_charge_type.toLowerCase().includes(query) ||
           lot.majhi_bill_type.toLowerCase().includes(query) ||
           (lot.notes && lot.notes.toLowerCase().includes(query)) ||
-          itemsStore.getItemName(lot.item_id).toLowerCase().includes(query)
+          (lot.customer_id
+            ? customersStore.getCustomerName(lot.customer_id).toLowerCase().includes(query)
+            : false)
       );
     }
 
-    // Sort
     result.sort((a, b) => {
       let comparison = 0;
       switch (sortField.value) {
-        case "item_id":
-          comparison = a.item_id - b.item_id;
+        case "customer_id":
+          comparison = (a.customer_id || 0) - (b.customer_id || 0);
           break;
         case "lot_number":
           comparison = a.lot_number - b.lot_number;
@@ -59,7 +59,7 @@ export const useLotsStore = defineStore("lots", () => {
           comparison = a.customer_charge_type.localeCompare(b.customer_charge_type);
           break;
         case "is_active":
-          comparison = (a.is_active === b.is_active) ? 0 : a.is_active ? -1 : 1;
+          comparison = a.is_active === b.is_active ? 0 : a.is_active ? -1 : 1;
           break;
         case "created_at":
           comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
@@ -73,15 +73,9 @@ export const useLotsStore = defineStore("lots", () => {
     return result;
   });
 
-  const activeLots = computed(() => {
-    return lots.value.filter((lot) => lot.is_active);
-  });
-
+  const activeLots = computed(() => lots.value.filter((lot) => lot.is_active));
   const totalLots = computed(() => lots.value.length);
 
-  // ============= ACTIONS =============
-
-  // GET ALL LOTS
   const fetchLots = async () => {
     displayLoader();
     try {
@@ -101,7 +95,6 @@ export const useLotsStore = defineStore("lots", () => {
     }
   };
 
-  // SEARCH LOTS
   const searchLots = async (query: string) => {
     displayLoader();
     try {
@@ -123,12 +116,11 @@ export const useLotsStore = defineStore("lots", () => {
     }
   };
 
-  // GET LOTS BY ITEM
-  const fetchLotsByItem = async (itemId: number) => {
+  const fetchLotsByCustomer = async (customerId: number) => {
     displayLoader();
     try {
       const res = await api.get<ApiResponse<Lot[]>>("/lots", {
-        params: { item_id: itemId },
+        params: { customer_id: customerId },
       });
       if (!res.data.success) {
         push.error(res.data.message);
@@ -138,14 +130,13 @@ export const useLotsStore = defineStore("lots", () => {
       return lots.value;
     } catch (error) {
       const err = error as AxiosError<ApiResponse<null>>;
-      push.error(err.response?.data?.message || "Failed to fetch item lots");
+      push.error(err.response?.data?.message || "Failed to fetch customer lots");
       return [];
     } finally {
       destroyLoader();
     }
   };
 
-  // GET ACTIVE LOTS
   const fetchActiveLots = async () => {
     displayLoader();
     try {
@@ -167,35 +158,24 @@ export const useLotsStore = defineStore("lots", () => {
     }
   };
 
-  // CREATE LOT
   const createLot = async (payload: CreateLotPayload): Promise<Lot | null> => {
     displayLoader();
     try {
-      // Validate: item_id is required
-      if (!payload.item_id) {
-        push.error("Item is required");
-        return null;
-      }
-
-      // Validate: lot_number is required
       if (!payload.lot_number) {
         push.error("Lot number is required");
         return null;
       }
 
-      // Validate: customer_charge_type
       if (payload.customer_charge_type !== 'weight' && payload.customer_charge_type !== 'quantity') {
         push.error("customer_charge_type must be 'weight' or 'quantity'");
         return null;
       }
 
-      // Validate: majhi_bill_type
       if (payload.majhi_bill_type !== 'weight' && payload.majhi_bill_type !== 'quantity' && payload.majhi_bill_type !== 'job') {
         push.error("majhi_bill_type must be 'weight', 'quantity', or 'job'");
         return null;
       }
 
-      // Set defaults for new fields if not provided
       const requestPayload = {
         ...payload,
         customer_last_paid_through: payload.customer_last_paid_through || null,
@@ -221,7 +201,6 @@ export const useLotsStore = defineStore("lots", () => {
     }
   };
 
-  // UPDATE LOT
   const updateLot = async (id: number, payload: UpdateLotPayload): Promise<Lot | null> => {
     displayLoader();
     try {
@@ -245,7 +224,6 @@ export const useLotsStore = defineStore("lots", () => {
     }
   };
 
-  // UPDATE LOT CUSTOMER PAYMENT (storage bills)
   const updateLotCustomerPayment = async (id: number, paidThrough: string | null, paidAmount: number): Promise<Lot | null> => {
     displayLoader();
     try {
@@ -272,7 +250,6 @@ export const useLotsStore = defineStore("lots", () => {
     }
   };
 
-  // UPDATE LOT CUSTOMER UNLOAD PAYMENT (one-time unload bills)
   const updateLotCustomerUnloadPayment = async (id: number, paidAmount: number, paidThrough?: string | null): Promise<Lot | null> => {
     displayLoader();
     try {
@@ -299,7 +276,6 @@ export const useLotsStore = defineStore("lots", () => {
     }
   };
 
-  // UPDATE LOT MAJHI PAYMENT
   const updateLotMajhiPayment = async (id: number, totalPaid: number): Promise<Lot | null> => {
     displayLoader();
     try {
@@ -325,7 +301,6 @@ export const useLotsStore = defineStore("lots", () => {
     }
   };
 
-  // TOGGLE LOT ACTIVE
   const toggleLotActive = async (id: number): Promise<boolean> => {
     displayLoader();
     try {
@@ -349,7 +324,6 @@ export const useLotsStore = defineStore("lots", () => {
     }
   };
 
-  // DELETE LOT
   const deleteLot = async (id: number): Promise<boolean> => {
     displayLoader();
     try {
@@ -370,7 +344,6 @@ export const useLotsStore = defineStore("lots", () => {
     }
   };
 
-  // ============= SORT =============
   const setSort = (field: LotSortField) => {
     if (sortField.value === field) {
       sortDirection.value = sortDirection.value === "asc" ? "desc" : "asc";
@@ -380,7 +353,6 @@ export const useLotsStore = defineStore("lots", () => {
     }
   };
 
-  // ============= SEARCH =============
   const setSearchQuery = (query: string) => {
     searchQuery.value = query;
   };
@@ -389,47 +361,37 @@ export const useLotsStore = defineStore("lots", () => {
     searchQuery.value = "";
   };
 
-  // ============= UTILITIES =============
-
-  // Get lot display name
+  // Display name for a lot: product_name → category → Lot #<number>
   const getLotDisplayName = (lot: Lot): string => {
-    const itemsStore = useItemsStore();
-    const itemName = itemsStore.getItemName(lot.item_id);
-    return `${itemName} - Lot #${lot.lot_number}`;
+    if (lot.product_name) return lot.product_name;
+    if (lot.category) return lot.category;
+    return `Lot #${lot.lot_number}`;
   };
 
-  // Get lot name by ID
   const getLotName = (id: number): string => {
     const lot = lots.value.find((l) => l.id === id);
     if (!lot) return `Lot #${id}`;
     return getLotDisplayName(lot);
   };
 
-  // Get lot by ID
   const getLotById = (id: number): Lot | undefined => {
     return lots.value.find((l) => l.id === id);
   };
 
-  // Get lots by item ID
-  const getLotsByItemId = (itemId: number): Lot[] => {
-    return lots.value.filter((lot) => lot.item_id === itemId);
+  const getLotsByCustomerId = (customerId: number): Lot[] => {
+    return lots.value.filter((lot) => lot.customer_id === customerId);
   };
 
-  // Get unload bill amount for a lot
   const getUnloadBillAmount = (lot: Lot): number => {
-    // This will be calculated in the customerLotBills store
-    // Returns 0 if no unload_rate
     return lot.unload_rate || 0;
   };
 
-  // Check if unload bill is paid
   const isUnloadBillPaid = (lot: Lot): boolean => {
     const billAmount = getUnloadBillAmount(lot);
     if (billAmount === 0) return true;
     return (lot.customer_paid_unload_amount || 0) >= billAmount;
   };
 
-  // Format types for display
   const formatCustomerChargeType = (type: CustomerChargeType): string => {
     return type.charAt(0).toUpperCase() + type.slice(1);
   };
@@ -438,32 +400,21 @@ export const useLotsStore = defineStore("lots", () => {
     return type.charAt(0).toUpperCase() + type.slice(1);
   };
 
-  // Get majhi name for a lot
-  const getMajhiNameForLot = (lot: Lot): string => {
-    if (!lot.majhi_id) return "No Majhi Assigned";
-    // This will be resolved by the majhis store
-    return `Majhi #${lot.majhi_id}`;
-  };
-
   return {
-    // State
     lots,
     searchQuery,
     sortField,
     sortDirection,
 
-    // Computed
     filteredLots,
     activeLots,
     totalLots,
 
-    // Fetch
     fetchLots,
     searchLots,
-    fetchLotsByItem,
+    fetchLotsByCustomer,
     fetchActiveLots,
 
-    // CRUD
     createLot,
     updateLot,
     updateLotCustomerPayment,
@@ -472,22 +423,17 @@ export const useLotsStore = defineStore("lots", () => {
     toggleLotActive,
     deleteLot,
 
-    // Sort
     setSort,
-
-    // Search
     setSearchQuery,
     clearSearch,
 
-    // Utilities
     getLotDisplayName,
     getLotName,
     getLotById,
-    getLotsByItemId,
+    getLotsByCustomerId,
     getUnloadBillAmount,
     isUnloadBillPaid,
     formatCustomerChargeType,
     formatMajhiBillType,
-    getMajhiNameForLot,
   };
 });

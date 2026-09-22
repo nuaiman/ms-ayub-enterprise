@@ -33,32 +33,24 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useLotsStore } from '@/stores/lots'
-import { useItemsStore } from '@/stores/items'
+import { useCustomersStore } from '@/stores/customers'
 import { useMajhisStore } from '@/stores/majhis'
 import AppLayout from '@/components/layouts/AppLayout.vue'
 import LotList from '@/components/features/lots/LotList.vue'
 
 const lotsStore = useLotsStore()
-const itemsStore = useItemsStore()
+const customersStore = useCustomersStore()
 const majhisStore = useMajhisStore()
 
-const activeCount = computed(() => {
-    return lotsStore.lots.filter(l => l.is_active).length
-})
-
-const inactiveCount = computed(() => {
-    return lotsStore.lots.filter(l => !l.is_active).length
-})
-
-const withMajhiCount = computed(() => {
-    return lotsStore.lots.filter(l => l.majhi_id).length
-})
+const activeCount = computed(() => lotsStore.lots.filter(l => l.is_active).length)
+const inactiveCount = computed(() => lotsStore.lots.filter(l => !l.is_active).length)
+const withMajhiCount = computed(() => lotsStore.lots.filter(l => l.majhi_id).length)
 
 onMounted(async () => {
     await Promise.all([
         lotsStore.fetchLots(),
-        itemsStore.fetchItems(),
-        majhisStore.fetchMajhis()
+        customersStore.fetchCustomers(),
+        majhisStore.fetchMajhis(),
     ])
 })
 </script>

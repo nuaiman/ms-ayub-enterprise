@@ -14,110 +14,188 @@
             </div>
 
             <div class="flex-1 min-w-0">
-                <h2 class="text-2xl font-bold text-(--color-text-primary)">Delivery Item #{{ deliveryItem.id }}</h2>
+                <h2 class="text-2xl font-bold text-(--color-text-primary)">{{ lotDisplayName }}</h2>
                 <div class="flex items-center gap-2 flex-wrap mt-1">
-                    <span class="text-sm text-(--color-text-secondary)">Delivery #{{ deliveryItem.delivery_id }}</span>
+                    <span class="text-sm text-(--color-text-secondary)">Lot #{{ lotNumber }}</span>
                     <span class="w-1 h-1 rounded-full bg-(--color-text-secondary)"></span>
-                    <span class="text-sm text-(--color-text-secondary)">{{ getItemName(deliveryItem.item_id) }}</span>
+                    <span class="text-sm text-(--color-text-secondary)">{{ customerName }}</span>
+                    <span class="w-1 h-1 rounded-full bg-(--color-text-secondary)"></span>
+                    <span class="text-sm text-(--color-text-secondary)">{{ formatDateShort(deliveryItem.created_at)
+                        }}</span>
+                    <span v-if="majhiName !== 'â€”'" class="w-1 h-1 rounded-full bg-(--color-text-secondary)"></span>
+                    <span v-if="majhiName !== 'â€”'" class="text-sm text-(--color-text-secondary)">{{ majhiName
+                        }}</span>
                 </div>
             </div>
         </div>
 
-        <!-- Meta -->
-        <div class="flex flex-wrap items-center gap-4 pb-4 border-b border-(--color-border)">
-            <span class="text-xs text-(--color-text-secondary)">ID: {{ deliveryItem.id }}</span>
-            <span class="w-px h-4 bg-(--color-border)"></span>
-            <span class="text-xs text-(--color-text-secondary)">Created: {{ formatDateTime(deliveryItem.created_at)
-                }}</span>
-            <span class="w-px h-4 bg-(--color-border)"></span>
-            <span class="text-xs text-(--color-text-secondary)">Updated: {{ formatDateTime(deliveryItem.updated_at)
-                }}</span>
+        <!-- Summary strip -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="rounded-xl p-3 bg-(--color-surface) border border-(--color-border)">
+                <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Quantity</p>
+                <p class="text-lg font-bold text-(--color-text-primary) mt-1">{{ deliveryItem.quantity }}</p>
+                <p class="text-xs text-(--color-text-secondary) mt-0.5">{{ deliveryItem.quantity_unit }}</p>
+            </div>
+            <div class="rounded-xl p-3 bg-(--color-surface) border border-(--color-border)">
+                <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Weight</p>
+                <p class="text-lg font-bold text-(--color-text-primary) mt-1">{{ deliveryItem.weight }}</p>
+                <p class="text-xs text-(--color-text-secondary) mt-0.5">{{ deliveryItem.weight_unit }}</p>
+            </div>
+            <div class="rounded-xl p-3 bg-(--color-surface) border border-(--color-border)">
+                <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Loading Bill</p>
+                <p class="text-lg font-bold text-(--color-blue) mt-1">{{ formatCurrency(loadingBillAmount) }}</p>
+                <p class="text-xs text-(--color-text-secondary) mt-0.5 capitalize">{{ deliveryItem.customer_charge_type
+                    }} Ã— {{ formatCurrency(deliveryItem.loading_rate) }}</p>
+            </div>
+            <div class="rounded-xl p-3 bg-(--color-surface) border border-(--color-border)">
+                <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Paid</p>
+                <p class="text-lg font-bold text-(--color-green) mt-1">{{
+                    formatCurrency(deliveryItem.customer_paid_unload_amount) }}</p>
+                <p class="text-xs text-(--color-text-secondary) mt-0.5">toward loading bill</p>
+            </div>
         </div>
 
-        <!-- Details -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-                <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Delivery</p>
-                <p class="text-sm text-(--color-text-primary)">#{{ deliveryItem.delivery_id }}</p>
+        <!-- Delivery item information -->
+        <section class="rounded-xl border border-(--color-border) bg-(--color-surface)">
+            <div class="px-4 py-3 border-b border-(--color-border)">
+                <h3 class="text-sm font-semibold text-(--color-text-primary) uppercase tracking-wider">Delivery Item
+                    Information</h3>
             </div>
-
-            <div>
-                <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Store</p>
-                <p class="text-sm text-(--color-text-primary)">{{ getStoreDisplayName(store) }}</p>
-            </div>
-
-            <div>
-                <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Item</p>
-                <p class="text-sm text-(--color-text-primary)">{{ getItemName(deliveryItem.item_id) }}</p>
-            </div>
-
-            <div>
-                <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Lot</p>
-                <p class="text-sm text-(--color-text-primary)">{{ getLotName(deliveryItem.lot_id) }}</p>
-            </div>
-
-            <div>
-                <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Quantity</p>
-                <p class="text-sm text-(--color-text-primary)">{{ deliveryItem.quantity }} {{ deliveryItem.quantity_unit
-                    }}</p>
-            </div>
-
-            <div>
-                <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Weight</p>
-                <p class="text-sm text-(--color-text-primary)">{{ deliveryItem.weight }} {{ deliveryItem.weight_unit }}
-                </p>
-            </div>
-
-            <div>
-                <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Majhi</p>
-                <p class="text-sm text-(--color-text-primary)">{{ getMajhiName(deliveryItem.majhi_id) }}</p>
-            </div>
-
-            <div>
-                <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Loading Rate</p>
-                <p class="text-sm text-(--color-text-primary)">{{ formatCurrency(deliveryItem.loading_rate) }}</p>
-            </div>
-
-            <div>
-                <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Majhi Cut</p>
-                <p class="text-sm text-(--color-text-primary)">{{ formatCurrency(deliveryItem.majhi_cut) }}</p>
-            </div>
-
-            <div>
-                <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Vehicle Number</p>
-                <p class="text-sm text-(--color-text-primary)">{{ deliveryItem.vehicle_number || '—' }}</p>
-            </div>
-
-            <div>
-                <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Driver Number</p>
-                <p class="text-sm text-(--color-text-primary)">{{ deliveryItem.driver_number || '—' }}</p>
-            </div>
-
-            <!-- Billing Info (read-only) -->
-            <div class="md:col-span-2 border-t border-(--color-border) pt-4 mt-2">
-                <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider mb-3">Billing Info
-                    (Snapshot at Delivery)</p>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <p class="text-xs text-(--color-text-secondary)">Customer Charge Type</p>
-                        <p class="text-sm text-(--color-text-primary)">{{
-                            getChargeTypeLabel(deliveryItem.customer_charge_type) }}</p>
+            <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                <div>
+                    <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Product</p>
+                    <p class="text-sm text-(--color-text-primary)">{{ lotDisplayName }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Lot</p>
+                    <p class="text-sm text-(--color-text-primary)">#{{ lotNumber }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Customer</p>
+                    <p class="text-sm text-(--color-text-primary)">{{ customerName }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Godown</p>
+                    <p class="text-sm text-(--color-text-primary)">{{ godownName }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Majhi</p>
+                    <p class="text-sm text-(--color-text-primary)">{{ majhiName }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Vehicle
+                        Number</p>
+                    <p class="text-sm text-(--color-text-primary)">{{ deliveryItem.vehicle_number || 'â€”' }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Driver
+                        Number</p>
+                    <p class="text-sm text-(--color-text-primary)">{{ deliveryItem.driver_number || 'â€”' }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Quantity</p>
+                    <p class="text-sm text-(--color-text-primary)">{{ deliveryItem.quantity }} {{
+                        deliveryItem.quantity_unit }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Weight</p>
+                    <p class="text-sm text-(--color-text-primary)">{{ deliveryItem.weight }} {{
+                        deliveryItem.weight_unit }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Created</p>
+                    <p class="text-sm text-(--color-text-primary)">{{ formatDate(deliveryItem.created_at) }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Updated</p>
+                    <p class="text-sm text-(--color-text-primary)">{{ formatDate(deliveryItem.updated_at) }}</p>
+                </div>
+                <div v-if="deliveryItem.notes" class="md:col-span-2">
+                    <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Notes</p>
+                    <div class="p-3 rounded-lg bg-(--color-muted-bg)/50 border border-(--color-border) mt-1">
+                        <p class="text-sm text-(--color-text-secondary) whitespace-pre-wrap">{{ deliveryItem.notes }}
+                        </p>
                     </div>
-                    <div>
-                        <p class="text-xs text-(--color-text-secondary)">Majhi Bill Type</p>
-                        <p class="text-sm text-(--color-text-primary)">{{
-                            getMajhiBillTypeLabel(deliveryItem.majhi_bill_type) }}</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Billing snapshot -->
+        <section class="rounded-xl border border-(--color-border) bg-(--color-surface)">
+            <div class="px-4 py-3 border-b border-(--color-border)">
+                <h3 class="text-sm font-semibold text-(--color-text-primary) uppercase tracking-wider">Billing Snapshot
+                </h3>
+            </div>
+            <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="p-3 rounded-lg border border-(--color-border) bg-(--color-muted-bg)/20">
+                    <p class="text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wider">Customer
+                        Loading</p>
+                    <div class="mt-2 grid grid-cols-3 gap-2 text-xs">
+                        <div>
+                            <p class="text-(--color-text-secondary)">Charge Type</p>
+                            <p class="font-semibold text-(--color-text-primary) capitalize">{{
+                                deliveryItem.customer_charge_type }}</p>
+                        </div>
+                        <div>
+                            <p class="text-(--color-text-secondary)">Loading Rate</p>
+                            <p class="font-semibold text-(--color-text-primary)">{{
+                                formatCurrency(deliveryItem.loading_rate) }}</p>
+                        </div>
+                        <div>
+                            <p class="text-(--color-text-secondary)">Bill Amount</p>
+                            <p class="font-semibold text-(--color-blue)">{{ formatCurrency(loadingBillAmount) }}</p>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-(--color-border) grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                            <p class="text-(--color-text-secondary)">Paid</p>
+                            <p class="font-semibold text-(--color-green)">{{
+                                formatCurrency(deliveryItem.customer_paid_unload_amount) }}</p>
+                        </div>
+                        <div>
+                            <p class="text-(--color-text-secondary)">Due</p>
+                            <p class="font-semibold"
+                                :class="customerDue > 0 ? 'text-(--color-red)' : 'text-(--color-green)'">
+                                {{ formatCurrency(customerDue) }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-3 rounded-lg border border-(--color-border) bg-(--color-muted-bg)/20">
+                    <p class="text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wider">Majhi Cut
+                    </p>
+                    <div class="mt-2 grid grid-cols-3 gap-2 text-xs">
+                        <div>
+                            <p class="text-(--color-text-secondary)">Bill Type</p>
+                            <p class="font-semibold text-(--color-text-primary) capitalize">{{
+                                deliveryItem.majhi_bill_type }}</p>
+                        </div>
+                        <div>
+                            <p class="text-(--color-text-secondary)">Majhi Cut</p>
+                            <p class="font-semibold text-(--color-text-primary)">{{
+                                formatCurrency(deliveryItem.majhi_cut) }}</p>
+                        </div>
+                        <div>
+                            <p class="text-(--color-text-secondary)">Bill Amount</p>
+                            <p class="font-semibold text-(--color-blue)">{{ formatCurrency(majhiBillAmount) }}</p>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-(--color-border) grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                            <p class="text-(--color-text-secondary)">Paid</p>
+                            <p class="font-semibold text-(--color-green)">{{
+                                formatCurrency(deliveryItem.majhi_total_paid) }}</p>
+                        </div>
+                        <div>
+                            <p class="text-(--color-text-secondary)">Due</p>
+                            <p class="font-semibold"
+                                :class="majhiDue > 0 ? 'text-(--color-red)' : 'text-(--color-green)'">
+                                {{ formatCurrency(majhiDue) }}</p>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <div v-if="deliveryItem.notes" class="md:col-span-2">
-                <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Notes</p>
-                <div class="p-4 rounded-lg bg-(--color-muted-bg)/50 border border-(--color-border)">
-                    <p class="text-sm text-(--color-text-secondary) whitespace-pre-wrap">{{ deliveryItem.notes }}</p>
-                </div>
-            </div>
-        </div>
+        </section>
 
         <!-- Actions -->
         <div class="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-(--color-border)">
@@ -136,12 +214,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { DeliveryItem } from '@/types/deliveryItem'
-import type { Store } from '@/types/store'
-import { useStoresStore } from '@/stores/stores'
-import { useItemsStore } from '@/stores/items'
 import { useLotsStore } from '@/stores/lots'
+import { useStoresStore } from '@/stores/stores'
+import { useGodownsStore } from '@/stores/godowns'
+import { useCustomersStore } from '@/stores/customers'
 import { useMajhisStore } from '@/stores/majhis'
-import { useDeliveryItemsStore } from '@/stores/deliveryItems'
 import { formatCurrency } from '@/utils/currency'
 
 const props = defineProps<{
@@ -154,45 +231,87 @@ const emit = defineEmits<{
     'updated': []
 }>()
 
-const storesStore = useStoresStore()
-const itemsStore = useItemsStore()
 const lotsStore = useLotsStore()
+const storesStore = useStoresStore()
+const godownsStore = useGodownsStore()
+const customersStore = useCustomersStore()
 const majhisStore = useMajhisStore()
-const deliveryItemsStore = useDeliveryItemsStore()
 
-const store = computed(() => {
-    if (!props.deliveryItem) return undefined
-    return storesStore.getStoreById(props.deliveryItem.store_id)
+const lot = computed(() => {
+    if (!props.deliveryItem) return null
+    return lotsStore.getLotById(props.deliveryItem.lot_id) || null
 })
 
-const getStoreDisplayName = (store: Store | undefined): string => {
-    if (!store) return `Store #${props.deliveryItem?.store_id || 'Unknown'}`
-    return storesStore.getStoreDisplayName(store)
-}
+const lotNumber = computed(() => lot.value?.lot_number ?? 'â€”')
 
-const getItemName = (id: number): string => itemsStore.getItemName(id)
-const getLotName = (id: number): string => lotsStore.getLotName(id)
+const lotDisplayName = computed(() => {
+    if (!lot.value) return 'â€”'
+    return lotsStore.getLotDisplayName(lot.value)
+})
 
-const getMajhiName = (id: number | null): string => {
-    if (!id) return '—'
-    return majhisStore.getMajhiName(id)
-}
+const store = computed(() => {
+    if (!props.deliveryItem) return null
+    return storesStore.getStoreById(props.deliveryItem.store_id) || null
+})
 
-const getChargeTypeLabel = (chargeType: 'weight' | 'quantity'): string => {
-    return deliveryItemsStore.getChargeTypeLabel(chargeType)
-}
+const godownName = computed(() => {
+    if (!store.value) return 'â€”'
+    return godownsStore.getGodownName(store.value.godown_id)
+})
 
-const getMajhiBillTypeLabel = (billType: 'weight' | 'quantity' | 'job'): string => {
-    return deliveryItemsStore.getMajhiBillTypeLabel(billType)
-}
+const customerName = computed(() => {
+    if (!lot.value?.customer_id) return 'â€”'
+    return customersStore.getCustomerName(lot.value.customer_id)
+})
 
-const formatDateTime = (dateStr: string): string => {
+const majhiName = computed(() => {
+    if (!props.deliveryItem?.majhi_id) return 'â€”'
+    return majhisStore.getMajhiName(props.deliveryItem.majhi_id)
+})
+
+const loadingBillAmount = computed(() => {
+    if (!props.deliveryItem) return 0
+    const rate = props.deliveryItem.loading_rate || 0
+    if (props.deliveryItem.customer_charge_type === 'quantity') {
+        return rate * (props.deliveryItem.quantity || 0)
+    }
+    return rate * (props.deliveryItem.weight || 0)
+})
+
+const majhiBillAmount = computed(() => {
+    if (!props.deliveryItem) return 0
+    const cut = props.deliveryItem.majhi_cut || 0
+    switch (props.deliveryItem.majhi_bill_type) {
+        case 'quantity':
+            return cut * (props.deliveryItem.quantity || 0)
+        case 'weight':
+            return cut * (props.deliveryItem.weight || 0)
+        case 'job':
+            return cut
+        default:
+            return 0
+    }
+})
+
+const customerDue = computed(() => {
+    if (!props.deliveryItem) return 0
+    return Math.max(0, loadingBillAmount.value - (props.deliveryItem.customer_paid_unload_amount || 0))
+})
+
+const majhiDue = computed(() => {
+    if (!props.deliveryItem) return 0
+    return Math.max(0, majhiBillAmount.value - (props.deliveryItem.majhi_total_paid || 0))
+})
+
+const formatDate = (dateStr: string): string => {
     return new Date(dateStr).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    })
+}
+
+const formatDateShort = (dateStr: string): string => {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric',
     })
 }
 </script>

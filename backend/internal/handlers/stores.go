@@ -11,7 +11,7 @@ import (
 )
 
 // =============================================================================
-// STORE MANAGEMENT
+// GODOWN MANAGEMENT
 // =============================================================================
 
 // CreateStoreHandler - POST /api/stores
@@ -87,18 +87,6 @@ func (h *Handler) CreateStoreHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if !exists {
 		utils.ErrorJson(w, http.StatusNotFound, "godown not found")
-		return
-	}
-
-	// Check if store already exists for this lot and godown
-	exists, err = h.app.Models.Store.ExistsByLotAndGodown(r.Context(), req.LotID, req.GodownID)
-	if err != nil {
-		log.Printf("[STORES] CreateStoreHandler ERROR: failed to check existing store - %v", err)
-		utils.ErrorJson(w, http.StatusInternalServerError, "failed to verify store")
-		return
-	}
-	if exists {
-		utils.ErrorJson(w, http.StatusConflict, "store already exists for this lot and godown")
 		return
 	}
 

@@ -2,11 +2,11 @@
 <template>
     <nav class="flex-1 overflow-y-auto py-3 px-2.5 space-y-0.5">
         <!-- Dashboard -->
-        <AppSidebarNavItem to="/dashboard" icon="📊" label="Dashboard" :active="$route.path === '/dashboard'"
+        <AppSidebarNavItem to="/dashboard" icon="dashboard" label="Dashboard" :active="$route.path === '/dashboard'"
             :collapsed="collapsed" @click="closeSidebar" />
 
         <!-- Customers -->
-        <AppSidebarNavItem to="/customers" icon="👥" label="Customers" :active="$route.path === '/customers'"
+        <AppSidebarNavItem to="/customers" icon="users" label="Customers" :active="$route.path === '/customers'"
             :collapsed="collapsed" @click="closeSidebar" />
 
         <!-- Navigation Groups -->
@@ -14,7 +14,7 @@
             @close="closeSidebar" />
 
         <!-- Support -->
-        <AppSidebarNavItem to="/support" icon="❓" label="Support" :active="$route.path === '/support'"
+        <AppSidebarNavItem to="/support" icon="support" label="Support" :active="$route.path === '/support'"
             :collapsed="collapsed" @click="closeSidebar" />
     </nav>
 </template>

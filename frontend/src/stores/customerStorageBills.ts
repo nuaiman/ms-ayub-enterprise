@@ -4,9 +4,9 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useLotsStore } from './lots'
 import { useStoresStore } from './stores'
-import { useItemsStore } from './items'
 import { useCustomersStore } from './customers'
-import { push } from 'notivue'
+import { useDeliveryItemsStore } from './deliveryItems'
+import { useDamagesStore } from './damages'
 
 export interface CustomerStorageBill {
     id: number
@@ -34,123 +34,165 @@ export interface CustomerStorageBill {
 export const useCustomerStorageBillsStore = defineStore('customerStorageBills', () => {
     const lotsStore = useLotsStore()
     const storesStore = useStoresStore()
-    const itemsStore = useItemsStore()
     const customersStore = useCustomersStore()
+    const deliveryItemsStore = useDeliveryItemsStore()
+    const damagesStore = useDamagesStore()
 
     const searchQuery = ref('')
     const monthFilter = ref('')
     const sortField = ref<'customer_name' | 'item_name' | 'monthly_bill' | 'outstanding' | 'total_billed'>('customer_name')
     const sortDirection = ref<'asc' | 'desc'>('asc')
 
-    // ============= HELPERS =============
-
-    // Calculate months between two dates
     const getMonthsBetween = (start: Date, end: Date): number => {
         const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth())
-        return Math.max(1, months)
+        return Math.max(1, months + 1)
     }
 
-    // Get current month start date
-    const getCurrentMonthStart = (): Date => {
-        const now = new Date()
-        return new Date(now.getFullYear(), now.getMonth(), 1)
+    const startOfMonth = (d: Date): Date => new Date(d.getFullYear(), d.getMonth(), 1)
+
+    const getOutflowSince = (storeId: number, since: Date): { quantity: number; weight: number } => {
+        let quantity = 0
+        let weight = 0
+
+        const deliveryItems = deliveryItemsStore.deliveryItems.filter(di => di.store_id === storeId)
+        for (const di of deliveryItems) {
+            const created = new Date(di.created_at)
+            if (created >= since) {
+                quantity += di.quantity || 0
+                weight += di.weight || 0
+            }
+        }
+
+        const damages = damagesStore.damages.filter(d => d.store_id === storeId)
+        for (const d of damages) {
+            const when = d.damage_date ? new Date(d.damage_date) : new Date(d.created_at)
+            if (when >= since) {
+                quantity += d.quantity || 0
+                weight += d.weight || 0
+            }
+        }
+
+        return { quantity, weight }
     }
 
-    // ============= COMPUTED =============
+    const getOpeningBalance = (
+        currentQuantity: number,
+        currentWeight: number,
+        storeId: number,
+        monthStart: Date,
+    ): { quantity: number; weight: number } => {
+        const outflow = getOutflowSince(storeId, monthStart)
+        return {
+            quantity: Math.max(0, currentQuantity + outflow.quantity),
+            weight: Math.max(0, currentWeight + outflow.weight),
+        }
+    }
 
     const customerBillData = computed<CustomerStorageBill[]>(() => {
-        // Get all lots with customer_storage_rate > 0 (even if inactive)
-        const allLots = lotsStore.lots.filter(l =>
-            l.customer_storage_rate > 0
-        )
+        const allLots = lotsStore.lots.filter(l => l.customer_storage_rate > 0)
+        const now = new Date()
+        const currentMonthStart = startOfMonth(now)
 
-        const currentMonthStart = getCurrentMonthStart()
         const result: CustomerStorageBill[] = []
 
         for (const lot of allLots) {
-            // Get all stores for this lot
             const stores = storesStore.getStoresByLotId(lot.id)
-
-            // Skip if no stores
             if (stores.length === 0) continue
 
-            // Sum up quantities and weights from all stores
-            let totalQuantity = 0
-            let totalWeight = 0
             let quantityUnit = 'units'
             let weightUnit = 'kg'
-
-            // Track billing period across all stores
             let billingStart: Date | null = null
             let billingEnd: Date | null = null
 
             for (const store of stores) {
-                totalQuantity += store.quantity
-                totalWeight += store.weight
                 if (store.quantity_unit) quantityUnit = store.quantity_unit
                 if (store.weight_unit) weightUnit = store.weight_unit
 
-                // Track earliest billing_start
                 if (store.billing_start) {
-                    const start = new Date(store.billing_start)
-                    if (!billingStart || start < billingStart) {
-                        billingStart = start
-                    }
+                    const s = new Date(store.billing_start)
+                    if (!billingStart || s < billingStart) billingStart = s
                 }
-
-                // Track latest billing_end (null means active)
                 if (store.billing_end) {
-                    const end = new Date(store.billing_end)
-                    if (!billingEnd || end > billingEnd) {
-                        billingEnd = end
-                    }
+                    const e = new Date(store.billing_end)
+                    if (!billingEnd || e > billingEnd) billingEnd = e
                 }
             }
 
-            // If no billing_start from stores, skip this lot
-            if (!billingStart) {
-                continue
+            if (!billingStart) continue
+
+            const billAsOf = billingEnd && billingEnd < currentMonthStart
+                ? startOfMonth(billingEnd)
+                : currentMonthStart
+
+            let openingQuantity = 0
+            let openingWeight = 0
+            for (const store of stores) {
+                const opening = getOpeningBalance(
+                    store.quantity,
+                    store.weight,
+                    store.id,
+                    billAsOf,
+                )
+                openingQuantity += opening.quantity
+                openingWeight += opening.weight
             }
 
-            // Calculate monthly bill
             let monthlyBill = 0
             if (lot.customer_charge_type === 'quantity') {
-                monthlyBill = totalQuantity * lot.customer_storage_rate
+                monthlyBill = openingQuantity * lot.customer_storage_rate
             } else {
-                monthlyBill = totalWeight * lot.customer_storage_rate
+                monthlyBill = openingWeight * lot.customer_storage_rate
             }
 
-            // Calculate duration in months
-            const endDate = billingEnd || currentMonthStart
-            const monthsBilled = getMonthsBetween(billingStart, endDate)
+            let totalBilled = 0
+            const cursor = startOfMonth(billingStart)
+            const lastMonth = billAsOf
 
-            // Total billed = monthly_bill × months_billed
-            const totalBilled = monthlyBill * monthsBilled
+            while (cursor <= lastMonth) {
+                let monthOpeningQuantity = 0
+                let monthOpeningWeight = 0
+                for (const store of stores) {
+                    const opening = getOpeningBalance(
+                        store.quantity,
+                        store.weight,
+                        store.id,
+                        cursor,
+                    )
+                    monthOpeningQuantity += opening.quantity
+                    monthOpeningWeight += opening.weight
+                }
 
-            // Get item and customer info
-            const item = itemsStore.getItemById(lot.item_id)
-            const customerId = item?.customer_id || null
+                if (lot.customer_charge_type === 'quantity') {
+                    totalBilled += monthOpeningQuantity * lot.customer_storage_rate
+                } else {
+                    totalBilled += monthOpeningWeight * lot.customer_storage_rate
+                }
+
+                cursor.setMonth(cursor.getMonth() + 1)
+            }
+
+            const monthsBilled = getMonthsBetween(billingStart, billAsOf)
+
+            const customerId = lot.customer_id || null
             const customerName = customerId ? customersStore.getCustomerName(customerId) : 'No Customer'
 
-            // Total paid from lot
             const totalPaid = lot.customer_last_paid_amount || 0
             const outstanding = totalBilled - totalPaid
 
-            // Always include the bill, even if fully paid (shows as paid status)
             result.push({
                 id: lot.id,
                 lot_id: lot.id,
-                item_name: item ? itemsStore.getItemDisplayName(item) : `Item #${lot.item_id}`,
+                item_name: lotsStore.getLotDisplayName(lot),
                 customer_id: customerId,
                 customer_name: customerName,
                 customer_charge_type: lot.customer_charge_type,
                 customer_storage_rate: lot.customer_storage_rate,
-                quantity: totalQuantity,
+                quantity: openingQuantity,
                 quantity_unit: quantityUnit,
-                weight: totalWeight,
+                weight: openingWeight,
                 weight_unit: weightUnit,
                 monthly_bill: monthlyBill,
-                billing_start: billingStart ? billingStart.toISOString() : null,
+                billing_start: billingStart.toISOString(),
                 billing_end: billingEnd ? billingEnd.toISOString() : null,
                 months_billed: monthsBilled,
                 total_billed: totalBilled,
@@ -167,7 +209,6 @@ export const useCustomerStorageBillsStore = defineStore('customerStorageBills', 
     const filteredCustomerBills = computed(() => {
         let result = [...customerBillData.value]
 
-        // Filter by search
         if (searchQuery.value) {
             const query = searchQuery.value.toLowerCase()
             result = result.filter(b =>
@@ -177,7 +218,6 @@ export const useCustomerStorageBillsStore = defineStore('customerStorageBills', 
             )
         }
 
-        // Filter by month (billing_start month)
         if (monthFilter.value) {
             const [year, month] = monthFilter.value.split('-').map(Number)
             if (year && month && !isNaN(year) && !isNaN(month)) {
@@ -193,7 +233,6 @@ export const useCustomerStorageBillsStore = defineStore('customerStorageBills', 
             }
         }
 
-        // Sort
         result.sort((a, b) => {
             let comparison = 0
             switch (sortField.value) {
@@ -237,7 +276,6 @@ export const useCustomerStorageBillsStore = defineStore('customerStorageBills', 
         return filteredCustomerBills.value.reduce((sum, b) => sum + b.total_paid, 0)
     })
 
-    // ============= AVAILABLE MONTHS =============
     const availableMonths = computed(() => {
         const months = new Set<string>()
         customerBillData.value.forEach(b => {
@@ -254,8 +292,6 @@ export const useCustomerStorageBillsStore = defineStore('customerStorageBills', 
         })
         return Array.from(months).sort((a, b) => b.localeCompare(a))
     })
-
-    // ============= ACTIONS =============
 
     const setSearchQuery = (query: string) => {
         searchQuery.value = query
@@ -281,28 +317,20 @@ export const useCustomerStorageBillsStore = defineStore('customerStorageBills', 
         return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     }
 
-    // Record payment for a customer (updates lot's customer_last_paid_amount and customer_last_paid_through)
     const recordCustomerPayment = async (lotId: number, amount: number, paidThrough: string | null): Promise<boolean> => {
         const lot = lotsStore.getLotById(lotId)
         if (!lot) {
-            push.error('Lot not found')
             return false
         }
 
-        // Get the bill
         const bill = customerBillData.value.find(b => b.lot_id === lotId)
         if (!bill) {
-            push.error('Bill not found')
             return false
         }
 
-        // Calculate new total paid (add payment amount to existing paid)
         const newTotalPaid = (lot.customer_last_paid_amount || 0) + amount
 
-        // Validate: Cannot pay more than total billed
         if (newTotalPaid > bill.total_billed) {
-            const remaining = bill.total_billed - bill.total_paid
-            push.error(`Payment amount exceeds remaining balance of ${remaining.toFixed(2)}`)
             return false
         }
 
@@ -313,7 +341,6 @@ export const useCustomerStorageBillsStore = defineStore('customerStorageBills', 
 
         if (result) {
             await lotsStore.fetchLots()
-            push.success('Payment recorded successfully')
             return true
         }
 
@@ -321,13 +348,11 @@ export const useCustomerStorageBillsStore = defineStore('customerStorageBills', 
     }
 
     return {
-        // State
         searchQuery,
         monthFilter,
         sortField,
         sortDirection,
 
-        // Computed
         customerBillData,
         filteredCustomerBills,
         totalOutstanding,
@@ -336,7 +361,6 @@ export const useCustomerStorageBillsStore = defineStore('customerStorageBills', 
         totalPaid,
         availableMonths,
 
-        // Actions
         setSearchQuery,
         clearSearch,
         setSort,

@@ -60,6 +60,15 @@
                         View Details
                     </button>
 
+                    <button @click="handleViewLedger"
+                        class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-green) hover:bg-(--color-muted-bg) transition-colors">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        View Ledger
+                    </button>
+
                     <button @click="handleEdit"
                         class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-text-secondary) hover:bg-(--color-muted-bg) transition-colors">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -98,6 +107,7 @@ const emit = defineEmits<{
     'view': [customer: Customer]
     'edit': [customer: Customer]
     'delete': [customer: Customer]
+    'view-ledger': [customer: Customer]
     'updated': []
 }>()
 
@@ -114,6 +124,11 @@ const closeMenu = () => {
 const handleView = () => {
     closeMenu()
     emit('view', props.customer)
+}
+
+const handleViewLedger = () => {
+    closeMenu()
+    emit('view-ledger', props.customer)
 }
 
 const handleEdit = () => {

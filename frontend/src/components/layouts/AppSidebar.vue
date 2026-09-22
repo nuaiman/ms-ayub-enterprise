@@ -4,20 +4,18 @@
         'fixed inset-y-0 left-0 z-30 flex flex-col justify-between shrink-0',
         'bg-(--color-surface)/95 backdrop-blur-sm',
         'border-r border-(--color-border)/50',
-        // Mobile: slide in/out
         isOpen ? 'translate-x-0' : '-translate-x-full',
-        // Desktop: always visible
         'lg:translate-x-0 lg:static',
-        // Fixed width - no collapse
-        'w-60 lg:w-60'
+        'w-60 lg:w-60',
+        'transition-transform duration-200 ease-out'
     ]">
-        <!-- Logo - always full -->
+        <!-- Logo -->
         <AppSidebarLogo :collapsed="false" />
 
-        <!-- Navigation - always full -->
+        <!-- Navigation -->
         <AppSidebarNav :collapsed="false" :menu-groups="menuGroups" @close="closeSidebar" />
 
-        <!-- User Card - always visible -->
+        <!-- User Card -->
         <div>
             <AppSidebarUser :collapsed="false" @logout="handleLogout" @change-password="handleChangePassword"
                 @reset-all-passwords="handleResetAllPasswords" @download-backup="handleDownloadBackup" />
@@ -32,7 +30,7 @@ import AppSidebarUser from './AppSidebarUser.vue'
 
 defineProps<{
     isOpen: boolean
-    isCollapsed: boolean // Keep prop for compatibility but don't use
+    isCollapsed: boolean
     isMobile: boolean
     menuGroups: any[]
 }>()

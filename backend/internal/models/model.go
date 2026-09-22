@@ -13,7 +13,6 @@ type Models struct {
 	Godown       GodownModel
 	Rent         RentModel
 	Customer     CustomerModel
-	Item         ItemModel
 	Lot          LotModel
 	Store        StoreModel
 	Damage       DamageModel
@@ -34,7 +33,6 @@ func NewModel(db *sql.DB) Models {
 		Godown:       GodownModel{DB: db},
 		Rent:         RentModel{DB: db},
 		Customer:     CustomerModel{DB: db},
-		Item:         ItemModel{DB: db},
 		Lot:          LotModel{DB: db},
 		Store:        StoreModel{DB: db},
 		Damage:       DamageModel{DB: db},

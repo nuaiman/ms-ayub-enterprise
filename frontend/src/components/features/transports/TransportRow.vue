@@ -4,8 +4,26 @@
         @click="handleView">
         <!-- Customer - 2 columns -->
         <div class="col-span-2 min-w-0">
-            <div class="font-medium text-(--color-text-primary) truncate text-sm">
-                {{ getCustomerName(transport.customer_id) }}
+            <div class="flex items-center gap-2.5">
+                <div class="shrink-0">
+                    <div v-if="transport.image_url"
+                        class="w-9 h-9 rounded-lg overflow-hidden border border-(--color-border)">
+                        <img :src="getImageUrl(transport.image_url)" :alt="customerLabel"
+                            class="w-full h-full object-cover" />
+                    </div>
+                    <div v-else
+                        class="w-9 h-9 rounded-lg bg-(--color-blue)/10 border border-(--color-border) flex items-center justify-center">
+                        <svg class="w-4 h-4 text-(--color-blue)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 18L12 22M12 22L16 18M12 22V10M21 14L12 10L3 14M21 14L12 18M21 14V18M3 14V18M3 14L12 18M3 14L12 10M3 14V10M21 10L12 6M3 10L12 6M21 10L12 14M3 10L12 14" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="min-w-0">
+                    <div class="font-medium text-(--color-text-primary) truncate text-sm">
+                        {{ customerLabel }}
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -19,7 +37,7 @@
         <!-- To - 2 columns -->
         <div class="col-span-2 min-w-0">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ transport.to_location || '—' }}
+                {{ transport.to_location || 'â€”' }}
             </span>
         </div>
 
@@ -55,7 +73,6 @@
                 </svg>
             </button>
 
-            <!-- Dropdown -->
             <Transition enter-active-class="transition ease-out duration-200"
                 enter-from-class="opacity-0 scale-95 translate-y-1" enter-to-class="opacity-100 scale-100 translate-y-0"
                 leave-active-class="transition ease-in duration-150"
@@ -63,7 +80,6 @@
                 leave-to-class="opacity-0 scale-95 translate-y-1">
                 <div v-if="isOpen"
                     class="absolute right-0 top-9 w-48 bg-(--color-surface) border border-(--color-border) rounded-xl shadow-lg overflow-hidden z-50 py-1">
-                    <!-- View -->
                     <button @click="handleView"
                         class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-text-secondary) hover:bg-(--color-muted-bg) transition-colors">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -75,7 +91,6 @@
                         View Details
                     </button>
 
-                    <!-- Edit -->
                     <button @click="handleEdit"
                         class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-text-secondary) hover:bg-(--color-muted-bg) transition-colors">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -85,7 +100,6 @@
                         Edit
                     </button>
 
-                    <!-- Manage Vehicles -->
                     <button @click="handleManageVehicles"
                         class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-blue) hover:bg-(--color-muted-bg) transition-colors">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -95,7 +109,6 @@
                         Manage Vehicles
                     </button>
 
-                    <!-- Delete -->
                     <button @click="handleDelete"
                         class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-red) hover:bg-(--color-muted-bg) transition-colors border-t border-(--color-border) mt-1 pt-1">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -107,17 +120,17 @@
                 </div>
             </Transition>
 
-            <!-- Backdrop -->
             <div v-if="isOpen" class="fixed inset-0 z-40" @click="closeMenu"></div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { Transport } from '@/types/transport'
 import { useCustomersStore } from '@/stores/customers'
 import { formatCurrency } from '@/utils/currency'
+import { getImageUrl } from '@/utils/image'
 
 const props = defineProps<{
     transport: Transport
@@ -134,10 +147,10 @@ const emit = defineEmits<{
 const customersStore = useCustomersStore()
 const isOpen = ref(false)
 
-const getCustomerName = (id: number | null): string => {
-    if (!id) return '—'
-    return customersStore.getCustomerName(id)
-}
+const customerLabel = computed(() => {
+    if (!props.transport.customer_id) return 'â€”'
+    return customersStore.getCustomerName(props.transport.customer_id)
+})
 
 const formatDate = (dateStr: string): string => {
     return new Date(dateStr).toLocaleDateString('en-US', {

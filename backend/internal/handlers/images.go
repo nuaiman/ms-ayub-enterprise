@@ -88,31 +88,6 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 
 		basePath = filepath.Join("bucket", "users", strconv.FormatInt(id, 10))
 
-	case "items":
-		item, err := h.app.Models.Item.GetByID(r.Context(), id)
-		if err != nil {
-			log.Printf("[IMAGES] ERROR: Error fetching item: %v", err)
-			utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch item")
-			return
-		}
-		if item == nil {
-			utils.ErrorJson(w, http.StatusNotFound, "item not found")
-			return
-		}
-
-		if item.UserID != userID {
-			if currentUser.Role != "admin" && currentUser.Role != "manager" {
-				utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
-				return
-			}
-		}
-
-		if item.ImageURL != nil && *item.ImageURL != "" {
-			oldImagePath = "." + *item.ImageURL
-		}
-
-		basePath = filepath.Join("bucket", "items", strconv.FormatInt(id, 10))
-
 	case "lots":
 		lot, err := h.app.Models.Lot.GetByID(r.Context(), id)
 		if err != nil {
@@ -125,7 +100,6 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Only admin/manager can upload images for lots
 		if currentUser.Role != "admin" && currentUser.Role != "manager" {
 			utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
 			return
@@ -174,7 +148,6 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Only admin/manager can upload images for deliveries
 		if currentUser.Role != "admin" && currentUser.Role != "manager" {
 			utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
 			return
@@ -237,7 +210,7 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 		basePath = filepath.Join("bucket", "expenses", strconv.FormatInt(id, 10))
 
 	default:
-		utils.ErrorJson(w, http.StatusBadRequest, "invalid type. Supported: users, items, lots, damages, deliveries, transports, expenses")
+		utils.ErrorJson(w, http.StatusBadRequest, "invalid type. Supported: users, lots, damages, deliveries, transports, expenses")
 		return
 	}
 
@@ -271,8 +244,6 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 	switch entityType {
 	case "users":
 		err = h.app.Models.User.UpdateImage(r.Context(), id, &imageURL)
-	case "items":
-		err = h.app.Models.Item.UpdateImage(r.Context(), id, &imageURL)
 	case "lots":
 		err = h.app.Models.Lot.UpdateImage(r.Context(), id, &imageURL)
 	case "damages":
@@ -352,29 +323,6 @@ func (h *Handler) DeleteImageHandler(w http.ResponseWriter, r *http.Request) {
 
 		if user.ImageURL != nil {
 			imageURL = *user.ImageURL
-		}
-
-	case "items":
-		item, err := h.app.Models.Item.GetByID(r.Context(), id)
-		if err != nil {
-			log.Printf("[IMAGES] ERROR: Error fetching item: %v", err)
-			utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch item")
-			return
-		}
-		if item == nil {
-			utils.ErrorJson(w, http.StatusNotFound, "item not found")
-			return
-		}
-
-		if item.UserID != userID {
-			if currentUser.Role != "admin" && currentUser.Role != "manager" {
-				utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
-				return
-			}
-		}
-
-		if item.ImageURL != nil {
-			imageURL = *item.ImageURL
 		}
 
 	case "lots":
@@ -489,7 +437,7 @@ func (h *Handler) DeleteImageHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 	default:
-		utils.ErrorJson(w, http.StatusBadRequest, "invalid type. Supported: users, items, lots, damages, deliveries, transports, expenses")
+		utils.ErrorJson(w, http.StatusBadRequest, "invalid type. Supported: users, lots, damages, deliveries, transports, expenses")
 		return
 	}
 
@@ -505,8 +453,6 @@ func (h *Handler) DeleteImageHandler(w http.ResponseWriter, r *http.Request) {
 	switch entityType {
 	case "users":
 		err = h.app.Models.User.UpdateImage(r.Context(), id, nil)
-	case "items":
-		err = h.app.Models.Item.UpdateImage(r.Context(), id, nil)
 	case "lots":
 		err = h.app.Models.Lot.UpdateImage(r.Context(), id, nil)
 	case "damages":

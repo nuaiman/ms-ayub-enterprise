@@ -4,7 +4,7 @@
         <!-- Header -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 shrink-0">
             <div class="flex items-center gap-3">
-                <h2 class="text-lg font-semibold text-(--color-text-primary)">Customer Lot Bills</h2>
+                <h2 class="text-lg font-semibold text-(--color-text-primary)">Customer Unload Bills</h2>
                 <span class="text-sm text-(--color-text-secondary) bg-(--color-muted-bg) px-2 py-0.5 rounded-md">
                     {{ filteredBills.length }}
                 </span>
@@ -267,7 +267,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useCustomerLotBillsStore } from '@/stores/customerLotBills'
 import { useLotsStore } from '@/stores/lots'
-import { useItemsStore } from '@/stores/items'
 import { useCustomersStore } from '@/stores/customers'
 import { useClipboardStore } from '@/stores/clipboard'
 import type { CustomerLotBill, CustomerLotBillSortField } from '@/types/customerLotBill'
@@ -280,7 +279,6 @@ import { push } from 'notivue'
 
 const customerLotBillsStore = useCustomerLotBillsStore()
 const lotsStore = useLotsStore()
-const itemsStore = useItemsStore()
 const customersStore = useCustomersStore()
 const clipboardStore = useClipboardStore()
 
@@ -312,7 +310,6 @@ const fetchData = async () => {
     try {
         await Promise.all([
             lotsStore.fetchLots(),
-            itemsStore.fetchItems(),
             customersStore.fetchCustomers(),
         ])
     } finally {

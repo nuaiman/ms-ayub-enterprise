@@ -7,16 +7,16 @@
                 Transport Information
             </h3>
 
-            <!-- Transport Fields -->
             <TransportFields v-model:customer-id="form.customer_id" v-model:from-location="form.from_location"
                 v-model:to-location="form.to_location" v-model:vehicle-quantity="form.vehicle_quantity"
                 v-model:delivery-type="form.delivery_type" v-model:transport-date="form.transport_date"
                 v-model:office-commission-amount="form.office_commission_amount" v-model:notes="form.notes"
-                :customer-options="customerOptions" :disabled="submitting" :required="true" :standalone="false" />
+                :customer-options="customerOptions" :disabled="submitting || !!justCreatedId" :required="true"
+                :standalone="false" />
         </div>
 
-        <!-- Vehicles Section -->
-        <div class="border-t border-(--color-border) pt-6">
+        <!-- Vehicles Section (hidden when retrying image) -->
+        <div v-if="!justCreatedId" class="border-t border-(--color-border) pt-6">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-semibold text-(--color-text-secondary) uppercase tracking-wider">
                     Vehicles
@@ -31,7 +31,6 @@
                 </div>
             </div>
 
-            <!-- Existing Vehicles (from the transport - EDIT MODE ONLY) -->
             <div v-if="isEditMode && existingVehicles.length > 0" class="mb-4">
                 <h4 class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider mb-2">
                     Existing Vehicles
@@ -41,11 +40,11 @@
                         class="flex items-center justify-between p-3 rounded-lg bg-(--color-muted-bg)/20 border border-(--color-border)">
                         <div class="flex items-center gap-3">
                             <span class="text-sm font-medium text-(--color-text-primary)">{{ vehicle.vehicle_number
-                                }}</span>
+                            }}</span>
                             <span class="text-xs text-(--color-text-secondary)">Broker: {{
                                 getBrokerName(vehicle.broker_id) }}</span>
-                            <span class="text-xs text-(--color-text-secondary)">Driver: {{ vehicle.driver_name || '—'
-                                }}</span>
+                            <span class="text-xs text-(--color-text-secondary)">Driver: {{ vehicle.driver_name || 'â€”'
+                            }}</span>
                         </div>
                         <div class="flex items-center gap-3">
                             <span class="text-sm font-semibold text-(--color-blue)">
@@ -60,7 +59,6 @@
                 </div>
             </div>
 
-            <!-- Vehicle Forms -->
             <div v-if="vehicleForms.length > 0" class="space-y-4">
                 <div class="flex items-center justify-between">
                     <h4 class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">
@@ -85,7 +83,6 @@
                             </h4>
                         </div>
 
-                        <!-- Vehicle Fields with ALL fields -->
                         <VehicleFields v-model:transport-id="vehicle.transport_id"
                             v-model:vehicle-number="vehicle.vehicle_number" v-model:broker-id="vehicle.broker_id"
                             v-model:driver-name="vehicle.driver_name" v-model:driver-phone="vehicle.driver_phone"
@@ -95,7 +92,6 @@
                             v-model:demarage-reason="vehicle.demarage_reason" :broker-options="brokerOptions"
                             :disabled="submitting" :required="true" :standalone="false" />
 
-                        <!-- Vehicle Summary -->
                         <div v-if="hasVehicleCosts(index)"
                             class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 p-2 rounded-lg bg-(--color-muted-bg)/20 border border-(--color-border)">
                             <div>
@@ -116,13 +112,11 @@
                 </div>
             </div>
 
-            <!-- No vehicles message -->
             <div v-if="vehicleForms.length === 0"
                 class="text-center py-4 text-sm text-(--color-text-secondary) border border-dashed border-(--color-border) rounded-lg">
                 No vehicles to add. Please set Vehicle Quantity to at least 1.
             </div>
 
-            <!-- Summary -->
             <div v-if="totalVehicles > 0"
                 class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-lg bg-(--color-muted-bg)/30 border border-(--color-border)">
                 <div>
@@ -140,23 +134,86 @@
             </div>
         </div>
 
+        <!-- Image -->
+        <div class="border-t border-(--color-border) pt-6">
+            <h3 class="text-sm font-semibold text-(--color-text-secondary) uppercase tracking-wider mb-4">
+                Transport Image <span class="normal-case text-xs font-normal">(Optional)</span>
+            </h3>
+            <div class="flex flex-col sm:flex-row items-start gap-4">
+                <div class="shrink-0">
+                    <div v-if="imagePreview"
+                        class="relative w-24 h-24 rounded-lg overflow-hidden border border-(--color-border)">
+                        <img :src="imagePreview" alt="Preview" class="w-full h-full object-cover" />
+                        <button type="button" @click="removeImage"
+                            class="absolute top-1 right-1 w-5 h-5 bg-(--color-red) text-white rounded-full flex items-center justify-center text-xs hover:opacity-90 transition-opacity">Ã—</button>
+                    </div>
+                    <div v-else
+                        class="w-24 h-24 rounded-lg border-2 border-dashed border-(--color-border) flex items-center justify-center bg-(--color-muted-bg)">
+                        <svg class="w-10 h-10 text-(--color-text-secondary)" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="flex-1 space-y-3">
+                    <div>
+                        <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">Upload
+                            Image</label>
+                        <div class="flex flex-wrap gap-2">
+                            <label
+                                class="px-4 py-2 text-sm font-medium rounded-lg cursor-pointer bg-(--color-muted-bg) border border-(--color-border) hover:bg-(--color-muted-bg)/70 transition-all duration-200 inline-flex items-center gap-2"
+                                :class="{ 'opacity-50 cursor-not-allowed': uploading }">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                </svg>
+                                {{ uploading ? 'Uploading...' : 'Choose File' }}
+                                <input type="file" accept="image/*" class="hidden" @change="handleFileSelect"
+                                    :disabled="uploading" />
+                            </label>
+                            <button v-if="imagePreview" type="button" @click="removeImage"
+                                class="px-4 py-2 text-sm font-medium rounded-lg text-(--color-red) hover:bg-(--color-red)/10 transition-all duration-200">
+                                Remove
+                            </button>
+                        </div>
+                    </div>
+
+                    <div v-if="uploading" class="w-full bg-(--color-muted-bg) rounded-full h-1.5 overflow-hidden">
+                        <div class="bg-(--color-blue) h-full rounded-full transition-all duration-300"
+                            :style="{ width: uploadProgress + '%' }"></div>
+                    </div>
+
+                    <p v-if="uploadError" class="text-xs text-(--color-red)">{{ uploadError }}</p>
+                    <p v-else-if="justCreatedId" class="text-xs text-(--color-yellow)">
+                        Transport was created but the image upload failed. Retry below or remove the image.
+                    </p>
+                    <p v-else-if="isEditMode && props.transport?.image_url"
+                        class="text-xs text-(--color-text-secondary)">
+                        Current image will be replaced
+                    </p>
+                </div>
+            </div>
+        </div>
+
         <!-- Actions -->
         <div class="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-(--color-border)">
-            <button type="button" @click="emit('cancel')"
-                class="w-full sm:w-auto px-4 py-2 text-sm font-medium rounded-lg hover:bg-(--color-muted-bg) transition-all duration-200">
+            <button type="button" @click="emit('cancel')" :disabled="submitting || uploading"
+                class="w-full sm:w-auto px-4 py-2 text-sm font-medium rounded-lg hover:bg-(--color-muted-bg) transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
                 Cancel
             </button>
-            <button type="submit" :disabled="submitting || !canSubmit"
+            <button type="submit" :disabled="submitting || uploading || (!justCreatedId && !canSubmit)"
                 class="w-full sm:w-auto px-6 py-2 text-sm font-semibold bg-(--color-blue) text-white rounded-lg hover:opacity-90 transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100">
-                <span v-if="submitting" class="inline-flex items-center justify-center gap-2">
+                <span v-if="submitting || uploading" class="inline-flex items-center justify-center gap-2">
                     <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
                         <path class="opacity-75" fill="currentColor"
                             d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    {{ isEditMode ? 'Saving...' : 'Creating...' }}
+                    {{ justCreatedId ? 'Retrying image...' : (isEditMode ? 'Saving...' : 'Creating...') }}
                 </span>
-                <span v-else>{{ isEditMode ? 'Save Changes' : 'Create Transport' }}</span>
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-(--color-text-secondary)">৳</span>
             </button>
         </div>
     </form>
@@ -165,11 +222,11 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import type { Transport, DeliveryType } from '@/types/transport'
-import type { Customer } from '@/types/customer'
 import { useTransportsStore } from '@/stores/transports'
 import { useCustomersStore } from '@/stores/customers'
 import { useVehiclesStore } from '@/stores/vehicles'
 import { useBrokersStore } from '@/stores/brokers'
+import { uploadImage, deleteImage, getImageUrl } from '@/utils/image'
 import { formatDateForBackend } from '@/utils/date'
 import { formatCurrency } from '@/utils/currency'
 import { push } from 'notivue'
@@ -213,71 +270,99 @@ const isEditMode = computed(() => props.mode === 'edit' || !!props.transport)
 const customerOptions = computed(() => customersStore.customers)
 const brokerOptions = computed(() => brokersStore.brokers)
 
-// Get existing vehicles for this transport (EDIT MODE only)
+const justCreatedId = ref<number | null>(null)
+
+// Image state + helpers
+const imageFile = ref<File | null>(null)
+const imagePreview = ref<string | null>(null)
+const uploading = ref(false)
+const uploadProgress = ref(0)
+const uploadError = ref<string | null>(null)
+const imageToDelete = ref(false)
+
+const clearImageState = () => {
+    imageFile.value = null
+    imagePreview.value = null
+    uploadError.value = null
+    uploadProgress.value = 0
+    imageToDelete.value = false
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement | null
+    if (fileInput) fileInput.value = ''
+}
+
+const handleFileSelect = (event: Event) => {
+    const input = event.target as HTMLInputElement
+    const file = input.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+        uploadError.value = 'Please select an image file'
+        return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+        uploadError.value = 'Image size should be less than 5MB'
+        return
+    }
+
+    uploadError.value = null
+    imageFile.value = file
+    imageToDelete.value = false
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+        imagePreview.value = e.target?.result as string
+    }
+    reader.readAsDataURL(file)
+}
+
+const removeImage = () => {
+    imageFile.value = null
+    imagePreview.value = null
+    uploadError.value = null
+    uploadProgress.value = 0
+    imageToDelete.value = true
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement | null
+    if (fileInput) fileInput.value = ''
+}
+
 const existingVehicles = computed(() => {
     if (!props.transport) return []
     return vehiclesStore.getVehiclesByTransportId(props.transport.id)
 })
 
-// Vehicle forms - controlled by vehicle_quantity
 const vehicleForms = computed(() => {
     const quantity = form.value.vehicle_quantity || 0
     const currentForms = form.value.vehicles.length
 
     if (currentForms < quantity) {
-        // Add more forms
         const toAdd = quantity - currentForms
         for (let i = 0; i < toAdd; i++) {
             form.value.vehicles.push(createEmptyVehicle())
         }
     } else if (currentForms > quantity) {
-        // Remove excess forms
         form.value.vehicles = form.value.vehicles.slice(0, quantity)
     }
 
     return form.value.vehicles
 })
 
-// Total vehicles (existing + new forms)
-const totalVehicles = computed(() => {
-    return existingVehicles.value.length + form.value.vehicles.length
-})
+const totalVehicles = computed(() => existingVehicles.value.length + form.value.vehicles.length)
 
-// Total customer charge from all vehicles
 const totalCustomerCharge = computed(() => {
     let total = 0
-
-    // Existing vehicles
-    for (const vehicle of existingVehicles.value) {
-        total += vehicle.customer_charge || 0
-    }
-
-    // New vehicles
-    for (const vehicle of form.value.vehicles) {
-        total += vehicle.customer_charge || 0
-    }
-
+    for (const v of existingVehicles.value) total += v.customer_charge || 0
+    for (const v of form.value.vehicles) total += v.customer_charge || 0
     return total
 })
 
-// Total broker due from all vehicles (joma_cost + vehicle_cost)
 const totalBrokerDue = computed(() => {
     let total = 0
-
-    // Existing vehicles
-    for (const vehicle of existingVehicles.value) {
-        total += (vehicle.joma_cost || 0) + (vehicle.vehicle_cost || 0)
-    }
-
-    // New vehicles
-    for (const vehicle of form.value.vehicles) {
-        total += (vehicle.joma_cost || 0) + (vehicle.vehicle_cost || 0)
-    }
-
+    for (const v of existingVehicles.value) total += (v.joma_cost || 0) + (v.vehicle_cost || 0)
+    for (const v of form.value.vehicles) total += (v.joma_cost || 0) + (v.vehicle_cost || 0)
     return total
 })
 
-// Vehicle calculations for forms
 const vehicleTotalCost = (index: number): number => {
     const v = form.value.vehicles[index]
     if (!v) return 0
@@ -304,7 +389,7 @@ const hasVehicleCosts = (index: number): boolean => {
 }
 
 const getBrokerName = (id: number | null): string => {
-    if (!id) return '—'
+    if (!id) return 'â€”'
     return brokersStore.getBrokerName(id)
 }
 
@@ -339,14 +424,9 @@ const createEmptyVehicle = (): VehicleRow => ({
 
 const canSubmit = computed(() => {
     if (!form.value.from_location.trim()) return false
-
-    // In edit mode, we can submit without new vehicles
     if (isEditMode.value) return true
-
-    // In create mode, must have at least one vehicle with a number
     const hasValidVehicle = form.value.vehicles.some(v => v.vehicle_number.trim() !== '')
     if (!hasValidVehicle) return false
-
     return true
 })
 
@@ -366,10 +446,15 @@ const initializeForm = () => {
             vehicles: [],
         }
 
-        // Initialize vehicles based on quantity
         const quantity = form.value.vehicle_quantity || 1
         for (let i = 0; i < quantity; i++) {
             form.value.vehicles.push(createEmptyVehicle())
+        }
+
+        justCreatedId.value = null
+        clearImageState()
+        if (isEditMode.value && props.transport.image_url) {
+            imagePreview.value = getImageUrl(props.transport.image_url) || null
         }
     } else {
         form.value = {
@@ -383,33 +468,19 @@ const initializeForm = () => {
             notes: '',
             vehicles: [createEmptyVehicle()],
         }
+        justCreatedId.value = null
+        clearImageState()
     }
 }
 
 watch(() => props.transport, initializeForm, { immediate: true })
 
 const resetForm = () => {
-    if (isEditMode.value && props.transport) {
-        initializeForm()
-    } else {
-        form.value = {
-            customer_id: null,
-            from_location: '',
-            to_location: '',
-            vehicle_quantity: 1,
-            delivery_type: null,
-            transport_date: today,
-            office_commission_amount: 0,
-            notes: '',
-            vehicles: [createEmptyVehicle()],
-        }
-    }
+    initializeForm()
 }
 
-// Remove an existing vehicle from the transport (EDIT MODE only)
 const removeVehicle = async (vehicleId: number) => {
     if (!confirm('Are you sure you want to remove this vehicle from the transport?')) return
-
     const success = await vehiclesStore.deleteVehicle(vehicleId)
     if (success) {
         push.success('Vehicle removed from transport')
@@ -418,22 +489,46 @@ const removeVehicle = async (vehicleId: number) => {
 }
 
 const submit = async () => {
+    // RETRY IMAGE PATH
+    if (justCreatedId.value !== null) {
+        if (!imageFile.value) {
+            resetForm()
+            emit('transport-created')
+            return
+        }
+        uploading.value = true
+        uploadError.value = null
+        uploadProgress.value = 0
+        try {
+            const url = await uploadImage('transports', justCreatedId.value, imageFile.value, (p) => {
+                uploadProgress.value = p
+            })
+            if (!url) {
+                uploadError.value = 'Failed to upload image. Please try again.'
+                return
+            }
+            push.success('Transport and image created successfully!')
+            resetForm()
+            emit('transport-created')
+        } finally {
+            uploading.value = false
+        }
+        return
+    }
+
+    // NORMAL VALIDATION
     if (!form.value.from_location.trim()) {
         push.error('From location is required')
         return
     }
-
     if (form.value.vehicle_quantity < 1) {
         push.error('Vehicle quantity must be at least 1')
         return
     }
-
     if (!form.value.transport_date) {
         push.error('Transport date is required')
         return
     }
-
-    // Validate vehicles have numbers
     const invalidVehicles = form.value.vehicles.filter(v => !v.vehicle_number.trim())
     if (invalidVehicles.length > 0) {
         push.error(`Please enter vehicle numbers for all ${form.value.vehicles.length} vehicles`)
@@ -441,14 +536,12 @@ const submit = async () => {
     }
 
     submitting.value = true
-
     const transportDate = formatDateForBackend(form.value.transport_date) || ''
 
     try {
         let transportId: number
 
         if (isEditMode.value && props.transport) {
-            // Update existing transport
             const success = await transportsStore.updateTransport(props.transport.id, {
                 customer_id: form.value.customer_id,
                 from_location: form.value.from_location.trim(),
@@ -467,9 +560,7 @@ const submit = async () => {
 
             transportId = props.transport.id
             push.success('Transport updated successfully!')
-            emit('transport-updated')
         } else {
-            // Create new transport
             const newTransport = await transportsStore.createTransport({
                 customer_id: form.value.customer_id,
                 from_location: form.value.from_location.trim(),
@@ -488,7 +579,6 @@ const submit = async () => {
 
             transportId = newTransport.id
             push.success('Transport created successfully!')
-            emit('transport-created')
         }
 
         // Create vehicles
@@ -516,29 +606,47 @@ const submit = async () => {
                 demarage_reason: vehicle.demarage_reason?.trim() || null,
             })
 
-            if (result) {
-                createdCount++
-            } else {
-                failedCount++
-            }
+            if (result) createdCount++
+            else failedCount++
         }
 
         if (createdCount > 0 && failedCount === 0) {
             push.success(`${createdCount} vehicle(s) added successfully!`)
         } else if (createdCount > 0 && failedCount > 0) {
             push.warning(`${createdCount} vehicle(s) added, ${failedCount} failed`)
-        } else if (failedCount > 0) {
-            push.warning('No vehicles were added')
+        }
+
+        // IMAGE HANDLING
+        if (imageFile.value) {
+            uploading.value = true
+            uploadProgress.value = 0
+            uploadError.value = null
+            const url = await uploadImage('transports', transportId, imageFile.value, (p) => {
+                uploadProgress.value = p
+            })
+            uploading.value = false
+            if (!url) {
+                uploadError.value = 'Failed to upload image. Please try again.'
+                if (!isEditMode.value) {
+                    justCreatedId.value = transportId
+                }
+                push.warning('Transport saved but image upload failed. Retry below.')
+                await Promise.all([transportsStore.fetchTransports(), vehiclesStore.fetchVehicles()])
+                return
+            }
+        } else if (isEditMode.value && props.transport && imageToDelete.value && props.transport.image_url) {
+            await deleteImage('transports', props.transport.id, props.transport.image_url)
+        }
+
+        if (isEditMode.value) {
+            emit('transport-updated')
+        } else {
+            emit('transport-created')
         }
 
         resetForm()
 
-        // Refresh data
-        await Promise.all([
-            transportsStore.fetchTransports(),
-            vehiclesStore.fetchVehicles()
-        ])
-
+        await Promise.all([transportsStore.fetchTransports(), vehiclesStore.fetchVehicles()])
     } catch (error) {
         console.error('Error:', error)
         push.error(isEditMode.value ? 'Failed to update transport' : 'Failed to create transport')

@@ -11,7 +11,6 @@
             </div>
 
             <div class="flex items-center gap-2 flex-wrap">
-                <!-- Search -->
                 <div class="relative flex-1 sm:flex-none w-full sm:w-auto">
                     <input :value="searchQuery" @input="handleSearch" type="text" placeholder="Search stores..."
                         class="w-full sm:w-56 pl-9 pr-8 py-2 rounded-lg text-sm bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent" />
@@ -29,7 +28,6 @@
                     </button>
                 </div>
 
-                <!-- Filter: Active Only -->
                 <button @click="showActiveOnly = !showActiveOnly"
                     class="h-9 px-3 flex items-center gap-1.5 rounded-lg text-sm border border-(--color-border) transition-colors"
                     :class="showActiveOnly ? 'bg-(--color-blue)/10 border-(--color-blue) text-(--color-blue)' : 'text-(--color-text-secondary) hover:bg-(--color-muted-bg)'">
@@ -40,7 +38,6 @@
                     Active Only
                 </button>
 
-                <!-- Filter: With Inventory -->
                 <button @click="showInventoryOnly = !showInventoryOnly"
                     class="h-9 px-3 flex items-center gap-1.5 rounded-lg text-sm border border-(--color-border) transition-colors"
                     :class="showInventoryOnly ? 'bg-(--color-green)/10 border-(--color-green) text-(--color-green)' : 'text-(--color-text-secondary) hover:bg-(--color-muted-bg)'">
@@ -51,7 +48,6 @@
                     Has Inventory
                 </button>
 
-                <!-- Copy Button -->
                 <button @click="handleCopyToClipboard"
                     class="h-9 w-9 flex items-center justify-center border border-(--color-border) rounded-lg text-(--color-text-secondary) hover:bg-(--color-muted-bg) transition-colors relative shrink-0"
                     title="Copy table to clipboard">
@@ -66,7 +62,6 @@
                     </svg>
                 </button>
 
-                <!-- Create -->
                 <button v-if="canManageStores" @click="createDialogOpen = true"
                     class="h-9 px-4 flex items-center gap-2 bg-(--color-blue) text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-all duration-200 active:scale-95 whitespace-nowrap shrink-0">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -80,13 +75,12 @@
         <!-- Table -->
         <div class="flex-1 min-h-0 overflow-auto">
             <div class="min-w-225">
-                <!-- Header Row -->
                 <div
                     class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wider bg-(--color-muted-bg)/30 rounded-t-lg">
                     <div class="col-span-3 cursor-pointer hover:text-(--color-text-primary) transition-colors"
                         @click="toggleSort('lot_id')">
                         <span class="flex items-center gap-1">
-                            Lot
+                            Lot / Product
                             <svg v-if="sortField === 'lot_id'" class="w-3 h-3"
                                 :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
                                 viewBox="0 0 24 24">
@@ -94,7 +88,8 @@
                             </svg>
                         </span>
                     </div>
-                    <div class="col-span-3 cursor-pointer hover:text-(--color-text-primary) transition-colors"
+                    <div class="col-span-3">Customer</div>
+                    <div class="col-span-2 cursor-pointer hover:text-(--color-text-primary) transition-colors"
                         @click="toggleSort('godown_id')">
                         <span class="flex items-center gap-1">
                             Godown
@@ -105,28 +100,7 @@
                             </svg>
                         </span>
                     </div>
-                    <div class="col-span-2 cursor-pointer hover:text-(--color-text-primary) transition-colors"
-                        @click="toggleSort('quantity')">
-                        <span class="flex items-center gap-1">
-                            Quantity
-                            <svg v-if="sortField === 'quantity'" class="w-3 h-3"
-                                :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
-                                viewBox="0 0 24 24">
-                                <path d="M7 10l5 5 5-5z" />
-                            </svg>
-                        </span>
-                    </div>
-                    <div class="col-span-1 cursor-pointer hover:text-(--color-text-primary) transition-colors"
-                        @click="toggleSort('weight')">
-                        <span class="flex items-center gap-1">
-                            Weight
-                            <svg v-if="sortField === 'weight'" class="w-3 h-3"
-                                :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
-                                viewBox="0 0 24 24">
-                                <path d="M7 10l5 5 5-5z" />
-                            </svg>
-                        </span>
-                    </div>
+                    <div class="col-span-2">Stock</div>
                     <div class="col-span-1 cursor-pointer hover:text-(--color-text-primary) transition-colors"
                         @click="toggleSort('is_active')">
                         <span class="flex items-center gap-1">
@@ -138,10 +112,9 @@
                             </svg>
                         </span>
                     </div>
-                    <div class="col-span-2 flex items-center justify-end">Actions</div>
+                    <div class="col-span-1 flex items-center justify-end">Actions</div>
                 </div>
 
-                <!-- Loading -->
                 <div v-if="loading" class="flex items-center justify-center py-12">
                     <div class="text-center space-y-4">
                         <svg class="animate-spin w-10 h-10 text-(--color-blue) mx-auto" fill="none" viewBox="0 0 24 24">
@@ -153,7 +126,6 @@
                     </div>
                 </div>
 
-                <!-- Empty -->
                 <div v-else-if="filteredStores.length === 0" class="flex items-center justify-center py-12">
                     <div class="text-center space-y-3">
                         <div
@@ -170,16 +142,14 @@
                     </div>
                 </div>
 
-                <!-- Rows -->
                 <div v-else>
                     <StoreRow v-for="store in filteredStores" :key="store.id" :store="store" @view="openDetailDialog"
-                        @edit="handleEditStore" @delete="handleDeleteStore" @toggle-active="handleToggleActive"
-                        @updated="fetchStores" />
+                        @edit="handleEditStore" @readd="handleReaddStore" @delete="handleDeleteStore"
+                        @toggle-active="handleToggleActive" @updated="fetchStores" />
                 </div>
             </div>
         </div>
 
-        <!-- Footer -->
         <div v-if="!loading && filteredStores.length > 0"
             class="flex items-center justify-between py-3 px-1 border-t border-(--color-border) shrink-0 mt-auto">
             <p class="text-xs text-(--color-text-secondary)">Showing {{ filteredStores.length }} of {{
@@ -187,7 +157,6 @@
         </div>
 
         <!-- Dialogs -->
-        <!-- Create Dialog -->
         <BaseDialog v-model="createDialogOpen" max-width="3xl">
             <div class="mb-6">
                 <h2 class="text-xl font-bold text-(--color-text-primary)">Create New Store</h2>
@@ -196,13 +165,20 @@
             <StoreForm mode="create" @store-created="handleStoreCreated" @cancel="createDialogOpen = false" />
         </BaseDialog>
 
-        <!-- Detail Dialog -->
+        <BaseDialog v-model="readdDialogOpen" max-width="3xl">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-(--color-text-primary)">Re-add Store</h2>
+                <p class="text-sm text-(--color-text-secondary) mt-1">Create a new store based on this one</p>
+            </div>
+            <StoreForm v-if="readdStore" mode="create" :prefill="readdStore" @store-created="handleStoreCreated"
+                @cancel="readdDialogOpen = false" />
+        </BaseDialog>
+
         <BaseDialog v-model="detailDialogOpen" max-width="3xl">
             <StoreDetail v-if="selectedStore" :store="selectedStore" @close="closeDetailDialog"
                 @edit="handleEditStoreFromDetail" @updated="fetchStores" />
         </BaseDialog>
 
-        <!-- Edit Dialog -->
         <BaseDialog v-model="editDialogOpen" max-width="3xl">
             <div class="mb-6">
                 <h2 class="text-xl font-bold text-(--color-text-primary)">Edit Store</h2>
@@ -212,7 +188,6 @@
                 @cancel="editDialogOpen = false" />
         </BaseDialog>
 
-        <!-- Delete Confirmation Dialog -->
         <BaseDialog v-model="deleteDialogOpen" max-width="sm">
             <div class="flex items-center gap-3">
                 <div
@@ -246,7 +221,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useStoresStore } from '@/stores/stores'
 import { useLotsStore } from '@/stores/lots'
 import { useGodownsStore } from '@/stores/godowns'
-import { useItemsStore } from '@/stores/items'
+import { useCustomersStore } from '@/stores/customers'
 import { useAuthStore } from '@/stores/auth'
 import { useClipboardStore } from '@/stores/clipboard'
 import type { Store, StoreSortField, SortDirection } from '@/types/store'
@@ -259,7 +234,7 @@ import { push } from 'notivue'
 const storesStore = useStoresStore()
 const lotsStore = useLotsStore()
 const godownsStore = useGodownsStore()
-const itemsStore = useItemsStore()
+const customersStore = useCustomersStore()
 const auth = useAuthStore()
 const clipboardStore = useClipboardStore()
 
@@ -270,13 +245,14 @@ const showInventoryOnly = ref(false)
 const sortField = ref<StoreSortField>('lot_id')
 const sortDirection = ref<SortDirection>('asc')
 
-// Dialogs
 const createDialogOpen = ref(false)
+const readdDialogOpen = ref(false)
 const detailDialogOpen = ref(false)
 const editDialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
 
 const selectedStore = ref<Store | null>(null)
+const readdStore = ref<Store | null>(null)
 
 const canManageStores = computed(() => {
     const role = auth.user?.role
@@ -285,35 +261,41 @@ const canManageStores = computed(() => {
 
 const getLotDisplayName = (lotId?: number): string => {
     if (!lotId) return 'Unknown'
-    return lotsStore.getLotName(lotId)
+    const lot = lotsStore.getLotById(lotId)
+    if (!lot) return `Lot #${lotId}`
+    return lotsStore.getLotDisplayName(lot)
 }
 
 const filteredStores = computed(() => {
     let result = [...storesStore.stores]
 
-    // Search
     if (searchQuery.value) {
         const query = searchQuery.value.toLowerCase()
-        result = result.filter(s =>
-            lotsStore.getLotName(s.lot_id).toLowerCase().includes(query) ||
-            godownsStore.getGodownName(s.godown_id).toLowerCase().includes(query) ||
-            String(s.quantity).includes(query) ||
-            String(s.weight).includes(query) ||
-            (s.notes && s.notes.toLowerCase().includes(query))
-        )
+        result = result.filter(s => {
+            const lot = lotsStore.getLotById(s.lot_id)
+            const customerName = lot?.customer_id
+                ? customersStore.getCustomerName(lot.customer_id).toLowerCase()
+                : ''
+            const lotName = lot ? lotsStore.getLotDisplayName(lot).toLowerCase() : ''
+            return (
+                lotName.includes(query) ||
+                godownsStore.getGodownName(s.godown_id).toLowerCase().includes(query) ||
+                customerName.includes(query) ||
+                String(s.quantity).includes(query) ||
+                String(s.weight).includes(query) ||
+                (s.notes && s.notes.toLowerCase().includes(query))
+            )
+        })
     }
 
-    // Filter: Active only
     if (showActiveOnly.value) {
         result = result.filter(s => s.is_active)
     }
 
-    // Filter: With inventory only
     if (showInventoryOnly.value) {
         result = result.filter(s => s.quantity > 0 || s.weight > 0)
     }
 
-    // Sort
     result.sort((a, b) => {
         let comparison = 0
         switch (sortField.value) {
@@ -351,7 +333,7 @@ const fetchStores = async () => {
             storesStore.fetchStores(),
             lotsStore.fetchLots(),
             godownsStore.fetchGodowns(),
-            itemsStore.fetchItems()
+            customersStore.fetchCustomers(),
         ])
     } finally {
         loading.value = false
@@ -379,7 +361,7 @@ const toggleSort = (field: StoreSortField) => {
 const handleCopyToClipboard = async () => {
     const headers = 'Lot\tGodown\tQuantity\tWeight\tStatus'
     const rows = filteredStores.value.map(s => {
-        const lotName = lotsStore.getLotName(s.lot_id)
+        const lotName = getLotDisplayName(s.lot_id)
         const godownName = godownsStore.getGodownName(s.godown_id)
         return `${lotName}\t${godownName}\t${s.quantity} ${s.quantity_unit}\t${s.weight} ${s.weight_unit}\t${s.is_active ? 'Active' : 'Inactive'}`
     })
@@ -393,7 +375,6 @@ const handleToggleActive = async (store: Store) => {
     }
 }
 
-// Dialog handlers
 const openDetailDialog = (store: Store) => {
     selectedStore.value = store
     detailDialogOpen.value = true
@@ -417,6 +398,11 @@ const handleEditStoreFromDetail = (store: Store) => {
     }, 300)
 }
 
+const handleReaddStore = (store: Store) => {
+    readdStore.value = store
+    readdDialogOpen.value = true
+}
+
 const handleDeleteStore = (store: Store) => {
     selectedStore.value = store
     deleteDialogOpen.value = true
@@ -433,6 +419,8 @@ const confirmDelete = async () => {
 
 const handleStoreCreated = async () => {
     createDialogOpen.value = false
+    readdDialogOpen.value = false
+    readdStore.value = null
     await fetchStores()
 }
 

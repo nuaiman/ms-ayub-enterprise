@@ -149,19 +149,6 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 		})
 
 		// =====================================================
-		// ITEMS
-		// =====================================================
-		r.Route("/items", func(r chi.Router) {
-			// Admin/Manager only routes (using higherManagementOnly)
-			r.Get("/", higherManagementOnly(handler.GetAllItemsHandler))
-			r.Post("/", higherManagementOnly(handler.CreateItemHandler))
-			r.Get("/{id}", higherManagementOnly(handler.GetItemHandler))
-			r.Patch("/{id}", higherManagementOnly(handler.UpdateItemHandler))
-			r.Patch("/{id}/toggle-active", higherManagementOnly(handler.ToggleItemActiveHandler))
-			r.Delete("/{id}", higherManagementOnly(handler.DeleteItemHandler))
-		})
-
-		// =====================================================
 		// LOTS
 		// =====================================================
 		r.Route("/lots", func(r chi.Router) {

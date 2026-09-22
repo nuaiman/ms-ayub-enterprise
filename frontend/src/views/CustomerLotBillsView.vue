@@ -7,7 +7,7 @@
                 <div class="rounded-xl p-4 bg-(--color-surface) border border-(--color-border)">
                     <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Total Bills</p>
                     <p class="text-2xl font-bold text-(--color-text-primary) mt-1">{{ customerLotBillsStore.totalBills
-                        }}</p>
+                    }}</p>
                 </div>
                 <div class="rounded-xl p-4 bg-(--color-surface) border border-(--color-border)">
                     <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Total Amount</p>
@@ -37,7 +37,6 @@
 import { onMounted } from 'vue'
 import { useCustomerLotBillsStore } from '@/stores/customerLotBills'
 import { useLotsStore } from '@/stores/lots'
-import { useItemsStore } from '@/stores/items'
 import { useCustomersStore } from '@/stores/customers'
 import { useStoresStore } from '@/stores/stores'
 import AppLayout from '@/components/layouts/AppLayout.vue'
@@ -46,14 +45,12 @@ import { formatCurrency } from '@/utils/currency'
 
 const customerLotBillsStore = useCustomerLotBillsStore()
 const lotsStore = useLotsStore()
-const itemsStore = useItemsStore()
 const customersStore = useCustomersStore()
 const storesStore = useStoresStore()
 
 onMounted(async () => {
     await Promise.all([
         lotsStore.fetchLots(),
-        itemsStore.fetchItems(),
         customersStore.fetchCustomers(),
         storesStore.fetchStores(),
     ])

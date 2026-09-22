@@ -37,7 +37,6 @@
 import { onMounted } from 'vue'
 import { useMajhiLotBillsStore } from '@/stores/majhiLotBills'
 import { useLotsStore } from '@/stores/lots'
-import { useItemsStore } from '@/stores/items'
 import { useMajhisStore } from '@/stores/majhis'
 import { useStoresStore } from '@/stores/stores'
 import AppLayout from '@/components/layouts/AppLayout.vue'
@@ -46,14 +45,12 @@ import { formatCurrency } from '@/utils/currency'
 
 const majhiLotBillsStore = useMajhiLotBillsStore()
 const lotsStore = useLotsStore()
-const itemsStore = useItemsStore()
 const majhisStore = useMajhisStore()
 const storesStore = useStoresStore()
 
 onMounted(async () => {
     await Promise.all([
         lotsStore.fetchLots(),
-        itemsStore.fetchItems(),
         majhisStore.fetchMajhis(),
         storesStore.fetchStores(),
     ])

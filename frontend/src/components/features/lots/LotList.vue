@@ -73,31 +73,21 @@
                 <div
                     class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wider bg-(--color-muted-bg)/30 rounded-t-lg">
                     <div class="col-span-3 cursor-pointer hover:text-(--color-text-primary) transition-colors"
-                        @click="toggleSort('item_id')">
+                        @click="toggleSort('customer_id')">
                         <span class="flex items-center gap-1">
-                            Item
-                            <svg v-if="sortField === 'item_id'" class="w-3 h-3"
+                            Product / Lot
+                            <svg v-if="sortField === 'customer_id'" class="w-3 h-3"
                                 :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
                                 viewBox="0 0 24 24">
                                 <path d="M7 10l5 5 5-5z" />
                             </svg>
                         </span>
                     </div>
-                    <div class="col-span-2 cursor-pointer hover:text-(--color-text-primary) transition-colors"
-                        @click="toggleSort('lot_number')">
-                        <span class="flex items-center gap-1">
-                            Lot #
-                            <svg v-if="sortField === 'lot_number'" class="w-3 h-3"
-                                :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
-                                viewBox="0 0 24 24">
-                                <path d="M7 10l5 5 5-5z" />
-                            </svg>
-                        </span>
-                    </div>
+                    <div class="col-span-3">Customer</div>
                     <div class="col-span-2 cursor-pointer hover:text-(--color-text-primary) transition-colors"
                         @click="toggleSort('customer_charge_type')">
                         <span class="flex items-center gap-1">
-                            Charge Type
+                            Charge
                             <svg v-if="sortField === 'customer_charge_type'" class="w-3 h-3"
                                 :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
                                 viewBox="0 0 24 24">
@@ -117,7 +107,7 @@
                             </svg>
                         </span>
                     </div>
-                    <div class="col-span-2 flex items-center justify-end">Actions</div>
+                    <div class="col-span-1 flex items-center justify-end">Actions</div>
                 </div>
 
                 <!-- Loading -->
@@ -152,8 +142,8 @@
                 <!-- Rows -->
                 <div v-else>
                     <LotRow v-for="lot in filteredLots" :key="lot.id" :lot="lot" @view="openDetailDialog"
-                        @edit="handleEditLot" @delete="handleDeleteLot" @toggle-active="handleToggleActive"
-                        @updated="fetchLots" />
+                        @edit="handleEditLot" @readd="handleReaddLot" @delete="handleDeleteLot"
+                        @toggle-active="handleToggleActive" @updated="fetchLots" />
                 </div>
             </div>
         </div>
@@ -166,7 +156,6 @@
         </div>
 
         <!-- Dialogs -->
-        <!-- Create Dialog -->
         <BaseDialog v-model="createDialogOpen" max-width="3xl">
             <div class="mb-6">
                 <h2 class="text-xl font-bold text-(--color-text-primary)">Create New Lot</h2>
@@ -175,13 +164,20 @@
             <LotForm mode="create" @lot-created="handleLotCreated" @cancel="createDialogOpen = false" />
         </BaseDialog>
 
-        <!-- Detail Dialog -->
+        <BaseDialog v-model="readdDialogOpen" max-width="3xl">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-(--color-text-primary)">Re-add Lot</h2>
+                <p class="text-sm text-(--color-text-secondary) mt-1">Create a new lot based on this one</p>
+            </div>
+            <LotForm v-if="readdLot" mode="create" :prefill="readdLot" @lot-created="handleLotCreated"
+                @cancel="readdDialogOpen = false" />
+        </BaseDialog>
+
         <BaseDialog v-model="detailDialogOpen" max-width="3xl">
             <LotDetail v-if="selectedLot" :lot="selectedLot" @close="closeDetailDialog" @edit="handleEditLotFromDetail"
                 @updated="fetchLots" />
         </BaseDialog>
 
-        <!-- Edit Dialog -->
         <BaseDialog v-model="editDialogOpen" max-width="3xl">
             <div class="mb-6">
                 <h2 class="text-xl font-bold text-(--color-text-primary)">Edit Lot</h2>
@@ -191,7 +187,6 @@
                 @cancel="editDialogOpen = false" />
         </BaseDialog>
 
-        <!-- Delete Confirmation Dialog -->
         <BaseDialog v-model="deleteDialogOpen" max-width="sm">
             <div class="flex items-center gap-3">
                 <div
@@ -208,7 +203,7 @@
             </div>
             <p class="text-sm text-(--color-text-secondary) mt-4">
                 Are you sure you want to delete the lot for "<span class="font-medium text-(--color-text-primary)">{{
-                    getItemName(selectedLot?.item_id) }}</span>" (Lot #{{ selectedLot?.lot_number }})?
+                    getLotDisplayName(selectedLot) }}</span>" (Lot #{{ selectedLot?.lot_number }})?
             </p>
             <template #actions>
                 <button @click="deleteDialogOpen = false"
@@ -223,8 +218,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useLotsStore } from '@/stores/lots'
-import { useItemsStore } from '@/stores/items'
+import { useCustomersStore } from '@/stores/customers'
 import { useMajhisStore } from '@/stores/majhis'
+import { useStoresStore } from '@/stores/stores'
 import { useAuthStore } from '@/stores/auth'
 import { useClipboardStore } from '@/stores/clipboard'
 import type { Lot, LotSortField, SortDirection } from '@/types/lot'
@@ -235,8 +231,9 @@ import BaseDialog from '@/components/ui/BaseDialog.vue'
 import { push } from 'notivue'
 
 const lotsStore = useLotsStore()
-const itemsStore = useItemsStore()
+const customersStore = useCustomersStore()
 const majhisStore = useMajhisStore()
+const storesStore = useStoresStore()
 const auth = useAuthStore()
 const clipboardStore = useClipboardStore()
 
@@ -246,50 +243,51 @@ const showActiveOnly = ref(false)
 const sortField = ref<LotSortField>('lot_number')
 const sortDirection = ref<SortDirection>('asc')
 
-// Dialogs
 const createDialogOpen = ref(false)
+const readdDialogOpen = ref(false)
 const detailDialogOpen = ref(false)
 const editDialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
 
 const selectedLot = ref<Lot | null>(null)
+const readdLot = ref<Lot | null>(null)
 
 const canManageLots = computed(() => {
     const role = auth.user?.role
     return role === 'admin' || role === 'manager'
 })
 
-const getItemName = (id?: number): string => {
-    if (!id) return 'Unknown'
-    return itemsStore.getItemName(id)
+const getLotDisplayName = (lot?: Lot | null): string => {
+    if (!lot) return 'Unknown'
+    return lotsStore.getLotDisplayName(lot)
 }
 
 const filteredLots = computed(() => {
     let result = [...lotsStore.lots]
 
-    // Search
     if (searchQuery.value) {
         const query = searchQuery.value.toLowerCase()
         result = result.filter(l =>
-            itemsStore.getItemName(l.item_id).toLowerCase().includes(query) ||
+            lotsStore.getLotDisplayName(l).toLowerCase().includes(query) ||
+            (l.product_name && l.product_name.toLowerCase().includes(query)) ||
+            (l.category && l.category.toLowerCase().includes(query)) ||
             String(l.lot_number).includes(query) ||
             l.customer_charge_type.toLowerCase().includes(query) ||
+            (l.customer_id && customersStore.getCustomerName(l.customer_id).toLowerCase().includes(query)) ||
             (l.majhi_id && majhisStore.getMajhiName(l.majhi_id).toLowerCase().includes(query)) ||
             (l.notes && l.notes.toLowerCase().includes(query))
         )
     }
 
-    // Filter: Active only
     if (showActiveOnly.value) {
         result = result.filter(l => l.is_active)
     }
 
-    // Sort
     result.sort((a, b) => {
         let comparison = 0
         switch (sortField.value) {
-            case 'item_id':
-                comparison = a.item_id - b.item_id
+            case 'customer_id':
+                comparison = (a.customer_id || 0) - (b.customer_id || 0)
                 break
             case 'lot_number':
                 comparison = a.lot_number - b.lot_number
@@ -317,8 +315,9 @@ const fetchLots = async () => {
     try {
         await Promise.all([
             lotsStore.fetchLots(),
-            itemsStore.fetchItems(),
-            majhisStore.fetchMajhis()
+            customersStore.fetchCustomers(),
+            majhisStore.fetchMajhis(),
+            storesStore.fetchStores(),
         ])
     } finally {
         loading.value = false
@@ -344,11 +343,12 @@ const toggleSort = (field: LotSortField) => {
 }
 
 const handleCopyToClipboard = async () => {
-    const headers = 'Item\tLot #\tCharge Type\tMajhi\tStatus'
+    const headers = 'Product\tLot #\tCustomer\tCharge Type\tMajhi\tStatus'
     const rows = filteredLots.value.map(l => {
-        const itemName = itemsStore.getItemName(l.item_id)
+        const productName = lotsStore.getLotDisplayName(l)
+        const customerName = l.customer_id ? customersStore.getCustomerName(l.customer_id) : ''
         const majhiName = l.majhi_id ? majhisStore.getMajhiName(l.majhi_id) : ''
-        return `${itemName}\t${l.lot_number}\t${l.customer_charge_type}\t${majhiName}\t${l.is_active ? 'Active' : 'Inactive'}`
+        return `${productName}\t${l.lot_number}\t${customerName}\t${l.customer_charge_type}\t${majhiName}\t${l.is_active ? 'Active' : 'Inactive'}`
     })
     await clipboardStore.copyToClipboard(headers + '\n' + rows.join('\n'))
 }
@@ -360,7 +360,6 @@ const handleToggleActive = async (lot: Lot) => {
     }
 }
 
-// Dialog handlers
 const openDetailDialog = (lot: Lot) => {
     selectedLot.value = lot
     detailDialogOpen.value = true
@@ -384,6 +383,11 @@ const handleEditLotFromDetail = (lot: Lot) => {
     }, 300)
 }
 
+const handleReaddLot = (lot: Lot) => {
+    readdLot.value = lot
+    readdDialogOpen.value = true
+}
+
 const handleDeleteLot = (lot: Lot) => {
     selectedLot.value = lot
     deleteDialogOpen.value = true
@@ -400,6 +404,8 @@ const confirmDelete = async () => {
 
 const handleLotCreated = async () => {
     createDialogOpen.value = false
+    readdDialogOpen.value = false
+    readdLot.value = null
     await fetchLots()
 }
 

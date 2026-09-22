@@ -3,15 +3,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useLotsStore } from './lots'
-import { useItemsStore } from './items'
 import { useCustomersStore } from './customers'
 import { useStoresStore } from './stores'
+import { getOriginalStockTotals } from '@/utils/storeReconstruction'
 import type { CustomerLotBill, CustomerLotBillSortField, SortDirection } from '@/types/customerLotBill'
 import { push } from 'notivue'
 
 export const useCustomerLotBillsStore = defineStore('customerLotBills', () => {
     const lotsStore = useLotsStore()
-    const itemsStore = useItemsStore()
     const customersStore = useCustomersStore()
     const storesStore = useStoresStore()
 
@@ -20,74 +19,40 @@ export const useCustomerLotBillsStore = defineStore('customerLotBills', () => {
     const sortField = ref<CustomerLotBillSortField>('created_at')
     const sortDirection = ref<SortDirection>('desc')
 
-    // ============= HELPERS =============
-
-    // Calculate bill amount for a lot (unload_rate × quantity/weight)
     const calculateBillAmount = (lot: any, stores: any[]): number => {
-        let totalQuantity = 0
-        let totalWeight = 0
+        const originals = getOriginalStockTotals(stores)
 
-        // Sum up quantities and weights from all stores
-        for (const store of stores) {
-            totalQuantity += store.quantity
-            totalWeight += store.weight
-        }
-
-        // Calculate based on customer_charge_type
         if (lot.customer_charge_type === 'quantity') {
-            return lot.unload_rate * totalQuantity
+            return lot.unload_rate * originals.quantity
         } else {
-            return lot.unload_rate * totalWeight
+            return lot.unload_rate * originals.weight
         }
     }
 
-    // ============= COMPUTED =============
-
-    // Generate bills for all lots with unload_rate > 0
     const bills = computed<CustomerLotBill[]>(() => {
-        // Get all lots with unload_rate > 0 (even if inactive)
-        const allLots = lotsStore.lots.filter(l =>
-            l.unload_rate > 0
-        )
+        const allLots = lotsStore.lots.filter(l => l.unload_rate > 0)
 
         const result: CustomerLotBill[] = []
 
         for (const lot of allLots) {
-            // Get all stores for this lot
             const stores = storesStore.getStoresByLotId(lot.id)
-
-            // Skip if no stores
             if (stores.length === 0) continue
 
-            // Get item and customer info
-            const item = itemsStore.getItemById(lot.item_id)
-            const customerId = item?.customer_id || null
+            const customerId = lot.customer_id || null
             const customerName = customerId ? customersStore.getCustomerName(customerId) : 'No Customer'
 
-            // Calculate bill amount
             const billAmount = calculateBillAmount(lot, stores)
-
-            // Skip if bill amount is 0
             if (billAmount === 0) continue
 
-            // Get paid amount from lot
             const paidAmount = lot.customer_paid_unload_amount || 0
-
-            // Determine status - 'paid' only if fully paid, otherwise 'unpaid'
             const status = paidAmount >= billAmount ? 'paid' : 'unpaid'
-
-            // Use lot's customer_last_paid_through as payment date if paid
             const paymentDate = status === 'paid' ? lot.customer_last_paid_through : null
 
-            // Sum up quantities and weights
-            let totalQuantity = 0
-            let totalWeight = 0
+            const originals = getOriginalStockTotals(stores)
+
             let quantityUnit = 'units'
             let weightUnit = 'kg'
-
             for (const store of stores) {
-                totalQuantity += store.quantity
-                totalWeight += store.weight
                 if (store.quantity_unit) quantityUnit = store.quantity_unit
                 if (store.weight_unit) weightUnit = store.weight_unit
             }
@@ -95,14 +60,14 @@ export const useCustomerLotBillsStore = defineStore('customerLotBills', () => {
             result.push({
                 id: lot.id,
                 lot_id: lot.id,
-                item_name: item ? itemsStore.getItemDisplayName(item) : `Item #${lot.item_id}`,
+                item_name: lotsStore.getLotDisplayName(lot),
                 customer_id: customerId,
                 customer_name: customerName,
                 customer_charge_type: lot.customer_charge_type,
                 unload_rate: lot.unload_rate,
-                quantity: totalQuantity,
+                quantity: originals.quantity,
                 quantity_unit: quantityUnit,
-                weight: totalWeight,
+                weight: originals.weight,
                 weight_unit: weightUnit,
                 bill_amount: billAmount,
                 paid_amount: paidAmount,
@@ -120,7 +85,6 @@ export const useCustomerLotBillsStore = defineStore('customerLotBills', () => {
     const filteredBills = computed(() => {
         let result = [...bills.value]
 
-        // Filter by search query
         if (searchQuery.value) {
             const query = searchQuery.value.toLowerCase()
             result = result.filter(bill =>
@@ -132,12 +96,10 @@ export const useCustomerLotBillsStore = defineStore('customerLotBills', () => {
             )
         }
 
-        // Filter by status
         if (statusFilter.value) {
             result = result.filter(bill => bill.status === statusFilter.value)
         }
 
-        // Sort
         result.sort((a, b) => {
             let comparison = 0
             switch (sortField.value) {
@@ -175,11 +137,8 @@ export const useCustomerLotBillsStore = defineStore('customerLotBills', () => {
             .reduce((sum, b) => sum + b.bill_amount, 0)
     })
 
-    // ============= ACTIONS =============
-
-    // Mark a bill as paid (updates the lot's customer_paid_unload_amount)
     const markBillAsPaid = async (lotId: number, payload: {
-        amount: number  // Payment amount
+        amount: number
         payment_date?: string
         notes?: string | null
     }): Promise<boolean> => {
@@ -200,10 +159,8 @@ export const useCustomerLotBillsStore = defineStore('customerLotBills', () => {
             return true
         }
 
-        // Calculate new total paid (add payment amount to existing paid)
         const newTotalPaid = (lot.customer_paid_unload_amount || 0) + payload.amount
 
-        // Validate: Cannot pay more than bill amount
         if (newTotalPaid > bill.bill_amount) {
             const remaining = bill.bill_amount - bill.paid_amount
             push.error(`Payment amount exceeds remaining balance of ${remaining.toFixed(2)}`)
@@ -231,7 +188,6 @@ export const useCustomerLotBillsStore = defineStore('customerLotBills', () => {
         return false
     }
 
-    // Cancel a bill (sets unload_rate to 0)
     const cancelBill = async (lotId: number): Promise<boolean> => {
         const lot = lotsStore.getLotById(lotId)
         if (!lot) {
@@ -253,7 +209,6 @@ export const useCustomerLotBillsStore = defineStore('customerLotBills', () => {
         return false
     }
 
-    // ============= SORT =============
     const setSort = (field: CustomerLotBillSortField) => {
         if (sortField.value === field) {
             sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
@@ -263,7 +218,6 @@ export const useCustomerLotBillsStore = defineStore('customerLotBills', () => {
         }
     }
 
-    // ============= SEARCH =============
     const setSearchQuery = (query: string) => {
         searchQuery.value = query
     }
@@ -275,8 +229,6 @@ export const useCustomerLotBillsStore = defineStore('customerLotBills', () => {
     const setStatusFilter = (status: 'unpaid' | 'paid' | 'cancelled' | '') => {
         statusFilter.value = status
     }
-
-    // ============= UTILITIES =============
 
     const getBillById = (id: number): CustomerLotBill | undefined => {
         return bills.value.find(b => b.id === id)
@@ -340,13 +292,11 @@ export const useCustomerLotBillsStore = defineStore('customerLotBills', () => {
     }
 
     return {
-        // State
         searchQuery,
         statusFilter,
         sortField,
         sortDirection,
 
-        // Computed
         bills,
         filteredBills,
         totalBills,
@@ -355,19 +305,14 @@ export const useCustomerLotBillsStore = defineStore('customerLotBills', () => {
         totalAmount,
         totalUnpaidAmount,
 
-        // Actions
         markBillAsPaid,
         cancelBill,
 
-        // Sort
         setSort,
-
-        // Search
         setSearchQuery,
         clearSearch,
         setStatusFilter,
 
-        // Utilities
         getBillById,
         getBillsByLotId,
         getBillsByCustomerId,

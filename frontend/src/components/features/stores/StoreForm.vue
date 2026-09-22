@@ -13,7 +13,7 @@
                 v-model:weight-unit="form.weight_unit" v-model:is-active="form.is_active"
                 v-model:billing-start="form.billing_start" v-model:billing-end="form.billing_end"
                 v-model:notes="form.notes" :lot-options="lotOptions" :godown-options="godownOptions"
-                :disabled="submitting" :required="true" :standalone="false" :can-edit-lot="!isEditMode"
+                :disabled="submitting" :required="true" :standalone="false" :can-edit-lot="!isEditMode && !isReaddMode"
                 :can-edit-godown="!isEditMode" :show-active="true" />
         </div>
 
@@ -42,17 +42,16 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import type { Store, StoreBillType } from '@/types/store'
-import type { Lot } from '@/types/lot'
 import { useStoresStore } from '@/stores/stores'
 import { useLotsStore } from '@/stores/lots'
 import { useGodownsStore } from '@/stores/godowns'
-import { useItemsStore } from '@/stores/items'
 import { formatDateForBackend } from '@/utils/date'
 import { push } from 'notivue'
 import StoreFields from './StoreFields.vue'
 
 const props = defineProps<{
     store?: Store | null
+    prefill?: Store | null
     mode?: 'create' | 'edit'
 }>()
 
@@ -65,10 +64,11 @@ const emit = defineEmits<{
 const storesStore = useStoresStore()
 const lotsStore = useLotsStore()
 const godownsStore = useGodownsStore()
-const itemsStore = useItemsStore()
 
 const submitting = ref(false)
-const isEditMode = computed(() => props.mode === 'edit' || !!props.store)
+
+const isEditMode = computed(() => props.mode === 'edit')
+const isReaddMode = computed(() => !isEditMode.value && !!props.prefill)
 
 const lotOptions = computed(() => {
     return lotsStore.lots.filter(l => l.is_active)
@@ -93,66 +93,73 @@ const form = ref({
     notes: '',
 })
 
-const initializeForm = () => {
+const resetToBlank = () => {
     const today = new Date().toISOString().slice(0, 10)
-    if (props.store) {
-        const billingStart = props.store.billing_start ? new Date(props.store.billing_start).toISOString().slice(0, 10) : today
-        const billingEnd = props.store.billing_end ? new Date(props.store.billing_end).toISOString().slice(0, 10) : null
-
-        form.value = {
-            lot_id: props.store.lot_id,
-            godown_id: props.store.godown_id,
-            store_bill_type: props.store.store_bill_type,
-            godown_cut: props.store.godown_cut,
-            quantity: props.store.quantity,
-            quantity_unit: props.store.quantity_unit || 'units',
-            weight: props.store.weight,
-            weight_unit: props.store.weight_unit || 'kg',
-            is_active: props.store.is_active !== undefined ? props.store.is_active : true,
-            billing_start: billingStart,
-            billing_end: billingEnd,
-            notes: props.store.notes || '',
-        }
-    } else {
-        form.value = {
-            lot_id: null,
-            godown_id: null,
-            store_bill_type: 'quantity',
-            godown_cut: 0,
-            quantity: 0,
-            quantity_unit: 'units',
-            weight: 0,
-            weight_unit: 'kg',
-            is_active: true,
-            billing_start: today,
-            billing_end: null,
-            notes: '',
-        }
+    form.value = {
+        lot_id: null,
+        godown_id: null,
+        store_bill_type: 'quantity',
+        godown_cut: 0,
+        quantity: 0,
+        quantity_unit: 'units',
+        weight: 0,
+        weight_unit: 'kg',
+        is_active: true,
+        billing_start: today,
+        billing_end: null,
+        notes: '',
     }
 }
 
-watch(() => props.store, initializeForm, { immediate: true })
+const seedFromStore = (source: Store, zeroStock: boolean) => {
+    const billingStart = source.billing_start
+        ? new Date(source.billing_start).toISOString().slice(0, 10)
+        : new Date().toISOString().slice(0, 10)
+    const billingEnd = source.billing_end
+        ? new Date(source.billing_end).toISOString().slice(0, 10)
+        : null
+
+    form.value = {
+        lot_id: source.lot_id,
+        godown_id: source.godown_id,
+        store_bill_type: source.store_bill_type,
+        godown_cut: source.godown_cut,
+        quantity: zeroStock ? 0 : source.quantity,
+        quantity_unit: source.quantity_unit || 'units',
+        weight: zeroStock ? 0 : source.weight,
+        weight_unit: source.weight_unit || 'kg',
+        is_active: source.is_active !== undefined ? source.is_active : true,
+        billing_start: billingStart,
+        billing_end: billingEnd,
+        notes: source.notes || '',
+    }
+}
+
+const initialize = () => {
+    if (isEditMode.value && props.store) {
+        seedFromStore(props.store, false)
+    } else if (props.prefill) {
+        seedFromStore(props.prefill, true)
+    } else {
+        resetToBlank()
+    }
+}
+
+const ensureDependenciesLoaded = async () => {
+    const tasks: Promise<unknown>[] = []
+
+    if (lotsStore.lots.length === 0) tasks.push(lotsStore.fetchLots())
+    if (godownsStore.godowns.length === 0) tasks.push(godownsStore.fetchGodowns())
+
+    if (tasks.length > 0) {
+        await Promise.all(tasks)
+    }
+}
+
+watch([() => props.store, () => props.prefill, () => props.mode], initialize, { immediate: true })
 
 const resetForm = () => {
-    if (isEditMode.value && props.store) {
-        initializeForm()
-    } else {
-        const today = new Date().toISOString().slice(0, 10)
-        form.value = {
-            lot_id: null,
-            godown_id: null,
-            store_bill_type: 'quantity',
-            godown_cut: 0,
-            quantity: 0,
-            quantity_unit: 'units',
-            weight: 0,
-            weight_unit: 'kg',
-            is_active: true,
-            billing_start: today,
-            billing_end: null,
-            notes: '',
-        }
-    }
+    initialize()
 }
 
 const submit = async () => {
@@ -171,7 +178,6 @@ const submit = async () => {
         return
     }
 
-    // Validate billing_start <= billing_end if billing_end is set
     if (form.value.billing_end && form.value.billing_start > form.value.billing_end) {
         push.error('Billing start date must be before billing end date')
         return
@@ -179,7 +185,6 @@ const submit = async () => {
 
     submitting.value = true
 
-    // Format dates for backend
     const billingStart = formatDateForBackend(form.value.billing_start)
     const billingEnd = formatDateForBackend(form.value.billing_end)
 
@@ -230,15 +235,8 @@ const submit = async () => {
     }
 }
 
-onMounted(() => {
-    if (lotsStore.lots.length === 0) {
-        lotsStore.fetchLots()
-    }
-    if (godownsStore.godowns.length === 0) {
-        godownsStore.fetchGodowns()
-    }
-    if (itemsStore.items.length === 0) {
-        itemsStore.fetchItems()
-    }
+onMounted(async () => {
+    await ensureDependenciesLoaded()
+    initialize()
 })
 </script>

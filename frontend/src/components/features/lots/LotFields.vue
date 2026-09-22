@@ -1,48 +1,70 @@
 <!-- src/components/features/lots/LotFields.vue -->
 <template>
     <div class="space-y-4">
-        <!-- Item (hidden when standalone - used in ItemForm where item is already created) -->
-        <div v-if="!standalone" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Item -->
+        <!-- Customer & Lot Number -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Customer -->
             <div>
                 <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
-                    Item <span v-if="required" class="text-(--color-red)">*</span>
+                    Customer <span class="text-(--color-red)">*</span>
                 </label>
-                <select :value="itemId"
-                    @change="$emit('update:itemId', parseInt(($event.target as HTMLSelectElement).value) || null)"
-                    :disabled="disabled || !canEditItem" required
+                <select :value="customerId ?? ''"
+                    @change="$emit('update:customerId', parseInt(($event.target as HTMLSelectElement).value) || null)"
+                    :disabled="disabled || !canEditCustomer" required
                     class="w-full px-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed">
-                    <option value="">Select an item</option>
-                    <option v-for="item in itemOptions" :key="item.id" :value="item.id">
-                        {{ getItemDisplayName(item) }}
+                    <option value="">Select a customer</option>
+                    <option v-for="customer in customerOptions" :key="customer.id" :value="customer.id">
+                        {{ getCustomerDisplayName(customer) }}
                     </option>
                 </select>
-                <p v-if="!canEditItem" class="text-xs text-(--color-text-secondary) mt-1">
-                    Item cannot be changed
+                <p v-if="!canEditCustomer" class="text-xs text-(--color-text-secondary) mt-1">
+                    Customer cannot be changed
                 </p>
             </div>
 
             <!-- Lot Number -->
             <div>
                 <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
-                    Lot Number <span v-if="required" class="text-(--color-red)">*</span>
+                    Lot Number
                 </label>
-                <input :value="lotNumber"
-                    @input="$emit('update:lotNumber', parseInt(($event.target as HTMLInputElement).value) || 0)"
-                    type="number" min="1" placeholder="Enter lot number" :disabled="disabled || !canEditLotNumber"
-                    class="w-full px-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed" />
-                <p v-if="!canEditLotNumber" class="text-xs text-(--color-text-secondary) mt-1">
-                    Lot number is auto-generated
+                <input :value="lotNumber || ''" type="number" placeholder="Auto-generated" disabled
+                    class="w-full px-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent disabled:opacity-60 disabled:cursor-not-allowed" />
+                <p class="text-xs text-(--color-text-secondary) mt-1">
+                    Auto-incremented per customer
                 </p>
+            </div>
+        </div>
+
+        <!-- Product Name & Category -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
+                    Product Name
+                </label>
+                <input :value="productName"
+                    @input="$emit('update:productName', ($event.target as HTMLInputElement).value)" type="text"
+                    placeholder="Enter product name" :disabled="disabled || !canEditProduct"
+                    class="w-full px-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed" />
+                <p v-if="!canEditProduct" class="text-xs text-(--color-text-secondary) mt-1">
+                    Product name cannot be changed
+                </p>
+            </div>
+
+            <div>
+                <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
+                    Category
+                </label>
+                <input :value="category" @input="$emit('update:category', ($event.target as HTMLInputElement).value)"
+                    type="text" placeholder="Enter category" :disabled="disabled || !canEditProduct"
+                    class="w-full px-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed" />
             </div>
         </div>
 
         <!-- Charge Settings -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Customer Charge Type -->
             <div>
                 <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
-                    Customer Charge Type <span v-if="required" class="text-(--color-red)">*</span>
+                    Customer Charge Type <span class="text-(--color-red)">*</span>
                 </label>
                 <select :value="customerChargeType"
                     @change="$emit('update:customerChargeType', ($event.target as HTMLSelectElement).value as CustomerChargeType)"
@@ -53,10 +75,9 @@
                 </select>
             </div>
 
-            <!-- Majhi Bill Type -->
             <div>
                 <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
-                    Majhi Bill Type <span v-if="required" class="text-(--color-red)">*</span>
+                    Majhi Bill Type <span class="text-(--color-red)">*</span>
                 </label>
                 <select :value="majhiBillType"
                     @change="$emit('update:majhiBillType', ($event.target as HTMLSelectElement).value as MajhiBillType)"
@@ -71,7 +92,6 @@
 
         <!-- Rates & Cuts -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <!-- Customer Storage Rate -->
             <div>
                 <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
                     Storage Rate
@@ -86,7 +106,6 @@
                 </div>
             </div>
 
-            <!-- Unload Rate -->
             <div>
                 <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
                     Unload Rate
@@ -101,7 +120,6 @@
                 </div>
             </div>
 
-            <!-- Majhi Cut -->
             <div>
                 <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
                     Majhi Cut
@@ -122,11 +140,11 @@
             <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
                 Majhi
             </label>
-            <select :value="majhiId"
+            <select :value="majhiId ?? ''"
                 @change="$emit('update:majhiId', parseInt(($event.target as HTMLSelectElement).value) || null)"
                 :disabled="disabled"
                 class="w-full px-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed">
-                <option :value="null">Select a majhi</option>
+                <option value="">Select a majhi</option>
                 <option v-for="majhi in majhiOptions" :key="majhi.id" :value="majhi.id">
                     {{ majhi.name }}
                 </option>
@@ -153,20 +171,18 @@
                 rows="3" placeholder="Enter any notes about this lot" :disabled="disabled"
                 class="w-full px-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent resize-none disabled:opacity-50 disabled:cursor-not-allowed"></textarea>
         </div>
-
-        <!-- Hidden fields for payment tracking - NOT displayed to user -->
-        <!-- customer_last_paid_through, customer_last_paid_amount, customer_paid_unload_amount, majhi_total_paid are hidden -->
     </div>
 </template>
 
 <script setup lang="ts">
 import type { CustomerChargeType, MajhiBillType } from '@/types/lot'
-import type { Item } from '@/types/item'
+import type { Customer } from '@/types/customer'
 import type { Majhi } from '@/types/majhi'
 
-// Props
 defineProps<{
-    itemId: number | null
+    customerId: number | null
+    productName: string
+    category: string
     lotNumber: number
     customerChargeType: CustomerChargeType
     majhiBillType: MajhiBillType
@@ -176,19 +192,18 @@ defineProps<{
     majhiCut: number
     isActive: boolean
     notes: string
-    itemOptions?: Item[]
+    customerOptions?: Customer[]
     majhiOptions?: Majhi[]
     disabled?: boolean
-    required?: boolean
-    standalone?: boolean
-    canEditItem?: boolean
-    canEditLotNumber?: boolean
+    canEditCustomer?: boolean
+    canEditProduct?: boolean
     showActive?: boolean
 }>()
 
-// Emits
 defineEmits<{
-    (e: 'update:itemId', value: number | null): void
+    (e: 'update:customerId', value: number | null): void
+    (e: 'update:productName', value: string): void
+    (e: 'update:category', value: string): void
     (e: 'update:lotNumber', value: number): void
     (e: 'update:customerChargeType', value: CustomerChargeType): void
     (e: 'update:majhiBillType', value: MajhiBillType): void
@@ -200,8 +215,7 @@ defineEmits<{
     (e: 'update:notes', value: string): void
 }>()
 
-// Helpers
-const getItemDisplayName = (item: Item): string => {
-    return item.product_name || item.category || `Item #${item.id}`
+const getCustomerDisplayName = (customer: Customer): string => {
+    return customer.company_name || customer.contact_person || `Customer #${customer.id}`
 }
 </script>

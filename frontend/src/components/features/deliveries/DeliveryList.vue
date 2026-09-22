@@ -98,10 +98,10 @@
                             </svg>
                         </span>
                     </div>
-                    <div class="col-span-1 cursor-pointer hover:text-(--color-text-primary) transition-colors"
+                    <div class="col-span-2 cursor-pointer hover:text-(--color-text-primary) transition-colors"
                         @click="toggleSort('delivery_date')">
                         <span class="flex items-center gap-1">
-                            Date
+                            Items / Date
                             <svg v-if="sortField === 'delivery_date'" class="w-3 h-3"
                                 :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
                                 viewBox="0 0 24 24">
@@ -109,7 +109,7 @@
                             </svg>
                         </span>
                     </div>
-                    <div class="col-span-2 flex items-center justify-end">Actions</div>
+                    <div class="col-span-1 flex items-center justify-end">Actions</div>
                 </div>
 
                 <!-- Loading -->

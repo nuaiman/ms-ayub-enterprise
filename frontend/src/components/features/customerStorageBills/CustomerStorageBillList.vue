@@ -243,22 +243,24 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useCustomerStorageBillsStore } from '@/stores/customerStorageBills'
 import { useLotsStore } from '@/stores/lots'
 import { useStoresStore } from '@/stores/stores'
-import { useItemsStore } from '@/stores/items'
 import { useCustomersStore } from '@/stores/customers'
+import { useDeliveryItemsStore } from '@/stores/deliveryItems'
+import { useDamagesStore } from '@/stores/damages'
 import { useClipboardStore } from '@/stores/clipboard'
+import { formatCurrency } from '@/utils/currency'
+import { formatDateForBackend } from '@/utils/date'
 import type { CustomerStorageBill, CustomerStorageBillSortField } from '@/types/customerStorageBill'
 import CustomerStorageBillRow from './CustomerStorageBillRow.vue'
 import CustomerStorageBillDetail from './CustomerStorageBillDetail.vue'
 import BaseDialog from '@/components/ui/BaseDialog.vue'
-import { formatCurrency } from '@/utils/currency'
-import { formatDateForBackend } from '@/utils/date'
 import { push } from 'notivue'
 
 const customerStorageBillsStore = useCustomerStorageBillsStore()
 const lotsStore = useLotsStore()
 const storesStore = useStoresStore()
-const itemsStore = useItemsStore()
 const customersStore = useCustomersStore()
+const deliveryItemsStore = useDeliveryItemsStore()
+const damagesStore = useDamagesStore()
 const clipboardStore = useClipboardStore()
 
 const loading = ref(true)
@@ -282,8 +284,9 @@ const fetchData = async () => {
         await Promise.all([
             lotsStore.fetchLots(),
             storesStore.fetchStores(),
-            itemsStore.fetchItems(),
             customersStore.fetchCustomers(),
+            deliveryItemsStore.fetchDeliveryItems(),
+            damagesStore.fetchDamages(),
         ])
     } finally {
         loading.value = false
@@ -339,7 +342,6 @@ const confirmPayment = async () => {
         return
     }
 
-    // Format date for backend (converts "2026-09-06" to "2026-09-06T00:00:00Z")
     const paidThrough = formatDateForBackend(paymentForm.value.paid_through)
 
     const success = await customerStorageBillsStore.recordCustomerPayment(
@@ -355,7 +357,6 @@ const confirmPayment = async () => {
     }
 }
 
-// Auto-select current month
 watch(() => customerStorageBillsStore.customerBillData, (data) => {
     if (data.length > 0 && !customerStorageBillsStore.monthFilter) {
         const currentMonth = new Date().toISOString().slice(0, 7)

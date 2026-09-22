@@ -21,7 +21,6 @@ func (h *Handler) CreateDeliveryItemHandler(w http.ResponseWriter, r *http.Reque
 		DeliveryID               int64    `json:"delivery_id"`
 		StoreID                  int64    `json:"store_id"`
 		MajhiID                  *int64   `json:"majhi_id,omitempty"`
-		ItemID                   int64    `json:"item_id"`
 		LotID                    int64    `json:"lot_id"`
 		VehicleNumber            *string  `json:"vehicle_number,omitempty"`
 		DriverNumber             *string  `json:"driver_number,omitempty"`
@@ -53,10 +52,6 @@ func (h *Handler) CreateDeliveryItemHandler(w http.ResponseWriter, r *http.Reque
 	}
 	if req.StoreID == 0 {
 		utils.ErrorJson(w, http.StatusBadRequest, "store_id is required")
-		return
-	}
-	if req.ItemID == 0 {
-		utils.ErrorJson(w, http.StatusBadRequest, "item_id is required")
 		return
 	}
 	if req.LotID == 0 {
@@ -100,19 +95,7 @@ func (h *Handler) CreateDeliveryItemHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Check if item exists
-	exists, err = h.app.Models.Item.Exists(r.Context(), req.ItemID)
-	if err != nil {
-		log.Printf("[DELIVERY_ITEMS] CreateDeliveryItemHandler ERROR: failed to verify item - %v", err)
-		utils.ErrorJson(w, http.StatusInternalServerError, "failed to verify item")
-		return
-	}
-	if !exists {
-		utils.ErrorJson(w, http.StatusNotFound, "item not found")
-		return
-	}
-
-	// Check if lot exists and belongs to item
+	// Check if lot exists and belongs to the store
 	lot, err := h.app.Models.Lot.GetByID(r.Context(), req.LotID)
 	if err != nil {
 		log.Printf("[DELIVERY_ITEMS] CreateDeliveryItemHandler ERROR: failed to fetch lot - %v", err)
@@ -123,13 +106,13 @@ func (h *Handler) CreateDeliveryItemHandler(w http.ResponseWriter, r *http.Reque
 		utils.ErrorJson(w, http.StatusNotFound, "lot not found")
 		return
 	}
-	if lot.ItemID != req.ItemID {
-		utils.ErrorJson(w, http.StatusBadRequest, "lot does not belong to the specified item")
+	if store.LotID != req.LotID {
+		utils.ErrorJson(w, http.StatusBadRequest, "store does not belong to the specified lot")
 		return
 	}
 
 	// Check if majhi exists if provided
-	if req.MajhiID != nil {
+	if req.MajhiID != nil && *req.MajhiID != 0 {
 		exists, err := h.app.Models.Majhi.Exists(r.Context(), *req.MajhiID)
 		if err != nil {
 			log.Printf("[DELIVERY_ITEMS] CreateDeliveryItemHandler ERROR: failed to verify majhi - %v", err)
@@ -201,7 +184,6 @@ func (h *Handler) CreateDeliveryItemHandler(w http.ResponseWriter, r *http.Reque
 		DeliveryID:               req.DeliveryID,
 		StoreID:                  req.StoreID,
 		MajhiID:                  req.MajhiID,
-		ItemID:                   req.ItemID,
 		LotID:                    req.LotID,
 		VehicleNumber:            req.VehicleNumber,
 		DriverNumber:             req.DriverNumber,
@@ -547,7 +529,6 @@ func (h *Handler) DeleteDeliveryItemHandler(w http.ResponseWriter, r *http.Reque
 }
 
 // UpdateDeliveryItemCustomerUnloadPaymentHandler - PATCH /api/delivery-items/{id}/customer-unload-payment
-// Updates the customer unload payment amount for a specific delivery item
 func (h *Handler) UpdateDeliveryItemCustomerUnloadPaymentHandler(w http.ResponseWriter, r *http.Request) {
 	id, ok := utils.GetParamID(w, r)
 	if !ok {
@@ -574,7 +555,6 @@ func (h *Handler) UpdateDeliveryItemCustomerUnloadPaymentHandler(w http.Response
 		return
 	}
 
-	// Check if delivery item exists
 	item, err := h.app.Models.DeliveryItem.GetByID(r.Context(), id)
 	if err != nil {
 		log.Printf("[DELIVERY_ITEMS] UpdateDeliveryItemCustomerUnloadPaymentHandler ERROR: failed to fetch delivery item - %v", err)
@@ -595,7 +575,6 @@ func (h *Handler) UpdateDeliveryItemCustomerUnloadPaymentHandler(w http.Response
 
 	log.Printf("[DELIVERY_ITEMS] UpdateDeliveryItemCustomerUnloadPaymentHandler SUCCESS: updated customer unload payment for delivery item ID=%d", id)
 
-	// Audit log
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
@@ -614,7 +593,6 @@ func (h *Handler) UpdateDeliveryItemCustomerUnloadPaymentHandler(w http.Response
 }
 
 // UpdateDeliveryItemMajhiPaymentHandler - PATCH /api/delivery-items/{id}/majhi-payment
-// Updates the majhi payment amount for a specific delivery item
 func (h *Handler) UpdateDeliveryItemMajhiPaymentHandler(w http.ResponseWriter, r *http.Request) {
 	id, ok := utils.GetParamID(w, r)
 	if !ok {
@@ -641,7 +619,6 @@ func (h *Handler) UpdateDeliveryItemMajhiPaymentHandler(w http.ResponseWriter, r
 		return
 	}
 
-	// Check if delivery item exists
 	item, err := h.app.Models.DeliveryItem.GetByID(r.Context(), id)
 	if err != nil {
 		log.Printf("[DELIVERY_ITEMS] UpdateDeliveryItemMajhiPaymentHandler ERROR: failed to fetch delivery item - %v", err)
@@ -662,7 +639,6 @@ func (h *Handler) UpdateDeliveryItemMajhiPaymentHandler(w http.ResponseWriter, r
 
 	log.Printf("[DELIVERY_ITEMS] UpdateDeliveryItemMajhiPaymentHandler SUCCESS: updated majhi payment for delivery item ID=%d", id)
 
-	// Audit log
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()

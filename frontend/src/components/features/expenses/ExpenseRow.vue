@@ -4,9 +4,25 @@
         @click="handleView">
         <!-- Title - 5 columns -->
         <div class="col-span-5">
-            <div class="min-w-0">
-                <div class="font-medium text-(--color-text-primary) truncate text-sm">{{ expense.title }}</div>
-                <div v-if="expense.notes" class="text-xs text-(--color-text-secondary) truncate">{{ expense.notes }}
+            <div class="flex items-center gap-3">
+                <div class="shrink-0">
+                    <div v-if="expense.image_url"
+                        class="w-9 h-9 rounded-lg overflow-hidden border border-(--color-border)">
+                        <img :src="getImageUrl(expense.image_url)" :alt="expense.title"
+                            class="w-full h-full object-cover" />
+                    </div>
+                    <div v-else
+                        class="w-9 h-9 rounded-lg bg-(--color-red)/10 border border-(--color-border) flex items-center justify-center">
+                        <svg class="w-4 h-4 text-(--color-red)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v1m0 4v1m0-1v1m0-1h.01M12 15v1" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="min-w-0">
+                    <div class="font-medium text-(--color-text-primary) truncate text-sm">{{ expense.title }}</div>
+                    <div v-if="expense.notes" class="text-xs text-(--color-text-secondary) truncate">{{ expense.notes }}
+                    </div>
                 </div>
             </div>
         </div>
@@ -32,7 +48,6 @@
                 </svg>
             </button>
 
-            <!-- Dropdown -->
             <Transition enter-active-class="transition ease-out duration-200"
                 enter-from-class="opacity-0 scale-95 translate-y-1" enter-to-class="opacity-100 scale-100 translate-y-0"
                 leave-active-class="transition ease-in duration-150"
@@ -71,7 +86,6 @@
                 </div>
             </Transition>
 
-            <!-- Backdrop -->
             <div v-if="isOpen" class="fixed inset-0 z-40" @click="closeMenu"></div>
         </div>
     </div>
@@ -81,6 +95,7 @@
 import { ref } from 'vue'
 import type { Expense } from '@/types/expense'
 import { formatCurrency } from '@/utils/currency'
+import { getImageUrl } from '@/utils/image'
 
 const props = defineProps<{
     expense: Expense

@@ -1,9 +1,8 @@
-// src/stores/dashboard.ts
+// src/stores/dashboards.ts
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
-// Import all necessary stores
 import { useCustomersStore } from './customers'
 import { useCustomerStorageBillsStore } from './customerStorageBills'
 import { useCustomerLotBillsStore } from './customerLotBills'
@@ -13,7 +12,6 @@ import { useMajhiLotBillsStore } from './majhiLotBills'
 import { useMajhiLoadingBillsStore } from './majhiLoadingBills'
 import { useBrokerVehicleBillsStore } from './brokerVehicleBills'
 import { useRentsStore } from './rents'
-import { useItemsStore } from './items'
 import { useLotsStore } from './lots'
 import { useStoresStore } from './stores'
 import { useGodownsStore } from './godowns'
@@ -36,16 +34,10 @@ import type {
 } from '@/types/dashboard'
 
 export const useDashboardStore = defineStore('dashboard', () => {
-    // ============================================================
-    // STATE
-    // ============================================================
     const selectedMonth = ref<string>(getCurrentMonth())
     const isLoading = ref(false)
     const isLoaded = ref(false)
 
-    // ============================================================
-    // HELPERS
-    // ============================================================
     function getCurrentMonth(): string {
         const now = new Date()
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -68,9 +60,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
             .slice(0, 2)
     }
 
-    // ============================================================
-    // ACTIONS - LOAD ALL DATA
-    // ============================================================
     async function loadDashboardData() {
         if (isLoading.value) return
         if (isLoaded.value) return
@@ -78,9 +67,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
         isLoading.value = true
 
         try {
-            // Get all stores that have fetch methods
             const customersStore = useCustomersStore()
-            const itemsStore = useItemsStore()
             const lotsStore = useLotsStore()
             const storesStore = useStoresStore()
             const godownsStore = useGodownsStore()
@@ -94,10 +81,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
             const brokersStore = useBrokersStore()
             const rentsStore = useRentsStore()
 
-            // Fetch all data in parallel
             await Promise.all([
                 customersStore.fetchCustomers(),
-                itemsStore.fetchItems(),
                 lotsStore.fetchLots(),
                 storesStore.fetchStores(),
                 godownsStore.fetchGodowns(),
@@ -125,11 +110,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
         isLoaded.value = false
     }
 
-    // ============================================================
-    // COMPUTED - METRICS
-    // ============================================================
     const metrics = computed<DashboardMetrics>(() => {
-        // Get all required stores - these are used for calculations
         const storageStore = useCustomerStorageBillsStore()
         const lotStore = useCustomerLotBillsStore()
         const deliveryStore = useCustomerDeliveryBillsStore()
@@ -139,7 +120,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
         const brokerStore = useBrokerVehicleBillsStore()
         const rentStore = useRentsStore()
 
-        // ---- Total Received from Customers ----
         const storagePaid = storageStore.customerBillData?.reduce((sum, b) => sum + (b.total_paid || 0), 0) || 0
         const lotPaid = lotStore.bills?.reduce((sum, b) => sum + (b.paid_amount || 0), 0) || 0
         const deliveryPaid = deliveryStore.bills?.reduce((sum, b) => sum + (b.paid_amount || 0), 0) || 0
@@ -147,7 +127,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
         const totalReceived = storagePaid + lotPaid + deliveryPaid + transportPaid
 
-        // ---- Monthly Received ----
         const currentMonth = new Date().getMonth()
         const currentYear = new Date().getFullYear()
 
@@ -169,7 +148,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
         const monthlyReceived = monthlyStoragePaid + monthlyLotPaid + monthlyDeliveryPaid + monthlyTransportPaid
 
-        // ---- Total Due from Customers ----
         const storageDue = storageStore.customerBillData?.reduce((sum, b) => sum + (b.outstanding || 0), 0) || 0
         const lotDue = lotStore.bills?.reduce((sum, b) => sum + ((b.bill_amount || 0) - (b.paid_amount || 0)), 0) || 0
         const deliveryDue = deliveryStore.bills?.reduce((sum, b) => sum + ((b.bill_amount || 0) - (b.paid_amount || 0)), 0) || 0
@@ -177,7 +155,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
         const totalDue = storageDue + lotDue + deliveryDue + transportDue
 
-        // ---- Overdue (30+ days) ----
         const thirtyDaysAgo = new Date()
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
@@ -199,7 +176,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
         const overdue = overdueStorage + overdueLot + overdueDelivery + overdueTransport
 
-        // ---- Outstanding Customers Count ----
         const customersWithDue = new Set<number>()
         storageStore.customerBillData
             ?.filter((b) => (b.outstanding || 0) > 0 && b.customer_id)
@@ -216,7 +192,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
         const outstandingCustomers = customersWithDue.size
 
-        // ---- Collection Rate ----
         const totalBilled = (storageStore.customerBillData?.reduce((sum, b) => sum + (b.total_billed || 0), 0) || 0) +
             (lotStore.bills?.reduce((sum, b) => sum + (b.bill_amount || 0), 0) || 0) +
             (deliveryStore.bills?.reduce((sum, b) => sum + (b.bill_amount || 0), 0) || 0) +
@@ -224,16 +199,12 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
         const collectionRate = totalBilled > 0 ? Math.round((totalReceived / totalBilled) * 100) : 0
 
-        // ---- Majhi Unpaid ----
         const majhiUnpaidAmount = (majhiLotStore.totalUnpaidAmount || 0) + (majhiLoadingStore.totalUnpaidAmount || 0)
 
-        // ---- Broker Unpaid ----
         const brokerUnpaidAmount = brokerStore.totalUnpaidAmount || 0
 
-        // ---- Rent Unpaid ----
         const rentUnpaidAmount = rentStore.totalOutstanding || 0
 
-        // ---- Outstanding by Customer ----
         const customerMap = new Map<string, number>()
         const customersStore = useCustomersStore()
 
@@ -278,7 +249,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
             .sort((a, b) => b.amount - a.amount)
             .slice(0, 4)
 
-        // ---- Outstanding by Type ----
         const totalOutstanding = storageDue + lotDue + deliveryDue + transportDue
 
         const outstandingByType: OutstandingByType[] = [
@@ -323,9 +293,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
         }
     })
 
-    // ============================================================
-    // COMPUTED - CUSTOMER REVENUE
-    // ============================================================
     const customerRevenue = computed<CustomerRevenue[]>(() => {
         const customersStore = useCustomersStore()
         const storageStore = useCustomerStorageBillsStore()
@@ -384,9 +351,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
         return result.sort((a, b) => b.total - a.total)
     })
 
-    // ============================================================
-    // COMPUTED - AVAILABLE MONTHS
-    // ============================================================
     const availableMonths = computed<MonthOption[]>(() => {
         const months = new Set<string>()
         const storageStore = useCustomerStorageBillsStore()
@@ -407,9 +371,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
             }))
     })
 
-    // ============================================================
-    // ACTIONS
-    // ============================================================
     function setSelectedMonth(month: string) {
         selectedMonth.value = month
     }
@@ -422,21 +383,15 @@ export const useDashboardStore = defineStore('dashboard', () => {
         }
     }
 
-    // ============================================================
-    // RETURN
-    // ============================================================
     return {
-        // State
         selectedMonth,
         isLoading,
         isLoaded,
 
-        // Computed
         metrics,
         customerRevenue,
         availableMonths,
 
-        // Actions
         loadDashboardData,
         resetLoadedState,
         setSelectedMonth,

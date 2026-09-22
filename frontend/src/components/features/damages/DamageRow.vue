@@ -2,43 +2,80 @@
 <template>
     <div class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) transition-all duration-200 hover:bg-(--color-muted-bg)/30 cursor-pointer"
         @click="handleView">
-        <!-- Store - 3 columns -->
-        <div class="col-span-3 min-w-0">
-            <div class="font-medium text-(--color-text-primary) truncate text-sm">
-                {{ getStoreDisplayName(store) }}
+        <!-- Store / Lot - 3 columns -->
+        <div class="col-span-3 min-w-0 pr-3">
+            <div class="flex items-center gap-3">
+                <div class="shrink-0">
+                    <div v-if="damage.image_url"
+                        class="w-9 h-9 rounded-lg overflow-hidden border border-(--color-border)">
+                        <img :src="getImageUrl(damage.image_url)" :alt="damage.reason"
+                            class="w-full h-full object-cover" />
+                    </div>
+                    <div v-else
+                        class="w-9 h-9 rounded-lg bg-(--color-red)/10 border border-(--color-border) flex items-center justify-center">
+                        <svg class="w-4 h-4 text-(--color-red)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="min-w-0">
+                    <div class="font-medium text-(--color-text-primary) truncate text-sm">
+                        {{ godownName }}
+                    </div>
+                    <div class="text-xs text-(--color-text-secondary) truncate mt-0.5">
+                        {{ lotDisplayName }} Â· Lot #{{ lotNumber }}
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Reason - 3 columns -->
-        <div class="col-span-3 min-w-0">
+        <!-- Customer - 2 columns -->
+        <div class="col-span-2 min-w-0 pr-3">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ damage.reason }}
+                {{ customerName }}
+            </span>
+            <span v-if="customerPhone" class="text-xs text-(--color-text-secondary)/70 truncate block mt-0.5">
+                {{ customerPhone }}
             </span>
         </div>
 
-        <!-- Quantity - 2 columns -->
-        <div class="col-span-2">
-            <span class="text-sm text-(--color-text-secondary)">
-                {{ damage.quantity }} {{ damage.quantity_unit }}
+        <!-- Reason - 2 columns -->
+        <div class="col-span-2 min-w-0 pr-3">
+            <span class="text-sm text-(--color-text-secondary) truncate block">
+                {{ damage.reason }}
+            </span>
+            <span v-if="damage.notes" class="text-xs text-(--color-text-secondary)/70 truncate block mt-0.5">
+                {{ damage.notes }}
+            </span>
+        </div>
+
+        <!-- Quantity - 1 column -->
+        <div class="col-span-1 min-w-0 pr-3">
+            <span class="text-sm text-(--color-text-primary) block truncate">
+                {{ damage.quantity }}
+            </span>
+            <span class="text-xs text-(--color-text-secondary)/70 block truncate mt-0.5">
+                {{ damage.quantity_unit }}
             </span>
         </div>
 
         <!-- Amount - 2 columns -->
-        <div class="col-span-1">
-            <span class="text-sm font-semibold text-(--color-red)">
+        <div class="col-span-2 min-w-0 pr-3">
+            <span class="text-sm font-semibold text-(--color-red) block truncate">
                 {{ formatCurrency(damage.amount) }}
             </span>
         </div>
 
-        <!-- Date - 1 columns -->
-        <div class="col-span-1">
-            <span class="text-xs text-(--color-text-secondary)">
-                {{ formatDate(damage.damage_date) }}
+        <!-- Date - 1 column -->
+        <div class="col-span-1 min-w-0 pr-3">
+            <span class="text-xs text-(--color-text-secondary) block truncate">
+                {{ formatDateShort(damage.damage_date) }}
             </span>
         </div>
 
-        <!-- Actions - 2 columns -->
-        <div class="col-span-2 flex items-center justify-end relative" @click.stop>
+        <!-- Actions - 1 column -->
+        <div class="col-span-1 flex items-center justify-end relative" @click.stop>
             <button @click="toggleMenu"
                 class="w-7 h-7 flex items-center justify-center border border-(--color-border) rounded-md hover:bg-(--color-muted-bg) transition-all duration-200">
                 <svg class="w-3.5 h-3.5 text-(--color-text-secondary)" fill="currentColor" viewBox="0 0 24 24">
@@ -48,7 +85,6 @@
                 </svg>
             </button>
 
-            <!-- Dropdown -->
             <Transition enter-active-class="transition ease-out duration-200"
                 enter-from-class="opacity-0 scale-95 translate-y-1" enter-to-class="opacity-100 scale-100 translate-y-0"
                 leave-active-class="transition ease-in duration-150"
@@ -87,18 +123,20 @@
                 </div>
             </Transition>
 
-            <!-- Backdrop -->
             <div v-if="isOpen" class="fixed inset-0 z-40" @click="closeMenu"></div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { Damage } from '@/types/damage'
-import type { Store } from '@/types/store'
 import { useStoresStore } from '@/stores/stores'
+import { useLotsStore } from '@/stores/lots'
+import { useCustomersStore } from '@/stores/customers'
+import { useGodownsStore } from '@/stores/godowns'
 import { formatCurrency } from '@/utils/currency'
+import { getImageUrl } from '@/utils/image'
 
 const props = defineProps<{
     damage: Damage
@@ -112,48 +150,45 @@ const emit = defineEmits<{
 }>()
 
 const storesStore = useStoresStore()
+const lotsStore = useLotsStore()
+const customersStore = useCustomersStore()
+const godownsStore = useGodownsStore()
 const isOpen = ref(false)
 
-const store = computed(() => {
-    return storesStore.getStoreById(props.damage.store_id)
+const store = computed(() => storesStore.getStoreById(props.damage.store_id))
+const lot = computed(() => (store.value ? lotsStore.getLotById(store.value.lot_id) : null))
+const lotNumber = computed(() => lot.value?.lot_number ?? 'â€”')
+
+const godownName = computed(() => {
+    if (!store.value) return 'â€”'
+    return godownsStore.getGodownName(store.value.godown_id)
 })
 
-const getStoreDisplayName = (store: Store | undefined): string => {
-    if (!store) return `Store #${props.damage.store_id}`
-    return storesStore.getStoreDisplayName(store)
-}
+const lotDisplayName = computed(() => {
+    if (!lot.value) return 'â€”'
+    return lotsStore.getLotDisplayName(lot.value)
+})
 
-const formatDate = (dateStr: string): string => {
+const customerName = computed(() => {
+    if (!lot.value?.customer_id) return 'â€”'
+    return customersStore.getCustomerName(lot.value.customer_id)
+})
+
+const customerPhone = computed(() => {
+    if (!lot.value?.customer_id) return ''
+    const c = customersStore.getCustomerById(lot.value.customer_id)
+    return c?.phone || ''
+})
+
+const formatDateShort = (dateStr: string): string => {
     return new Date(dateStr).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
+        year: 'numeric', month: 'short', day: 'numeric',
     })
 }
 
-// Need to import computed
-import { computed } from 'vue'
-
-const toggleMenu = () => {
-    isOpen.value = !isOpen.value
-}
-
-const closeMenu = () => {
-    isOpen.value = false
-}
-
-const handleView = () => {
-    closeMenu()
-    emit('view', props.damage)
-}
-
-const handleEdit = () => {
-    closeMenu()
-    emit('edit', props.damage)
-}
-
-const handleDelete = () => {
-    closeMenu()
-    emit('delete', props.damage)
-}
+const toggleMenu = () => { isOpen.value = !isOpen.value }
+const closeMenu = () => { isOpen.value = false }
+const handleView = () => { closeMenu(); emit('view', props.damage) }
+const handleEdit = () => { closeMenu(); emit('edit', props.damage) }
+const handleDelete = () => { closeMenu(); emit('delete', props.damage) }
 </script>

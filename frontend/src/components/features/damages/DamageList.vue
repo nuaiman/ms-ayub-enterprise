@@ -71,7 +71,7 @@
                     <div class="col-span-3 cursor-pointer hover:text-(--color-text-primary) transition-colors"
                         @click="toggleSort('store_id')">
                         <span class="flex items-center gap-1">
-                            Store
+                            Store / Lot
                             <svg v-if="sortField === 'store_id'" class="w-3 h-3"
                                 :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
                                 viewBox="0 0 24 24">
@@ -79,21 +79,10 @@
                             </svg>
                         </span>
                     </div>
-                    <div class="col-span-3">
-                        Reason
-                    </div>
+                    <div class="col-span-2">Customer</div>
+                    <div class="col-span-2">Reason</div>
+                    <div class="col-span-1">Qty</div>
                     <div class="col-span-2 cursor-pointer hover:text-(--color-text-primary) transition-colors"
-                        @click="toggleSort('quantity')">
-                        <span class="flex items-center gap-1">
-                            Quantity
-                            <svg v-if="sortField === 'quantity'" class="w-3 h-3"
-                                :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
-                                viewBox="0 0 24 24">
-                                <path d="M7 10l5 5 5-5z" />
-                            </svg>
-                        </span>
-                    </div>
-                    <div class="col-span-1 cursor-pointer hover:text-(--color-text-primary) transition-colors"
                         @click="toggleSort('amount')">
                         <span class="flex items-center gap-1">
                             Amount
@@ -115,7 +104,7 @@
                             </svg>
                         </span>
                     </div>
-                    <div class="col-span-2 flex items-center justify-end">Actions</div>
+                    <div class="col-span-1 flex items-center justify-end">Actions</div>
                 </div>
 
                 <!-- Loading -->

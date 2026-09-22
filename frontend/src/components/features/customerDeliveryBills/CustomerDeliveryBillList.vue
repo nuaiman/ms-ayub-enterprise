@@ -291,7 +291,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useCustomerDeliveryBillsStore } from '@/stores/customerDeliveryBills'
 import { useDeliveryItemsStore } from '@/stores/deliveryItems'
 import { useDeliveriesStore } from '@/stores/deliveries'
-import { useItemsStore } from '@/stores/items'
 import { useCustomersStore } from '@/stores/customers'
 import { useLotsStore } from '@/stores/lots'
 import { useClipboardStore } from '@/stores/clipboard'
@@ -306,7 +305,6 @@ import { push } from 'notivue'
 const customerDeliveryBillsStore = useCustomerDeliveryBillsStore()
 const deliveryItemsStore = useDeliveryItemsStore()
 const deliveriesStore = useDeliveriesStore()
-const itemsStore = useItemsStore()
 const customersStore = useCustomersStore()
 const lotsStore = useLotsStore()
 const clipboardStore = useClipboardStore()
@@ -340,7 +338,6 @@ const fetchData = async () => {
         await Promise.all([
             deliveryItemsStore.fetchDeliveryItems(),
             deliveriesStore.fetchDeliveries(),
-            itemsStore.fetchItems(),
             customersStore.fetchCustomers(),
             lotsStore.fetchLots(),
         ])

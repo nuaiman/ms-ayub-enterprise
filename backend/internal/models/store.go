@@ -88,19 +88,6 @@ func (m *StoreModel) GetByID(ctx context.Context, id int64) (*Store, error) {
 	return m.scanStore(row)
 }
 
-func (m *StoreModel) GetByLotAndGodown(ctx context.Context, lotID, godownID int64) (*Store, error) {
-	query := `
-		SELECT id, lot_id, godown_id, store_bill_type, godown_cut, quantity, quantity_unit,
-		       weight, weight_unit, is_active, billing_start, billing_end,
-		       last_paid_through, last_paid_amount, notes, created_at, updated_at
-		FROM stores
-		WHERE lot_id = ? AND godown_id = ?
-	`
-
-	row := m.DB.QueryRowContext(ctx, query, lotID, godownID)
-	return m.scanStore(row)
-}
-
 func (m *StoreModel) GetByLotID(ctx context.Context, lotID int64) ([]Store, error) {
 	query := `
 		SELECT id, lot_id, godown_id, store_bill_type, godown_cut, quantity, quantity_unit,
@@ -108,7 +95,7 @@ func (m *StoreModel) GetByLotID(ctx context.Context, lotID int64) ([]Store, erro
 		       last_paid_through, last_paid_amount, notes, created_at, updated_at
 		FROM stores
 		WHERE lot_id = ?
-		ORDER BY godown_id ASC
+		ORDER BY godown_id ASC, id ASC
 	`
 
 	rows, err := m.DB.QueryContext(ctx, query, lotID)
@@ -136,7 +123,7 @@ func (m *StoreModel) GetByGodownID(ctx context.Context, godownID int64) ([]Store
 		       last_paid_through, last_paid_amount, notes, created_at, updated_at
 		FROM stores
 		WHERE godown_id = ?
-		ORDER BY lot_id ASC
+		ORDER BY lot_id ASC, id ASC
 	`
 
 	rows, err := m.DB.QueryContext(ctx, query, godownID)
@@ -163,7 +150,7 @@ func (m *StoreModel) GetAll(ctx context.Context) ([]Store, error) {
 		       weight, weight_unit, is_active, billing_start, billing_end,
 		       last_paid_through, last_paid_amount, notes, created_at, updated_at
 		FROM stores
-		ORDER BY lot_id, godown_id ASC
+		ORDER BY lot_id, godown_id ASC, id ASC
 	`
 
 	rows, err := m.DB.QueryContext(ctx, query)
@@ -191,7 +178,7 @@ func (m *StoreModel) GetActive(ctx context.Context) ([]Store, error) {
 		       last_paid_through, last_paid_amount, notes, created_at, updated_at
 		FROM stores
 		WHERE is_active = 1
-		ORDER BY lot_id, godown_id ASC
+		ORDER BY lot_id, godown_id ASC, id ASC
 	`
 
 	rows, err := m.DB.QueryContext(ctx, query)
@@ -219,7 +206,7 @@ func (m *StoreModel) GetWithInventory(ctx context.Context) ([]Store, error) {
 		       last_paid_through, last_paid_amount, notes, created_at, updated_at
 		FROM stores
 		WHERE quantity > 0 OR weight > 0
-		ORDER BY lot_id, godown_id ASC
+		ORDER BY lot_id, godown_id ASC, id ASC
 	`
 
 	rows, err := m.DB.QueryContext(ctx, query)
@@ -287,6 +274,9 @@ func (m *StoreModel) Update(ctx context.Context, store *Store) error {
 	return err
 }
 
+// UpdateInventory updates a store's quantity/weight. The cascade to
+// deactivate the store (and the lot if all its stores are empty) is
+// performed by the SQLite triggers on the stores table.
 func (m *StoreModel) UpdateInventory(ctx context.Context, id int64, quantity, weight float64) error {
 	query := `
 		UPDATE stores
@@ -367,14 +357,6 @@ func (m *StoreModel) Exists(ctx context.Context, id int64) (bool, error) {
 	return exists, err
 }
 
-func (m *StoreModel) ExistsByLotAndGodown(ctx context.Context, lotID, godownID int64) (bool, error) {
-	query := `SELECT EXISTS(SELECT 1 FROM stores WHERE lot_id = ? AND godown_id = ?)`
-
-	var exists bool
-	err := m.DB.QueryRowContext(ctx, query, lotID, godownID).Scan(&exists)
-	return exists, err
-}
-
 func (m *StoreModel) GetTotalQuantityByLot(ctx context.Context, lotID int64) (float64, error) {
 	query := `SELECT COALESCE(SUM(quantity), 0) FROM stores WHERE lot_id = ?`
 
@@ -447,4 +429,12 @@ func (m *StoreModel) scanStoreRow(rows *sql.Rows) (*Store, error) {
 		&store.UpdatedAt,
 	)
 	return store, err
+}
+
+func (m *StoreModel) ExistsByLotAndGodown(ctx context.Context, lotID, godownID int64) (bool, error) {
+	query := `SELECT EXISTS(SELECT 1 FROM stores WHERE lot_id = ? AND godown_id = ?)`
+
+	var exists bool
+	err := m.DB.QueryRowContext(ctx, query, lotID, godownID).Scan(&exists)
+	return exists, err
 }

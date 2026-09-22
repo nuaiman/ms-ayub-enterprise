@@ -4,27 +4,22 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useDeliveryItemsStore } from './deliveryItems'
 import { useDeliveriesStore } from './deliveries'
-import { useItemsStore } from './items'
-import { useCustomersStore } from './customers'
 import { useLotsStore } from './lots'
+import { useCustomersStore } from './customers'
 import type { CustomerDeliveryBill, CustomerDeliveryBillSortField, SortDirection } from '@/types/customerDeliveryBill'
 import { push } from 'notivue'
 
 export const useCustomerDeliveryBillsStore = defineStore('customerDeliveryBills', () => {
     const deliveryItemsStore = useDeliveryItemsStore()
     const deliveriesStore = useDeliveriesStore()
-    const itemsStore = useItemsStore()
-    const customersStore = useCustomersStore()
     const lotsStore = useLotsStore()
+    const customersStore = useCustomersStore()
 
     const searchQuery = ref('')
     const statusFilter = ref<'unpaid' | 'paid' | 'cancelled' | ''>('')
     const sortField = ref<CustomerDeliveryBillSortField>('created_at')
     const sortDirection = ref<SortDirection>('desc')
 
-    // ============= HELPERS =============
-
-    // Calculate bill amount for a delivery item (loading_rate × quantity/weight)
     const calculateBillAmount = (item: any): number => {
         if (item.customer_charge_type === 'quantity') {
             return item.loading_rate * item.quantity
@@ -33,38 +28,25 @@ export const useCustomerDeliveryBillsStore = defineStore('customerDeliveryBills'
         }
     }
 
-    // ============= COMPUTED =============
-
-    // Generate bills for all delivery items with loading_rate > 0
     const bills = computed<CustomerDeliveryBill[]>(() => {
-        // Get all delivery items with loading_rate > 0 (even if previously paid)
         const items = deliveryItemsStore.deliveryItems.filter(item => item.loading_rate > 0)
 
         const result: CustomerDeliveryBill[] = []
 
         for (const item of items) {
-            // Get delivery info
             const delivery = deliveriesStore.getDeliveryById(item.delivery_id)
             if (!delivery) continue
 
-            // Get customer info
             const customerId = delivery.customer_id || null
             const customerName = customerId ? customersStore.getCustomerName(customerId) : 'No Customer'
 
-            // Get item and lot info
             const lot = lotsStore.getLotById(item.lot_id)
-            const lotItem = lot ? itemsStore.getItemById(lot.item_id) : null
+            const itemName = lot ? lotsStore.getLotDisplayName(lot) : `Lot #${item.lot_id}`
 
-            // Calculate bill amount
             const billAmount = calculateBillAmount(item)
-
-            // Skip if bill amount is 0
             if (billAmount === 0) continue
 
-            // Get paid amount from delivery item
             const paidAmount = item.customer_paid_unload_amount || 0
-
-            // Determine status - 'paid' only if fully paid, otherwise 'unpaid'
             const status = paidAmount >= billAmount ? 'paid' : 'unpaid'
 
             result.push({
@@ -74,7 +56,7 @@ export const useCustomerDeliveryBillsStore = defineStore('customerDeliveryBills'
                 delivery_date: delivery.delivery_date,
                 customer_id: customerId,
                 customer_name: customerName,
-                item_name: lotItem ? itemsStore.getItemDisplayName(lotItem) : `Item #${item.item_id}`,
+                item_name: itemName,
                 lot_id: item.lot_id,
                 store_id: item.store_id,
                 customer_charge_type: item.customer_charge_type,
@@ -99,7 +81,6 @@ export const useCustomerDeliveryBillsStore = defineStore('customerDeliveryBills'
     const filteredBills = computed(() => {
         let result = [...bills.value]
 
-        // Filter by search query
         if (searchQuery.value) {
             const query = searchQuery.value.toLowerCase()
             result = result.filter(bill =>
@@ -112,12 +93,10 @@ export const useCustomerDeliveryBillsStore = defineStore('customerDeliveryBills'
             )
         }
 
-        // Filter by status
         if (statusFilter.value) {
             result = result.filter(bill => bill.status === statusFilter.value)
         }
 
-        // Sort
         result.sort((a, b) => {
             let comparison = 0
             switch (sortField.value) {
@@ -158,11 +137,8 @@ export const useCustomerDeliveryBillsStore = defineStore('customerDeliveryBills'
             .reduce((sum, b) => sum + b.bill_amount, 0)
     })
 
-    // ============= ACTIONS =============
-
-    // Mark a bill as paid (updates the delivery item's customer_paid_unload_amount)
     const markBillAsPaid = async (deliveryItemId: number, payload: {
-        amount: number  // Payment amount
+        amount: number
         payment_date?: string
         notes?: string | null
     }): Promise<boolean> => {
@@ -184,10 +160,8 @@ export const useCustomerDeliveryBillsStore = defineStore('customerDeliveryBills'
                 return true
             }
 
-            // Calculate new total paid (add payment amount to existing paid)
             const newTotalPaid = (bill.paid_amount || 0) + payload.amount
 
-            // Validate: Cannot pay more than bill amount
             if (newTotalPaid > bill.bill_amount) {
                 const remaining = bill.bill_amount - bill.paid_amount
                 push.error(`Payment amount exceeds remaining balance of ${remaining.toFixed(2)}`)
@@ -205,7 +179,6 @@ export const useCustomerDeliveryBillsStore = defineStore('customerDeliveryBills'
                         notes: payload.notes
                     })
                 }
-                // Update the bill status
                 await deliveryItemsStore.fetchDeliveryItems()
                 return true
             }
@@ -218,7 +191,6 @@ export const useCustomerDeliveryBillsStore = defineStore('customerDeliveryBills'
         }
     }
 
-    // Cancel a bill (sets loading_rate to 0)
     const cancelBill = async (deliveryItemId: number): Promise<boolean> => {
         try {
             const item = deliveryItemsStore.getDeliveryItemById(deliveryItemId)
@@ -245,7 +217,6 @@ export const useCustomerDeliveryBillsStore = defineStore('customerDeliveryBills'
         }
     }
 
-    // ============= SORT =============
     const setSort = (field: CustomerDeliveryBillSortField) => {
         if (sortField.value === field) {
             sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
@@ -255,7 +226,6 @@ export const useCustomerDeliveryBillsStore = defineStore('customerDeliveryBills'
         }
     }
 
-    // ============= SEARCH =============
     const setSearchQuery = (query: string) => {
         searchQuery.value = query
     }
@@ -267,8 +237,6 @@ export const useCustomerDeliveryBillsStore = defineStore('customerDeliveryBills'
     const setStatusFilter = (status: 'unpaid' | 'paid' | 'cancelled' | '') => {
         statusFilter.value = status
     }
-
-    // ============= UTILITIES =============
 
     const getBillById = (id: number): CustomerDeliveryBill | undefined => {
         return bills.value.find(b => b.id === id)
@@ -344,13 +312,11 @@ export const useCustomerDeliveryBillsStore = defineStore('customerDeliveryBills'
     }
 
     return {
-        // State
         searchQuery,
         statusFilter,
         sortField,
         sortDirection,
 
-        // Computed
         bills,
         filteredBills,
         totalBills,
@@ -359,19 +325,14 @@ export const useCustomerDeliveryBillsStore = defineStore('customerDeliveryBills'
         totalAmount,
         totalUnpaidAmount,
 
-        // Actions
         markBillAsPaid,
         cancelBill,
 
-        // Sort
         setSort,
-
-        // Search
         setSearchQuery,
         clearSearch,
         setStatusFilter,
 
-        // Utilities
         getBillById,
         getBillsByDeliveryId,
         getBillsByCustomerId,

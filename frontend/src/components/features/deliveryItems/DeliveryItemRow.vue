@@ -2,55 +2,61 @@
 <template>
     <div class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) transition-all duration-200 hover:bg-(--color-muted-bg)/30 cursor-pointer"
         @click="handleView">
-        <!-- Delivery - 2 -->
+        <!-- Delivery - 2 columns -->
         <div class="col-span-2 min-w-0 pr-3">
             <div class="font-medium text-(--color-text-primary) truncate text-sm">
-                #{{ deliveryItem.delivery_id }}
+                {{ formatDateShort(deliveryItem.created_at) }}
             </div>
-            <span class="text-xs text-(--color-text-secondary) truncate block">
-                {{ getDeliveryDate(deliveryItem.delivery_id) }}
-            </span>
+            <div class="text-xs text-(--color-text-secondary) truncate mt-0.5">
+                Delivery
+            </div>
         </div>
 
-        <!-- Item - 3 -->
+        <!-- Product / Lot - 3 columns -->
         <div class="col-span-3 min-w-0 pr-3">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ getItemName(deliveryItem.item_id) }}
+                {{ lotDisplayName }}
+            </span>
+            <span class="text-xs text-(--color-text-secondary)/70 truncate block mt-0.5">
+                Lot #{{ lotNumber }}
             </span>
         </div>
 
-        <!-- Lot - 2 -->
+        <!-- Customer - 2 columns -->
         <div class="col-span-2 min-w-0 pr-3">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ getLotName(deliveryItem.lot_id) }}
+                {{ customerName }}
+            </span>
+            <span v-if="customerPhone" class="text-xs text-(--color-text-secondary)/70 truncate block mt-0.5">
+                {{ customerPhone }}
             </span>
         </div>
 
-        <!-- Quantity - 1 -->
-        <div class="col-span-1 min-w-0">
-            <span class="text-sm text-(--color-text-secondary) truncate block">
+        <!-- Stock - 2 columns -->
+        <div class="col-span-2 min-w-0 pr-3">
+            <span class="text-sm text-(--color-text-primary) block truncate">
                 {{ deliveryItem.quantity }} {{ deliveryItem.quantity_unit }}
             </span>
-        </div>
-
-        <!-- Weight - 1 -->
-        <div class="col-span-1 min-w-0">
-            <span class="text-sm text-(--color-text-secondary) truncate block">
+            <span class="text-xs text-(--color-text-secondary)/70 block truncate mt-0.5">
                 {{ deliveryItem.weight }} {{ deliveryItem.weight_unit }}
             </span>
         </div>
 
-        <!-- Majhi - 2 -->
+        <!-- Majhi - 2 columns -->
         <div class="col-span-2 min-w-0 pr-3">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ getMajhiName(deliveryItem.majhi_id) }}
+                {{ majhiName }}
+            </span>
+            <span v-if="deliveryItem.majhi_cut > 0"
+                class="text-xs text-(--color-text-secondary)/70 truncate block mt-0.5">
+                {{ formatCurrency(deliveryItem.majhi_cut) }} cut
             </span>
         </div>
 
-        <!-- Actions - 1 -->
+        <!-- Actions - 1 column -->
         <div class="col-span-1 flex items-center justify-end relative" @click.stop>
             <button @click="toggleMenu"
-                class="w-7 h-7 flex items-center justify-center border border-(--color-border) rounded-md hover:bg-(--color-muted-bg) transition-all duration-200 shrink-0">
+                class="w-7 h-7 flex items-center justify-center border border-(--color-border) rounded-md hover:bg-(--color-muted-bg) transition-all duration-200">
                 <svg class="w-3.5 h-3.5 text-(--color-text-secondary)" fill="currentColor" viewBox="0 0 24 24">
                     <circle cx="12" cy="5" r="1.5" />
                     <circle cx="12" cy="12" r="1.5" />
@@ -102,12 +108,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { DeliveryItem } from '@/types/deliveryItem'
-import { useDeliveriesStore } from '@/stores/deliveries'
-import { useItemsStore } from '@/stores/items'
 import { useLotsStore } from '@/stores/lots'
+import { useCustomersStore } from '@/stores/customers'
 import { useMajhisStore } from '@/stores/majhis'
+import { formatCurrency } from '@/utils/currency'
 
 const props = defineProps<{
     deliveryItem: DeliveryItem
@@ -120,28 +126,39 @@ const emit = defineEmits<{
     'updated': []
 }>()
 
-const deliveriesStore = useDeliveriesStore()
-const itemsStore = useItemsStore()
 const lotsStore = useLotsStore()
+const customersStore = useCustomersStore()
 const majhisStore = useMajhisStore()
 const isOpen = ref(false)
 
-const getDeliveryDate = (id: number): string => {
-    const delivery = deliveriesStore.getDeliveryById(id)
-    if (!delivery) return ''
-    return new Date(delivery.delivery_date).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
+const lot = computed(() => lotsStore.getLotById(props.deliveryItem.lot_id))
+const lotNumber = computed(() => lot.value?.lot_number ?? 'â€”')
+
+const lotDisplayName = computed(() => {
+    if (!lot.value) return 'â€”'
+    return lotsStore.getLotDisplayName(lot.value)
+})
+
+const customerName = computed(() => {
+    if (!lot.value?.customer_id) return 'â€”'
+    return customersStore.getCustomerName(lot.value.customer_id)
+})
+
+const customerPhone = computed(() => {
+    if (!lot.value?.customer_id) return ''
+    const c = customersStore.getCustomerById(lot.value.customer_id)
+    return c?.phone || ''
+})
+
+const majhiName = computed(() => {
+    if (!props.deliveryItem.majhi_id) return 'â€”'
+    return majhisStore.getMajhiName(props.deliveryItem.majhi_id)
+})
+
+const formatDateShort = (dateStr: string): string => {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric',
     })
-}
-
-const getItemName = (id: number): string => itemsStore.getItemName(id)
-const getLotName = (id: number): string => lotsStore.getLotName(id)
-
-const getMajhiName = (id: number | null): string => {
-    if (!id) return '—'
-    return majhisStore.getMajhiName(id)
 }
 
 const toggleMenu = () => { isOpen.value = !isOpen.value }

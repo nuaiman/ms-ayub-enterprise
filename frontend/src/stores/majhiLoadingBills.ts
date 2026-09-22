@@ -4,27 +4,22 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useDeliveryItemsStore } from './deliveryItems'
 import { useDeliveriesStore } from './deliveries'
-import { useItemsStore } from './items'
-import { useMajhisStore } from './majhis'
 import { useLotsStore } from './lots'
+import { useMajhisStore } from './majhis'
 import type { MajhiLoadingBill, MajhiLoadingBillSortField, SortDirection } from '@/types/majhiLoadingBill'
 import { push } from 'notivue'
 
 export const useMajhiLoadingBillsStore = defineStore('majhiLoadingBills', () => {
     const deliveryItemsStore = useDeliveryItemsStore()
     const deliveriesStore = useDeliveriesStore()
-    const itemsStore = useItemsStore()
-    const majhisStore = useMajhisStore()
     const lotsStore = useLotsStore()
+    const majhisStore = useMajhisStore()
 
     const searchQuery = ref('')
     const statusFilter = ref<'unpaid' | 'paid' | 'cancelled' | ''>('')
     const sortField = ref<MajhiLoadingBillSortField>('created_at')
     const sortDirection = ref<SortDirection>('desc')
 
-    // ============= HELPERS =============
-
-    // Calculate bill amount for a delivery item based on majhi_bill_type
     const calculateBillAmount = (item: any): number => {
         switch (item.majhi_bill_type) {
             case 'quantity':
@@ -32,17 +27,13 @@ export const useMajhiLoadingBillsStore = defineStore('majhiLoadingBills', () => 
             case 'weight':
                 return item.majhi_cut * item.weight
             case 'job':
-                return item.majhi_cut // Fixed amount for job
+                return item.majhi_cut
             default:
                 return 0
         }
     }
 
-    // ============= COMPUTED =============
-
-    // Generate bills for all delivery items with majhi_id and majhi_cut > 0
     const bills = computed<MajhiLoadingBill[]>(() => {
-        // Get all delivery items with majhi_id and majhi_cut > 0
         const items = deliveryItemsStore.deliveryItems.filter(item =>
             item.majhi_id !== null && item.majhi_cut > 0
         )
@@ -50,24 +41,17 @@ export const useMajhiLoadingBillsStore = defineStore('majhiLoadingBills', () => 
         const result: MajhiLoadingBill[] = []
 
         for (const item of items) {
-            // Get delivery info
             const delivery = deliveriesStore.getDeliveryById(item.delivery_id)
             if (!delivery) continue
 
-            // Get majhi info
             const majhiName = item.majhi_id ? majhisStore.getMajhiName(item.majhi_id) : 'No Majhi'
 
-            // Get item and lot info
             const lot = lotsStore.getLotById(item.lot_id)
-            const lotItem = lot ? itemsStore.getItemById(lot.item_id) : null
+            const itemName = lot ? lotsStore.getLotDisplayName(lot) : `Lot #${item.lot_id}`
 
-            // Calculate bill amount
             const billAmount = calculateBillAmount(item)
-
-            // Get paid amount from delivery item
             const paidAmount = item.majhi_total_paid || 0
 
-            // Determine status
             let status: 'unpaid' | 'paid' | 'cancelled' = 'unpaid'
             if (paidAmount >= billAmount) {
                 status = 'paid'
@@ -80,7 +64,7 @@ export const useMajhiLoadingBillsStore = defineStore('majhiLoadingBills', () => 
                 delivery_date: delivery.delivery_date,
                 majhi_id: item.majhi_id,
                 majhi_name: majhiName,
-                item_name: lotItem ? itemsStore.getItemDisplayName(lotItem) : `Item #${item.item_id}`,
+                item_name: itemName,
                 lot_id: item.lot_id,
                 store_id: item.store_id,
                 majhi_bill_type: item.majhi_bill_type,
@@ -105,7 +89,6 @@ export const useMajhiLoadingBillsStore = defineStore('majhiLoadingBills', () => 
     const filteredBills = computed(() => {
         let result = [...bills.value]
 
-        // Filter by search query
         if (searchQuery.value) {
             const query = searchQuery.value.toLowerCase()
             result = result.filter(bill =>
@@ -118,12 +101,10 @@ export const useMajhiLoadingBillsStore = defineStore('majhiLoadingBills', () => 
             )
         }
 
-        // Filter by status
         if (statusFilter.value) {
             result = result.filter(bill => bill.status === statusFilter.value)
         }
 
-        // Sort
         result.sort((a, b) => {
             let comparison = 0
             switch (sortField.value) {
@@ -164,11 +145,8 @@ export const useMajhiLoadingBillsStore = defineStore('majhiLoadingBills', () => 
             .reduce((sum, b) => sum + b.bill_amount, 0)
     })
 
-    // ============= ACTIONS =============
-
-    // Mark a bill as paid (updates the delivery item's majhi_total_paid)
     const markBillAsPaid = async (deliveryItemId: number, payload: {
-        amount: number  // Payment amount
+        amount: number
         payment_date?: string
         notes?: string | null
     }): Promise<boolean> => {
@@ -190,10 +168,8 @@ export const useMajhiLoadingBillsStore = defineStore('majhiLoadingBills', () => 
                 return true
             }
 
-            // Calculate new total paid (add payment amount to existing paid)
             const newTotalPaid = (item.majhi_total_paid || 0) + payload.amount
 
-            // Validate: Cannot pay more than bill amount
             if (newTotalPaid > bill.bill_amount) {
                 const remaining = bill.bill_amount - bill.paid_amount
                 push.error(`Payment amount exceeds remaining balance of ${remaining.toFixed(2)}`)
@@ -224,7 +200,6 @@ export const useMajhiLoadingBillsStore = defineStore('majhiLoadingBills', () => 
         }
     }
 
-    // Cancel a bill (sets majhi_cut to 0 and removes majhi_id from delivery item)
     const cancelBill = async (deliveryItemId: number): Promise<boolean> => {
         try {
             const item = deliveryItemsStore.getDeliveryItemById(deliveryItemId)
@@ -253,7 +228,6 @@ export const useMajhiLoadingBillsStore = defineStore('majhiLoadingBills', () => 
         }
     }
 
-    // ============= SORT =============
     const setSort = (field: MajhiLoadingBillSortField) => {
         if (sortField.value === field) {
             sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
@@ -263,7 +237,6 @@ export const useMajhiLoadingBillsStore = defineStore('majhiLoadingBills', () => 
         }
     }
 
-    // ============= SEARCH =============
     const setSearchQuery = (query: string) => {
         searchQuery.value = query
     }
@@ -275,8 +248,6 @@ export const useMajhiLoadingBillsStore = defineStore('majhiLoadingBills', () => 
     const setStatusFilter = (status: 'unpaid' | 'paid' | 'cancelled' | '') => {
         statusFilter.value = status
     }
-
-    // ============= UTILITIES =============
 
     const getBillById = (id: number): MajhiLoadingBill | undefined => {
         return bills.value.find(b => b.id === id)
@@ -361,13 +332,11 @@ export const useMajhiLoadingBillsStore = defineStore('majhiLoadingBills', () => 
     }
 
     return {
-        // State
         searchQuery,
         statusFilter,
         sortField,
         sortDirection,
 
-        // Computed
         bills,
         filteredBills,
         totalBills,
@@ -376,19 +345,14 @@ export const useMajhiLoadingBillsStore = defineStore('majhiLoadingBills', () => 
         totalAmount,
         totalUnpaidAmount,
 
-        // Actions
         markBillAsPaid,
         cancelBill,
 
-        // Sort
         setSort,
-
-        // Search
         setSearchQuery,
         clearSearch,
         setStatusFilter,
 
-        // Utilities
         getBillById,
         getBillsByDeliveryId,
         getBillsByMajhiId,

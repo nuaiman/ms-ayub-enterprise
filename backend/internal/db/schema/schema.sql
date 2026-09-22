@@ -187,35 +187,17 @@ CREATE INDEX IF NOT EXISTS idx_customers_company ON customers(company_name);
 CREATE INDEX IF NOT EXISTS idx_customers_contact_person ON customers(contact_person);
 
 -- =====================================================
--- 8. ITEMS
+-- 8. LOTS
 -- =====================================================
-CREATE TABLE IF NOT EXISTS items (
+-- Lots are now the top of the product hierarchy. They carry the
+-- product identity (name, category) and the customer, previously
+-- held on the items table.
+CREATE TABLE IF NOT EXISTS lots (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     customer_id INTEGER,
     product_name TEXT,
     category TEXT,
-    is_active INTEGER NOT NULL DEFAULT 1,
-    notes TEXT,
-    image_url TEXT,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_items_user_id ON items(user_id);
-CREATE INDEX IF NOT EXISTS idx_items_customer_id ON items(customer_id);
-CREATE INDEX IF NOT EXISTS idx_items_product_name ON items(product_name);
-CREATE INDEX IF NOT EXISTS idx_items_category ON items(category);
-CREATE INDEX IF NOT EXISTS idx_items_is_active ON items(is_active);
-
--- =====================================================
--- 9. LOTS
--- =====================================================
-CREATE TABLE IF NOT EXISTS lots (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    item_id INTEGER NOT NULL,
     lot_number INTEGER NOT NULL,
     customer_charge_type TEXT NOT NULL DEFAULT 'quantity' CHECK (customer_charge_type IN ('weight', 'quantity')),
     majhi_bill_type TEXT NOT NULL DEFAULT 'quantity' CHECK (majhi_bill_type IN ('weight', 'quantity', 'job')),
@@ -232,19 +214,25 @@ CREATE TABLE IF NOT EXISTS lots (
     majhi_total_paid REAL NOT NULL DEFAULT 0 CHECK (majhi_total_paid >= 0),
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
-    FOREIGN KEY (majhi_id) REFERENCES majhis(id) ON DELETE SET NULL,
-    UNIQUE(item_id, lot_number)
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL,
+    FOREIGN KEY (majhi_id) REFERENCES majhis(id) ON DELETE SET NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_lots_item_id ON lots(item_id);
-CREATE INDEX IF NOT EXISTS idx_lots_lot_number ON lots(item_id, lot_number);
+CREATE INDEX IF NOT EXISTS idx_lots_user_id ON lots(user_id);
+CREATE INDEX IF NOT EXISTS idx_lots_customer_id ON lots(customer_id);
+CREATE INDEX IF NOT EXISTS idx_lots_product_name ON lots(product_name);
+CREATE INDEX IF NOT EXISTS idx_lots_category ON lots(category);
+CREATE INDEX IF NOT EXISTS idx_lots_lot_number ON lots(lot_number);
 CREATE INDEX IF NOT EXISTS idx_lots_majhi_id ON lots(majhi_id);
 CREATE INDEX IF NOT EXISTS idx_lots_is_active ON lots(is_active);
 
 -- =====================================================
--- 10. STORES
+-- 9. STORES
 -- =====================================================
+-- A lot can have multiple stores in the same godown
+-- (i.e. multiple arrivals of the same lot). Each row represents
+-- one distinct arrival with its own billing_start.
 CREATE TABLE IF NOT EXISTS stores (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     lot_id INTEGER NOT NULL,
@@ -265,7 +253,6 @@ CREATE TABLE IF NOT EXISTS stores (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (lot_id) REFERENCES lots(id) ON DELETE CASCADE,
     FOREIGN KEY (godown_id) REFERENCES godowns(id) ON DELETE RESTRICT,
-    UNIQUE(lot_id, godown_id),
     CHECK (billing_end IS NULL OR billing_start <= billing_end)
 );
 
@@ -277,7 +264,7 @@ CREATE INDEX IF NOT EXISTS idx_stores_billing_end ON stores(billing_end);
 CREATE INDEX IF NOT EXISTS idx_stores_is_active ON stores(is_active);
 
 -- =====================================================
--- 11. DAMAGES
+-- 10. DAMAGES
 -- =====================================================
 CREATE TABLE IF NOT EXISTS damages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -305,7 +292,7 @@ CREATE INDEX IF NOT EXISTS idx_damages_damage_date ON damages(damage_date);
 CREATE INDEX IF NOT EXISTS idx_damages_created_at ON damages(created_at);
 
 -- =====================================================
--- 12. DELIVERIES (Master)
+-- 11. DELIVERIES (Master)
 -- =====================================================
 CREATE TABLE IF NOT EXISTS deliveries (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -331,14 +318,13 @@ CREATE INDEX IF NOT EXISTS idx_deliveries_receiver_name ON deliveries(receiver_n
 CREATE INDEX IF NOT EXISTS idx_deliveries_receiver_phone ON deliveries(receiver_phone);
 
 -- =====================================================
--- 13. DELIVERY ITEMS (Detail)
+-- 12. DELIVERY ITEMS (Detail)
 -- =====================================================
 CREATE TABLE IF NOT EXISTS delivery_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     delivery_id INTEGER NOT NULL,
     store_id INTEGER NOT NULL,
     majhi_id INTEGER,
-    item_id INTEGER NOT NULL,
     lot_id INTEGER NOT NULL,
     vehicle_number TEXT,
     driver_number TEXT,
@@ -358,20 +344,18 @@ CREATE TABLE IF NOT EXISTS delivery_items (
     FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE CASCADE,
     FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE RESTRICT,
     FOREIGN KEY (majhi_id) REFERENCES majhis(id) ON DELETE SET NULL,
-    FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE RESTRICT,
     FOREIGN KEY (lot_id) REFERENCES lots(id) ON DELETE RESTRICT
 );
 
 CREATE INDEX IF NOT EXISTS idx_delivery_items_delivery_id ON delivery_items(delivery_id);
 CREATE INDEX IF NOT EXISTS idx_delivery_items_store_id ON delivery_items(store_id);
 CREATE INDEX IF NOT EXISTS idx_delivery_items_majhi_id ON delivery_items(majhi_id);
-CREATE INDEX IF NOT EXISTS idx_delivery_items_item_id ON delivery_items(item_id);
 CREATE INDEX IF NOT EXISTS idx_delivery_items_lot_id ON delivery_items(lot_id);
 CREATE INDEX IF NOT EXISTS idx_delivery_items_vehicle_number ON delivery_items(vehicle_number);
 CREATE INDEX IF NOT EXISTS idx_delivery_items_driver_number ON delivery_items(driver_number);
 
 -- =====================================================
--- 14. TRANSPORTS
+-- 13. TRANSPORTS
 -- =====================================================
 CREATE TABLE IF NOT EXISTS transports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -405,7 +389,7 @@ CREATE INDEX IF NOT EXISTS idx_transports_delivery_type ON transports(delivery_t
 CREATE INDEX IF NOT EXISTS idx_transports_vehicle_quantity ON transports(vehicle_quantity);
 
 -- =====================================================
--- 15. VEHICLES
+-- 14. VEHICLES
 -- =====================================================
 CREATE TABLE IF NOT EXISTS vehicles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -440,7 +424,7 @@ CREATE INDEX IF NOT EXISTS idx_vehicles_driver_name ON vehicles(driver_name);
 CREATE INDEX IF NOT EXISTS idx_vehicles_driver_phone ON vehicles(driver_phone);
 
 -- =====================================================
--- 16. EXPENSES
+-- 15. EXPENSES
 -- =====================================================
 CREATE TABLE IF NOT EXISTS expenses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -458,7 +442,7 @@ CREATE TABLE IF NOT EXISTS expenses (
 CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(expense_date);
 
 -- =====================================================
--- 17. LOGS
+-- 16. LOGS
 -- =====================================================
 CREATE TABLE IF NOT EXISTS logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -564,6 +548,48 @@ BEGIN
         WHEN NEW.weight < 0 THEN 
             RAISE(ABORT, 'Cannot have negative weight in store')
     END;
+END;
+
+-- =====================================================
+-- AUTO-DEACTIVATION CASCADE
+-- =====================================================
+-- When a store's quantity and weight both reach 0, deactivate the store
+-- and stamp its billing_end. Then, if every store of the lot is empty,
+-- deactivate the lot. No item-level cascade because items no longer exist.
+-- No auto-reactivation is performed.
+
+CREATE TRIGGER IF NOT EXISTS deactivate_empty_store
+AFTER UPDATE ON stores
+WHEN NEW.quantity = 0
+  AND NEW.weight = 0
+  AND NEW.is_active = 1
+  AND (OLD.quantity > 0 OR OLD.weight > 0)
+BEGIN
+    UPDATE stores
+    SET
+        is_active = 0,
+        billing_end = COALESCE(billing_end, CURRENT_TIMESTAMP),
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS deactivate_lot_if_all_stores_empty
+AFTER UPDATE ON stores
+WHEN NEW.quantity = 0
+  AND NEW.weight = 0
+  AND (OLD.quantity > 0 OR OLD.weight > 0)
+BEGIN
+    UPDATE lots
+    SET
+        is_active = 0,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = NEW.lot_id
+      AND is_active = 1
+      AND NOT EXISTS (
+          SELECT 1 FROM stores
+          WHERE lot_id = NEW.lot_id
+            AND (quantity > 0 OR weight > 0)
+      );
 END;
 
 -- =====================================================
@@ -728,12 +754,6 @@ CREATE TRIGGER IF NOT EXISTS update_customers_timestamp
 AFTER UPDATE ON customers
 BEGIN
     UPDATE customers SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
-END;
-
-CREATE TRIGGER IF NOT EXISTS update_items_timestamp
-AFTER UPDATE ON items
-BEGIN
-    UPDATE items SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS update_lots_timestamp

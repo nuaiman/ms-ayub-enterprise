@@ -14,27 +14,22 @@ import type { ApiResponse } from "@/types/api";
 import { push } from "notivue";
 import { useGlobalLoader } from "vue-global-loader";
 import type { AxiosError } from "axios";
-import { useItemsStore } from "./items";
 import { useLotsStore } from "./lots";
 import { useMajhisStore } from "./majhis";
 
 export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
   const { displayLoader, destroyLoader } = useGlobalLoader();
 
-  // ============= STATE =============
   const deliveryItems = ref<DeliveryItem[]>([]);
   const searchQuery = ref("");
   const sortField = ref<DeliveryItemSortField>("created_at");
   const sortDirection = ref<SortDirection>("desc");
 
-  // ============= COMPUTED =============
   const filteredDeliveryItems = computed(() => {
     let result = [...deliveryItems.value];
 
-    // Filter by search query
     if (searchQuery.value) {
       const query = searchQuery.value.toLowerCase();
-      const itemsStore = useItemsStore();
       const lotsStore = useLotsStore();
       const majhisStore = useMajhisStore();
       result = result.filter(
@@ -46,13 +41,11 @@ export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
           (item.vehicle_number && item.vehicle_number.toLowerCase().includes(query)) ||
           (item.driver_number && item.driver_number.toLowerCase().includes(query)) ||
           (item.notes && item.notes.toLowerCase().includes(query)) ||
-          itemsStore.getItemName(item.item_id).toLowerCase().includes(query) ||
           lotsStore.getLotName(item.lot_id).toLowerCase().includes(query) ||
           (item.majhi_id && majhisStore.getMajhiName(item.majhi_id).toLowerCase().includes(query))
       );
     }
 
-    // Sort
     result.sort((a, b) => {
       let comparison = 0;
       switch (sortField.value) {
@@ -61,9 +54,6 @@ export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
           break;
         case "store_id":
           comparison = a.store_id - b.store_id;
-          break;
-        case "item_id":
-          comparison = a.item_id - b.item_id;
           break;
         case "lot_id":
           comparison = a.lot_id - b.lot_id;
@@ -88,17 +78,14 @@ export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
 
   const totalDeliveryItems = computed(() => deliveryItems.value.length);
 
-  const totalQuantity = computed(() => {
-    return deliveryItems.value.reduce((sum, item) => sum + item.quantity, 0);
-  });
+  const totalQuantity = computed(() =>
+    deliveryItems.value.reduce((sum, item) => sum + item.quantity, 0)
+  );
 
-  const totalWeight = computed(() => {
-    return deliveryItems.value.reduce((sum, item) => sum + item.weight, 0);
-  });
+  const totalWeight = computed(() =>
+    deliveryItems.value.reduce((sum, item) => sum + item.weight, 0)
+  );
 
-  // ============= ACTIONS =============
-
-  // GET ALL DELIVERY ITEMS
   const fetchDeliveryItems = async () => {
     displayLoader();
     try {
@@ -118,7 +105,6 @@ export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
     }
   };
 
-  // GET DELIVERY ITEMS BY DELIVERY
   const fetchDeliveryItemsByDelivery = async (deliveryId: number) => {
     displayLoader();
     try {
@@ -140,7 +126,6 @@ export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
     }
   };
 
-  // GET DELIVERY ITEMS BY STORE
   const fetchDeliveryItemsByStore = async (storeId: number) => {
     displayLoader();
     try {
@@ -162,7 +147,6 @@ export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
     }
   };
 
-  // GET DELIVERY ITEMS BY LOT
   const fetchDeliveryItemsByLot = async (lotId: number) => {
     displayLoader();
     try {
@@ -184,21 +168,15 @@ export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
     }
   };
 
-  // CREATE DELIVERY ITEM
   const createDeliveryItem = async (payload: CreateDeliveryItemPayload): Promise<DeliveryItem | null> => {
     displayLoader();
     try {
-      // Validate required fields
       if (!payload.delivery_id) {
         push.error("Delivery ID is required");
         return null;
       }
       if (!payload.store_id) {
         push.error("Store ID is required");
-        return null;
-      }
-      if (!payload.item_id) {
-        push.error("Item ID is required");
         return null;
       }
       if (!payload.lot_id) {
@@ -210,12 +188,10 @@ export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
         return null;
       }
 
-      // Ensure defaults
       const requestPayload: CreateDeliveryItemPayload = {
         delivery_id: payload.delivery_id,
         store_id: payload.store_id,
         majhi_id: payload.majhi_id || null,
-        item_id: payload.item_id,
         lot_id: payload.lot_id,
         vehicle_number: payload.vehicle_number || null,
         driver_number: payload.driver_number || null,
@@ -226,14 +202,11 @@ export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
         loading_rate: payload.loading_rate || 0,
         majhi_cut: payload.majhi_cut || 0,
         notes: payload.notes || null,
-        // New fields - optional, backend will use defaults from lot if not provided
         customer_charge_type: payload.customer_charge_type,
         customer_paid_unload_amount: payload.customer_paid_unload_amount || 0,
         majhi_bill_type: payload.majhi_bill_type,
         majhi_total_paid: payload.majhi_total_paid || 0,
       };
-
-      console.log('[DELIVERY_ITEMS] Creating with payload:', requestPayload);
 
       const res = await api.post<ApiResponse<DeliveryItem>>("/delivery-items", requestPayload);
       if (!res.data.success) {
@@ -245,7 +218,6 @@ export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
       return res.data.data;
     } catch (error) {
       const err = error as AxiosError<ApiResponse<null>>;
-      console.error('[DELIVERY_ITEMS] Create error:', err.response?.data);
       push.error(err.response?.data?.message || "Failed to create delivery item");
       return null;
     } finally {
@@ -253,7 +225,6 @@ export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
     }
   };
 
-  // UPDATE DELIVERY ITEM
   const updateDeliveryItem = async (id: number, payload: UpdateDeliveryItemPayload): Promise<DeliveryItem | null> => {
     displayLoader();
     try {
@@ -277,7 +248,6 @@ export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
     }
   };
 
-  // UPDATE DELIVERY ITEM CUSTOMER UNLOAD PAYMENT (Hidden - for backend use)
   const updateDeliveryItemCustomerUnloadPayment = async (id: number, paidAmount: number): Promise<DeliveryItem | null> => {
     displayLoader();
     try {
@@ -302,7 +272,6 @@ export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
     }
   };
 
-  // UPDATE DELIVERY ITEM MAJHI PAYMENT (Hidden - for backend use)
   const updateDeliveryItemMajhiPayment = async (id: number, paidAmount: number): Promise<DeliveryItem | null> => {
     displayLoader();
     try {
@@ -327,7 +296,6 @@ export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
     }
   };
 
-  // DELETE DELIVERY ITEM
   const deleteDeliveryItem = async (id: number): Promise<boolean> => {
     displayLoader();
     try {
@@ -348,7 +316,6 @@ export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
     }
   };
 
-  // DELETE DELIVERY ITEMS BY DELIVERY
   const deleteDeliveryItemsByDelivery = async (deliveryId: number): Promise<boolean> => {
     displayLoader();
     try {
@@ -374,7 +341,6 @@ export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
     }
   };
 
-  // ============= SORT =============
   const setSort = (field: DeliveryItemSortField) => {
     if (sortField.value === field) {
       sortDirection.value = sortDirection.value === "asc" ? "desc" : "asc";
@@ -384,7 +350,6 @@ export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
     }
   };
 
-  // ============= SEARCH =============
   const setSearchQuery = (query: string) => {
     searchQuery.value = query;
   };
@@ -392,8 +357,6 @@ export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
   const clearSearch = () => {
     searchQuery.value = "";
   };
-
-  // ============= UTILITIES =============
 
   const getDeliveryItemById = (id: number): DeliveryItem | undefined => {
     return deliveryItems.value.find((item) => item.id === id);
@@ -415,11 +378,6 @@ export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
       .reduce((sum, item) => sum + item.weight, 0);
   };
 
-  const getItemNameForDeliveryItem = (item: DeliveryItem): string => {
-    const itemsStore = useItemsStore();
-    return itemsStore.getItemName(item.item_id);
-  };
-
   const getLotNameForDeliveryItem = (item: DeliveryItem): string => {
     const lotsStore = useLotsStore();
     return lotsStore.getLotName(item.lot_id);
@@ -431,12 +389,10 @@ export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
     return majhisStore.getMajhiName(item.majhi_id);
   };
 
-  // Get charge type label
   const getChargeTypeLabel = (chargeType: 'weight' | 'quantity'): string => {
     return chargeType === 'weight' ? 'Weight' : 'Quantity';
   };
 
-  // Get majhi bill type label
   const getMajhiBillTypeLabel = (billType: 'weight' | 'quantity' | 'job'): string => {
     const labels = {
       weight: 'Weight',
@@ -447,25 +403,21 @@ export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
   };
 
   return {
-    // State
     deliveryItems,
     searchQuery,
     sortField,
     sortDirection,
 
-    // Computed
     filteredDeliveryItems,
     totalDeliveryItems,
     totalQuantity,
     totalWeight,
 
-    // Fetch
     fetchDeliveryItems,
     fetchDeliveryItemsByDelivery,
     fetchDeliveryItemsByStore,
     fetchDeliveryItemsByLot,
 
-    // CRUD
     createDeliveryItem,
     updateDeliveryItem,
     updateDeliveryItemCustomerUnloadPayment,
@@ -473,19 +425,14 @@ export const useDeliveryItemsStore = defineStore("deliveryItems", () => {
     deleteDeliveryItem,
     deleteDeliveryItemsByDelivery,
 
-    // Sort
     setSort,
-
-    // Search
     setSearchQuery,
     clearSearch,
 
-    // Utilities
     getDeliveryItemById,
     getDeliveryItemsByDeliveryId,
     getTotalQuantityByDelivery,
     getTotalWeightByDelivery,
-    getItemNameForDeliveryItem,
     getLotNameForDeliveryItem,
     getMajhiNameForDeliveryItem,
     getChargeTypeLabel,

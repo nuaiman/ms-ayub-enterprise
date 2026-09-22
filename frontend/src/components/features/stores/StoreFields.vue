@@ -1,7 +1,7 @@
 <!-- src/components/features/stores/StoreFields.vue -->
 <template>
     <div class="space-y-4">
-        <!-- Lot (hidden when standalone - used in ItemForm/LotForm where lot is already created) -->
+        <!-- Lot (hidden when standalone - used in LotForm where lot is already created) -->
         <div v-if="!standalone" class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <!-- Lot -->
             <div>
@@ -22,7 +22,7 @@
                 </p>
             </div>
 
-            <!-- Godown - ALWAYS visible, even in standalone mode -->
+            <!-- Godown -->
             <div>
                 <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
                     Godown <span v-if="required" class="text-(--color-red)">*</span>
@@ -42,9 +42,8 @@
             </div>
         </div>
 
-        <!-- Godown ONLY (when standalone is true - used in ItemForm/LotForm) -->
+        <!-- Godown ONLY (when standalone is true - used in LotForm) -->
         <div v-if="standalone" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Godown - ALWAYS visible -->
             <div>
                 <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
                     Godown <span v-if="required" class="text-(--color-red)">*</span>
@@ -66,7 +65,6 @@
 
         <!-- Store Settings -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Store Bill Type -->
             <div>
                 <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
                     Bill Type
@@ -80,7 +78,6 @@
                 </select>
             </div>
 
-            <!-- Godown Cut -->
             <div>
                 <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
                     Godown Cut
@@ -98,7 +95,6 @@
 
         <!-- Inventory -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Quantity -->
             <div>
                 <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
                     Quantity
@@ -115,7 +111,6 @@
                 </div>
             </div>
 
-            <!-- Weight -->
             <div>
                 <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
                     Weight
@@ -182,8 +177,8 @@
 import type { StoreBillType } from '@/types/store'
 import type { Lot } from '@/types/lot'
 import type { Godown } from '@/types/godown'
+import { useLotsStore } from '@/stores/lots'
 
-// Props
 defineProps<{
     lotId: number | null
     godownId: number | null
@@ -207,7 +202,6 @@ defineProps<{
     showActive?: boolean
 }>()
 
-// Emits
 defineEmits<{
     (e: 'update:lotId', value: number | null): void
     (e: 'update:godownId', value: number | null): void
@@ -223,8 +217,9 @@ defineEmits<{
     (e: 'update:notes', value: string): void
 }>()
 
-// Helpers
+const lotsStore = useLotsStore()
+
 const getLotDisplayName = (lot: Lot): string => {
-    return `Lot #${lot.lot_number}`
+    return `${lotsStore.getLotDisplayName(lot)} — Lot #${lot.lot_number}`
 }
 </script>

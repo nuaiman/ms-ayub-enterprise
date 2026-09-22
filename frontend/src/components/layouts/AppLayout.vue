@@ -30,12 +30,8 @@
                 <div class="flex items-center gap-3">
                     <div
                         class="w-10 h-10 rounded-full bg-(--color-blue)/10 text-(--color-blue) flex items-center justify-center shrink-0">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                        </svg>
+                        <KeyRound class="w-5 h-5" :stroke-width="2" />
                     </div>
-
                     <div>
                         <h2 class="text-lg font-bold text-(--color-text-primary)">Change Password</h2>
                         <p class="text-xs text-(--color-text-secondary)">Update your account password</p>
@@ -50,7 +46,6 @@
                         <input v-model="changePasswordForm.current" type="password" placeholder="Enter current password"
                             class="w-full px-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent" />
                     </div>
-
                     <div>
                         <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
                             New Password
@@ -80,16 +75,13 @@
                 <div class="flex items-center gap-3">
                     <div
                         class="w-10 h-10 rounded-full bg-(--color-yellow)/10 text-(--color-yellow) flex items-center justify-center shrink-0">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
+                        <Lock class="w-5 h-5" :stroke-width="2" />
                     </div>
-
                     <div>
                         <h2 class="text-lg font-bold text-(--color-text-primary)">Reset All Passwords</h2>
-                        <p class="text-xs text-(--color-text-secondary)">This will reset passwords for all users except
-                            root</p>
+                        <p class="text-xs text-(--color-text-secondary)">
+                            This will reset passwords for all users except root
+                        </p>
                     </div>
                 </div>
 
@@ -121,19 +113,15 @@
                 <div class="flex items-center gap-3">
                     <div
                         class="w-10 h-10 rounded-full bg-(--color-red)/10 text-(--color-red) flex items-center justify-center shrink-0">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
+                        <AlertTriangle class="w-5 h-5" :stroke-width="2" />
                     </div>
-
                     <div>
                         <h2 class="text-lg font-bold text-(--color-text-primary)">Confirm Logout</h2>
                         <p class="text-xs text-(--color-text-secondary)">Are you sure you want to log out?</p>
                     </div>
                 </div>
-
-                <p class="text-sm text-(--color-text-secondary)">You'll need to sign in again to access your dashboard.
+                <p class="text-sm text-(--color-text-secondary)">
+                    You'll need to sign in again to access your dashboard.
                 </p>
             </div>
 
@@ -154,6 +142,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { KeyRound, Lock, AlertTriangle } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { useUsersStore } from '@/stores/users'
 import { useSettingsStore } from '@/stores/settings'
@@ -177,11 +166,9 @@ const showResetAll = ref(false)
 const isMobile = ref(window.innerWidth < 1024)
 const isHovered = ref(false)
 
-// ✅ Computed: collapsed only applies on desktop
+// Collapsed only applies on desktop
 const isCollapsed = computed(() => {
-    // On mobile, sidebar is NEVER collapsed
     if (isMobile.value) return false
-    // On desktop, collapsed by default, expand on hover
     return !isHovered.value
 })
 
@@ -211,7 +198,6 @@ const updateMobileStatus = () => {
     const wasMobile = isMobile.value
     isMobile.value = window.innerWidth < 1024
 
-    // If we switched from mobile to desktop and sidebar is open, close it
     if (wasMobile && !isMobile.value && sidebarOpen.value) {
         sidebarOpen.value = false
     }
@@ -296,68 +282,67 @@ const menuGroups = [
     {
         id: 'parties',
         label: 'Parties',
-        icon: '🤝',
+        icon: 'parties',
         items: [
-            { path: '/brokers', label: 'Brokers', icon: '🤝' },
-            { path: '/majhis', label: 'Majhis', icon: '👷' },
-            { path: '/godowns', label: 'Godowns', icon: '🏠' },
-        ]
+            { path: '/brokers', label: 'Brokers', icon: 'brokers' },
+            { path: '/majhis', label: 'Majhis', icon: 'majhis' },
+            { path: '/godowns', label: 'Godowns', icon: 'godowns' },
+        ],
     },
     {
         id: 'warehouse',
         label: 'Warehouse',
-        icon: '🏠',
+        icon: 'warehouse',
         items: [
-            { path: '/items', label: 'Items', icon: '📦' },
-            { path: '/lots', label: 'Lots', icon: '🏷️' },
-            { path: '/stores', label: 'Stores', icon: '📋' },
-            { path: '/damages', label: 'Damages', icon: '🔴' },
-            { path: '/deliveries', label: 'Deliveries', icon: '🚚' },
-            { path: '/delivery-items', label: 'Delivery Items', icon: '📦' }
-        ]
+            { path: '/lots', label: 'Lots', icon: 'lots' },
+            { path: '/stores', label: 'Stores', icon: 'stores' },
+            { path: '/damages', label: 'Damages', icon: 'damages' },
+            { path: '/deliveries', label: 'Deliveries', icon: 'deliveries' },
+            { path: '/delivery-items', label: 'Delivery Items', icon: 'delivery-items' },
+        ],
     },
     {
         id: 'transport',
         label: 'Transport',
-        icon: '🚛',
+        icon: 'transport',
         items: [
-            { path: '/transports', label: 'Transports', icon: '🚛' },
-            { path: '/vehicles', label: 'Vehicles', icon: '🚗' }
-        ]
+            { path: '/transports', label: 'Transports', icon: 'transports' },
+            { path: '/vehicles', label: 'Vehicles', icon: 'vehicles' },
+        ],
     },
     {
         id: 'bills',
         label: 'Bills',
-        icon: '📋',
+        icon: 'bills',
         items: [
-            { path: '/godown-store-bills', label: 'Godown Store Bills', icon: '📋' },
-            { path: '/customer-storage-bills', label: 'Customer Storage Bills', icon: '💰' },
-            { path: '/customer-lot-bills', label: 'Customer Lot Bills', icon: '💰' },
-            { path: '/majhi-lot-bills', label: 'Majhi Lot Bills', icon: '👷' },
-            { path: '/customer-delivery-bills', label: 'Customer Delivery Bills', icon: '🚚' },
-            { path: '/majhi-loading-bills', label: 'Majhi Loading Bills', icon: '👷' },
-            { path: '/broker-vehicle-bills', label: 'Broker Vehicle Bills', icon: '🚗' },
-            { path: '/customer-transport-bills', label: 'Customer Transport Bills', icon: '🚛' },
-        ]
+            { path: '/godown-store-bills', label: 'Godown Store Bills', icon: 'godown-store-bills' },
+            { path: '/customer-storage-bills', label: 'Customer Storage Bills', icon: 'customer-storage-bills' },
+            { path: '/customer-lot-bills', label: 'Customer Unload Bills', icon: 'customer-lot-bills' },
+            { path: '/majhi-lot-bills', label: 'Majhi Lot Bills', icon: 'majhi-lot-bills' },
+            { path: '/customer-delivery-bills', label: 'Customer Delivery Bills', icon: 'customer-delivery-bills' },
+            { path: '/majhi-loading-bills', label: 'Majhi Loading Bills', icon: 'majhi-loading-bills' },
+            { path: '/broker-vehicle-bills', label: 'Broker Vehicle Bills', icon: 'broker-vehicle-bills' },
+            { path: '/customer-transport-bills', label: 'Customer Transport Bills', icon: 'customer-transport-bills' },
+        ],
     },
     {
         id: 'invoices',
         label: 'Invoices',
-        icon: '📄',
+        icon: 'invoices',
         items: [
-            { path: '/invoices', label: 'Create Invoice', icon: '📄' },
-        ]
+            { path: '/invoices', label: 'Create Invoice', icon: 'invoices' },
+        ],
     },
     {
         id: 'office',
         label: 'Office',
-        icon: '👤',
+        icon: 'office',
         items: [
-            { path: '/users', label: 'Users', icon: '👤' },
-            { path: '/salaries', label: 'Salaries', icon: '💰' },
-            { path: '/expenses', label: 'Expenses', icon: '💸' },
-            { path: '/logs', label: 'Logs', icon: '📜' }
-        ]
-    }
+            { path: '/users', label: 'Users', icon: 'users' },
+            { path: '/salaries', label: 'Salaries', icon: 'salaries' },
+            { path: '/expenses', label: 'Expenses', icon: 'expenses' },
+            { path: '/logs', label: 'Logs', icon: 'logs' },
+        ],
+    },
 ]
 </script>

@@ -3,45 +3,69 @@
     <div class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) transition-all duration-200 hover:bg-(--color-muted-bg)/30 cursor-pointer"
         @click="handleView">
         <!-- Customer - 3 columns -->
-        <div class="col-span-3 min-w-0">
-            <div class="font-medium text-(--color-text-primary) truncate text-sm">
-                {{ getCustomerName(delivery.customer_id) }}
+        <div class="col-span-3 min-w-0 pr-3">
+            <div class="flex items-center gap-3">
+                <div class="shrink-0">
+                    <div v-if="delivery.image_url"
+                        class="w-9 h-9 rounded-lg overflow-hidden border border-(--color-border)">
+                        <img :src="getImageUrl(delivery.image_url)" :alt="customerName"
+                            class="w-full h-full object-cover" />
+                    </div>
+                    <div v-else
+                        class="w-9 h-9 rounded-lg bg-(--color-blue)/10 border border-(--color-border) flex items-center justify-center">
+                        <svg class="w-4 h-4 text-(--color-blue)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 18L12 22M12 22L16 18M12 22V10M21 14L12 10L3 14M21 14L12 18M21 14V18M3 14V18M3 14L12 18M3 14L12 10M3 14V10M21 10L12 6M3 10L12 6M21 10L12 14M3 10L12 14" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="min-w-0">
+                    <div class="font-medium text-(--color-text-primary) truncate text-sm">
+                        {{ customerName }}
+                    </div>
+                    <div v-if="customerPhone" class="text-xs text-(--color-text-secondary) truncate mt-0.5">
+                        {{ customerPhone }}
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Receiver - 2 columns -->
-        <div class="col-span-2 min-w-0">
+        <div class="col-span-2 min-w-0 pr-3">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ delivery.receiver_name || '—' }}
+                {{ delivery.receiver_name || 'â€”' }}
             </span>
-            <span v-if="delivery.receiver_phone" class="text-xs text-(--color-text-secondary) truncate block">
+            <span v-if="delivery.receiver_phone" class="text-xs text-(--color-text-secondary)/70 truncate block mt-0.5">
                 {{ delivery.receiver_phone }}
             </span>
         </div>
 
         <!-- From - 2 columns -->
-        <div class="col-span-2 min-w-0">
+        <div class="col-span-2 min-w-0 pr-3">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ delivery.from_location || '—' }}
+                {{ delivery.from_location || 'â€”' }}
             </span>
         </div>
 
         <!-- To - 2 columns -->
-        <div class="col-span-2 min-w-0">
+        <div class="col-span-2 min-w-0 pr-3">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ delivery.to_location || '—' }}
+                {{ delivery.to_location || 'â€”' }}
             </span>
         </div>
 
-        <!-- Date - 1 columns -->
-        <div class="col-span-1">
-            <span class="text-xs text-(--color-text-secondary)">
-                {{ formatDate(delivery.delivery_date) }}
+        <!-- Items / Date - 2 columns -->
+        <div class="col-span-2 min-w-0 pr-3">
+            <span class="text-sm text-(--color-text-primary) block truncate">
+                {{ itemsCount }} item(s)
+            </span>
+            <span class="text-xs text-(--color-text-secondary)/70 block truncate mt-0.5">
+                {{ formatDateShort(delivery.delivery_date) }}
             </span>
         </div>
 
-        <!-- Actions - 2 columns -->
-        <div class="col-span-2 flex items-center justify-end relative" @click.stop>
+        <!-- Actions - 1 column -->
+        <div class="col-span-1 flex items-center justify-end relative" @click.stop>
             <button @click="toggleMenu"
                 class="w-7 h-7 flex items-center justify-center border border-(--color-border) rounded-md hover:bg-(--color-muted-bg) transition-all duration-200">
                 <svg class="w-3.5 h-3.5 text-(--color-text-secondary)" fill="currentColor" viewBox="0 0 24 24">
@@ -51,7 +75,6 @@
                 </svg>
             </button>
 
-            <!-- Dropdown -->
             <Transition enter-active-class="transition ease-out duration-200"
                 enter-from-class="opacity-0 scale-95 translate-y-1" enter-to-class="opacity-100 scale-100 translate-y-0"
                 leave-active-class="transition ease-in duration-150"
@@ -99,16 +122,17 @@
                 </div>
             </Transition>
 
-            <!-- Backdrop -->
             <div v-if="isOpen" class="fixed inset-0 z-40" @click="closeMenu"></div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { Delivery } from '@/types/delivery'
 import { useCustomersStore } from '@/stores/customers'
+import { useDeliveryItemsStore } from '@/stores/deliveryItems'
+import { getImageUrl } from '@/utils/image'
 
 const props = defineProps<{
     delivery: Delivery
@@ -123,46 +147,34 @@ const emit = defineEmits<{
 }>()
 
 const customersStore = useCustomersStore()
+const deliveryItemsStore = useDeliveryItemsStore()
 const isOpen = ref(false)
 
-const getCustomerName = (id: number | null): string => {
-    if (!id) return '—'
-    return customersStore.getCustomerName(id)
-}
+const customerName = computed(() => {
+    if (!props.delivery.customer_id) return 'â€”'
+    return customersStore.getCustomerName(props.delivery.customer_id)
+})
 
-const formatDate = (dateStr: string): string => {
+const customerPhone = computed(() => {
+    if (!props.delivery.customer_id) return ''
+    const c = customersStore.getCustomerById(props.delivery.customer_id)
+    return c?.phone || ''
+})
+
+const itemsCount = computed(() => {
+    return deliveryItemsStore.getDeliveryItemsByDeliveryId(props.delivery.id).length
+})
+
+const formatDateShort = (dateStr: string): string => {
     return new Date(dateStr).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
+        year: 'numeric', month: 'short', day: 'numeric',
     })
 }
 
-const toggleMenu = () => {
-    isOpen.value = !isOpen.value
-}
-
-const closeMenu = () => {
-    isOpen.value = false
-}
-
-const handleView = () => {
-    closeMenu()
-    emit('view', props.delivery)
-}
-
-const handleEdit = () => {
-    closeMenu()
-    emit('edit', props.delivery)
-}
-
-const handleManageItems = () => {
-    closeMenu()
-    emit('manage-items', props.delivery)
-}
-
-const handleDelete = () => {
-    closeMenu()
-    emit('delete', props.delivery)
-}
+const toggleMenu = () => { isOpen.value = !isOpen.value }
+const closeMenu = () => { isOpen.value = false }
+const handleView = () => { closeMenu(); emit('view', props.delivery) }
+const handleEdit = () => { closeMenu(); emit('edit', props.delivery) }
+const handleManageItems = () => { closeMenu(); emit('manage-items', props.delivery) }
+const handleDelete = () => { closeMenu(); emit('delete', props.delivery) }
 </script>

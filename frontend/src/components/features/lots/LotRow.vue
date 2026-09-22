@@ -2,36 +2,66 @@
 <template>
     <div class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) transition-all duration-200 hover:bg-(--color-muted-bg)/30 cursor-pointer"
         @click="handleView">
-        <!-- Item - 3 columns -->
-        <div class="col-span-3 min-w-0">
-            <div class="font-medium text-(--color-text-primary) truncate text-sm">
-                {{ getItemName(lot.item_id) }}
+        <!-- Lot / Product - 3 columns -->
+        <div class="col-span-3 min-w-0 pr-3">
+            <div class="flex items-center gap-3">
+                <div class="shrink-0">
+                    <div v-if="lot.image_url" class="w-9 h-9 rounded-lg overflow-hidden border border-(--color-border)">
+                        <img :src="getImageUrl(lot.image_url)" :alt="lotDisplayName"
+                            class="w-full h-full object-cover" />
+                    </div>
+                    <div v-else
+                        class="w-9 h-9 rounded-lg bg-(--color-muted-bg) border border-(--color-border) flex items-center justify-center">
+                        <svg class="w-4 h-4 text-(--color-text-secondary)" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="min-w-0">
+                    <div class="font-medium text-(--color-text-primary) truncate text-sm">
+                        {{ lotDisplayName }}
+                    </div>
+                    <div class="text-xs text-(--color-text-secondary) truncate mt-0.5">
+                        Lot #{{ lot.lot_number }}
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Lot Number - 2 columns -->
-        <div class="col-span-2 min-w-0">
+        <!-- Customer - 3 columns -->
+        <div class="col-span-3 min-w-0 pr-3">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                #{{ lot.lot_number }}
+                {{ customerName }}
+            </span>
+            <span v-if="customerPhone" class="text-xs text-(--color-text-secondary)/70 truncate block mt-0.5">
+                {{ customerPhone }}
             </span>
         </div>
 
-        <!-- Charge Type - 2 columns -->
-        <div class="col-span-2 min-w-0">
-            <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ formatChargeType(lot.customer_charge_type) }}
+        <!-- Charge - 2 columns -->
+        <div class="col-span-2 min-w-0 pr-3">
+            <span class="text-sm text-(--color-text-secondary) truncate block capitalize">
+                {{ lot.customer_charge_type }}
+            </span>
+            <span class="text-xs text-(--color-text-secondary)/70 truncate block mt-0.5">
+                {{ formatCurrency(lot.customer_storage_rate) }} storage
             </span>
         </div>
 
         <!-- Majhi - 2 columns -->
-        <div class="col-span-2 min-w-0">
+        <div class="col-span-2 min-w-0 pr-3">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ getMajhiName(lot.majhi_id) }}
+                {{ majhiName }}
+            </span>
+            <span v-if="lot.majhi_cut > 0" class="text-xs text-(--color-text-secondary)/70 truncate block mt-0.5">
+                {{ formatCurrency(lot.majhi_cut) }} cut
             </span>
         </div>
 
-        <!-- Status - 1 columns -->
-        <div class="col-span-1">
+        <!-- Status - 1 column -->
+        <div class="col-span-1 min-w-0 pr-3">
             <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border"
                 :class="lot.is_active ? 'border-(--color-green) text-(--color-green)' : 'border-(--color-red) text-(--color-red)'">
                 <span class="w-1.5 h-1.5 rounded-full"
@@ -40,8 +70,8 @@
             </span>
         </div>
 
-        <!-- Actions - 2 columns -->
-        <div class="col-span-2 flex items-center justify-end relative" @click.stop>
+        <!-- Actions - 1 column -->
+        <div class="col-span-1 flex items-center justify-end relative" @click.stop>
             <button @click="toggleMenu"
                 class="w-7 h-7 flex items-center justify-center border border-(--color-border) rounded-md hover:bg-(--color-muted-bg) transition-all duration-200">
                 <svg class="w-3.5 h-3.5 text-(--color-text-secondary)" fill="currentColor" viewBox="0 0 24 24">
@@ -51,7 +81,6 @@
                 </svg>
             </button>
 
-            <!-- Dropdown -->
             <Transition enter-active-class="transition ease-out duration-200"
                 enter-from-class="opacity-0 scale-95 translate-y-1" enter-to-class="opacity-100 scale-100 translate-y-0"
                 leave-active-class="transition ease-in duration-150"
@@ -77,6 +106,14 @@
                                 d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                         Edit
+                    </button>
+
+                    <button @click="handleReadd"
+                        class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-blue) hover:bg-(--color-muted-bg) transition-colors">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Re-add Lot
                     </button>
 
                     <button @click="handleToggleActive"
@@ -105,17 +142,19 @@
                 </div>
             </Transition>
 
-            <!-- Backdrop -->
             <div v-if="isOpen" class="fixed inset-0 z-40" @click="closeMenu"></div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { Lot, CustomerChargeType } from '@/types/lot'
-import { useItemsStore } from '@/stores/items'
+import { ref, computed } from 'vue'
+import type { Lot } from '@/types/lot'
+import { useCustomersStore } from '@/stores/customers'
 import { useMajhisStore } from '@/stores/majhis'
+import { useLotsStore } from '@/stores/lots'
+import { formatCurrency } from '@/utils/currency'
+import { getImageUrl } from '@/utils/image'
 
 const props = defineProps<{
     lot: Lot
@@ -124,53 +163,40 @@ const props = defineProps<{
 const emit = defineEmits<{
     'view': [lot: Lot]
     'edit': [lot: Lot]
+    'readd': [lot: Lot]
     'delete': [lot: Lot]
     'toggle-active': [lot: Lot]
     'updated': []
 }>()
 
-const itemsStore = useItemsStore()
+const customersStore = useCustomersStore()
 const majhisStore = useMajhisStore()
+const lotsStore = useLotsStore()
 const isOpen = ref(false)
 
-const getItemName = (id: number): string => {
-    return itemsStore.getItemName(id)
-}
+const lotDisplayName = computed(() => lotsStore.getLotDisplayName(props.lot))
 
-const getMajhiName = (id: number | null): string => {
-    if (!id) return '—'
-    return majhisStore.getMajhiName(id)
-}
+const customerName = computed(() => {
+    if (!props.lot.customer_id) return 'â€”'
+    return customersStore.getCustomerName(props.lot.customer_id)
+})
 
-const formatChargeType = (type: CustomerChargeType): string => {
-    return type.charAt(0).toUpperCase() + type.slice(1)
-}
+const customerPhone = computed(() => {
+    if (!props.lot.customer_id) return ''
+    const c = customersStore.getCustomerById(props.lot.customer_id)
+    return c?.phone || ''
+})
 
-const toggleMenu = () => {
-    isOpen.value = !isOpen.value
-}
+const majhiName = computed(() => {
+    if (!props.lot.majhi_id) return 'â€”'
+    return majhisStore.getMajhiName(props.lot.majhi_id)
+})
 
-const closeMenu = () => {
-    isOpen.value = false
-}
-
-const handleView = () => {
-    closeMenu()
-    emit('view', props.lot)
-}
-
-const handleEdit = () => {
-    closeMenu()
-    emit('edit', props.lot)
-}
-
-const handleToggleActive = () => {
-    closeMenu()
-    emit('toggle-active', props.lot)
-}
-
-const handleDelete = () => {
-    closeMenu()
-    emit('delete', props.lot)
-}
+const toggleMenu = () => { isOpen.value = !isOpen.value }
+const closeMenu = () => { isOpen.value = false }
+const handleView = () => { closeMenu(); emit('view', props.lot) }
+const handleEdit = () => { closeMenu(); emit('edit', props.lot) }
+const handleReadd = () => { closeMenu(); emit('readd', props.lot) }
+const handleToggleActive = () => { closeMenu(); emit('toggle-active', props.lot) }
+const handleDelete = () => { closeMenu(); emit('delete', props.lot) }
 </script>

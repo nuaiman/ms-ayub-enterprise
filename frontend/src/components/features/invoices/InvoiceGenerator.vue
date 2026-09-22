@@ -110,7 +110,6 @@ import { useCustomerDeliveryBillsStore } from '@/stores/customerDeliveryBills'
 import { useCustomerTransportBillsStore } from '@/stores/customerTransportBills'
 import { useLotsStore } from '@/stores/lots'
 import { useStoresStore } from '@/stores/stores'
-import { useItemsStore } from '@/stores/items'
 import { useDeliveriesStore } from '@/stores/deliveries'
 import { useDeliveryItemsStore } from '@/stores/deliveryItems'
 import { useTransportsStore } from '@/stores/transports'
@@ -129,7 +128,6 @@ const invoiceStore = useInvoiceStore()
 const customersStore = useCustomersStore()
 const lotsStore = useLotsStore()
 const storesStore = useStoresStore()
-const itemsStore = useItemsStore()
 const deliveriesStore = useDeliveriesStore()
 const deliveryItemsStore = useDeliveryItemsStore()
 const transportsStore = useTransportsStore()
@@ -162,7 +160,6 @@ const loadInvoiceData = async () => {
             customersStore.fetchCustomers(),
             lotsStore.fetchLots(),
             storesStore.fetchStores(),
-            itemsStore.fetchItems(),
             deliveriesStore.fetchDeliveries(),
             deliveryItemsStore.fetchDeliveryItems(),
             transportsStore.fetchTransports(),

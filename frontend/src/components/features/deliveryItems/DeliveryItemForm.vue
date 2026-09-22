@@ -7,7 +7,6 @@
                 Delivery Information
             </h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Delivery -->
                 <div>
                     <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
                         Delivery <span class="text-(--color-red)">*</span>
@@ -24,7 +23,6 @@
                     </p>
                 </div>
 
-                <!-- Delivery Info -->
                 <div v-if="selectedDelivery">
                     <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
                         Delivery Info
@@ -63,20 +61,19 @@
                         </h4>
                         <span v-if="item.store_id"
                             class="text-xs text-(--color-green) bg-(--color-green)/10 px-2 py-0.5 rounded-full">
-                            ✓ Store Selected
+                            âœ“ Store Selected
                         </span>
                     </div>
 
                     <DeliveryItemFields :customer-id="selectedDelivery?.customer_id || null"
-                        v-model:item-id="item.item_id" v-model:lot-id="item.lot_id" v-model:store-id="item.store_id"
-                        v-model:majhi-id="item.majhi_id" v-model:quantity="item.quantity"
-                        v-model:quantity-unit="item.quantity_unit" v-model:weight="item.weight"
-                        v-model:weight-unit="item.weight_unit" v-model:loading-rate="item.loading_rate"
-                        v-model:majhi-cut="item.majhi_cut" v-model:vehicle-number="item.vehicle_number"
-                        v-model:driver-number="item.driver_number" v-model:notes="item.notes"
-                        :item-options="itemOptions" :lot-options="lotOptions" :store-options="storeOptions"
+                        v-model:lot-id="item.lot_id" v-model:store-id="item.store_id" v-model:majhi-id="item.majhi_id"
+                        v-model:quantity="item.quantity" v-model:quantity-unit="item.quantity_unit"
+                        v-model:weight="item.weight" v-model:weight-unit="item.weight_unit"
+                        v-model:loading-rate="item.loading_rate" v-model:majhi-cut="item.majhi_cut"
+                        v-model:vehicle-number="item.vehicle_number" v-model:driver-number="item.driver_number"
+                        v-model:notes="item.notes" :lot-options="lotOptions" :store-options="storeOptions"
                         :majhi-options="majhiOptions" :disabled="isSubmitting" :required="false" :standalone="true"
-                        :can-edit-item="true" :can-edit-lot="true" :can-edit-store="true" />
+                        :can-edit-lot="true" :can-edit-store="true" />
 
                     <div class="mt-3 flex items-center justify-end">
                         <button type="button" @click="removeItemRow(index)" :disabled="form.items.length <= 1"
@@ -87,7 +84,6 @@
                 </div>
             </div>
 
-            <!-- Add Item Button -->
             <div class="mt-4">
                 <button type="button" @click="addItemRow"
                     class="w-full py-3 text-sm font-medium rounded-lg border-2 border-dashed border-(--color-border) text-(--color-text-secondary) hover:border-(--color-blue) hover:text-(--color-blue) hover:bg-(--color-blue)/5 transition-all duration-200 flex items-center justify-center gap-2">
@@ -108,16 +104,15 @@
                 Edit Delivery Item
             </h3>
 
-            <DeliveryItemFields :customer-id="selectedDelivery?.customer_id || null" v-model:item-id="editForm.item_id"
-                v-model:lot-id="editForm.lot_id" v-model:store-id="editForm.store_id"
-                v-model:majhi-id="editForm.majhi_id" v-model:quantity="editForm.quantity"
-                v-model:quantity-unit="editForm.quantity_unit" v-model:weight="editForm.weight"
-                v-model:weight-unit="editForm.weight_unit" v-model:loading-rate="editForm.loading_rate"
-                v-model:majhi-cut="editForm.majhi_cut" v-model:vehicle-number="editForm.vehicle_number"
-                v-model:driver-number="editForm.driver_number" v-model:notes="editForm.notes"
-                :item-options="itemOptions" :lot-options="lotOptions" :store-options="storeOptions"
+            <DeliveryItemFields :customer-id="selectedDelivery?.customer_id || null" v-model:lot-id="editForm.lot_id"
+                v-model:store-id="editForm.store_id" v-model:majhi-id="editForm.majhi_id"
+                v-model:quantity="editForm.quantity" v-model:quantity-unit="editForm.quantity_unit"
+                v-model:weight="editForm.weight" v-model:weight-unit="editForm.weight_unit"
+                v-model:loading-rate="editForm.loading_rate" v-model:majhi-cut="editForm.majhi_cut"
+                v-model:vehicle-number="editForm.vehicle_number" v-model:driver-number="editForm.driver_number"
+                v-model:notes="editForm.notes" :lot-options="lotOptions" :store-options="storeOptions"
                 :majhi-options="majhiOptions" :disabled="isSubmitting" :required="true" :standalone="true"
-                :can-edit-item="false" :can-edit-lot="false" :can-edit-store="false" />
+                :can-edit-lot="false" :can-edit-store="false" />
         </div>
 
         <!-- Summary -->
@@ -158,20 +153,17 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { push } from 'notivue'
 import type { DeliveryItem } from '@/types/deliveryItem'
 import type { Delivery } from '@/types/delivery'
-import type { Item } from '@/types/item'
 import type { Lot } from '@/types/lot'
 import type { Store } from '@/types/store'
 import { useDeliveryItemsStore } from '@/stores/deliveryItems'
 import { useDeliveriesStore } from '@/stores/deliveries'
 import { useStoresStore } from '@/stores/stores'
-import { useItemsStore } from '@/stores/items'
 import { useLotsStore } from '@/stores/lots'
 import { useMajhisStore } from '@/stores/majhis'
 import { useCustomersStore } from '@/stores/customers'
 import DeliveryItemFields from './DeliveryItemFields.vue'
 
 interface DeliveryItemRow {
-    item_id: number | null
     lot_id: number | null
     store_id: number | null
     majhi_id: number | null
@@ -200,7 +192,6 @@ const emit = defineEmits<{
 const deliveryItemsStore = useDeliveryItemsStore()
 const deliveriesStore = useDeliveriesStore()
 const storesStore = useStoresStore()
-const itemsStore = useItemsStore()
 const lotsStore = useLotsStore()
 const majhisStore = useMajhisStore()
 const customersStore = useCustomersStore()
@@ -208,12 +199,7 @@ const customersStore = useCustomersStore()
 const isSubmitting = ref(false)
 const isEditMode = computed(() => props.mode === 'edit' || !!props.deliveryItem)
 
-// ============= OPTIONS =============
 const deliveryOptions = computed(() => deliveriesStore.deliveries)
-
-const itemOptions = computed(() => {
-    return itemsStore.items.filter(i => i.is_active)
-})
 
 const lotOptions = computed(() => {
     return lotsStore.lots.filter(l => l.is_active)
@@ -225,13 +211,11 @@ const storeOptions = computed(() => {
 
 const majhiOptions = computed(() => majhisStore.majhis)
 
-// ============= SELECTED ENTITIES =============
 const selectedDelivery = computed(() => {
     if (!form.value.delivery_id) return null
     return deliveriesStore.getDeliveryById(form.value.delivery_id)
 })
 
-// ============= HELPERS =============
 const getDeliveryDisplayName = (delivery: Delivery): string => {
     const customerName = delivery.customer_id ? customersStore.getCustomerName(delivery.customer_id) : 'No customer'
     const date = new Date(delivery.delivery_date).toLocaleDateString()
@@ -251,20 +235,16 @@ const formatDeliveryDate = (dateStr: string): string => {
     })
 }
 
-// ============= CHANGE HANDLERS =============
 const onDeliveryChange = () => {
     form.value.items = [createEmptyItem()]
 }
 
-// ============= FORM STATE =============
 const form = ref({
     delivery_id: null as number | null,
     items: [] as DeliveryItemRow[],
 })
 
-// Edit mode form
 const editForm = ref({
-    item_id: null as number | null,
     lot_id: null as number | null,
     store_id: null as number | null,
     majhi_id: null as number | null,
@@ -293,7 +273,6 @@ const canSubmit = computed(() => {
 })
 
 const createEmptyItem = (): DeliveryItemRow => ({
-    item_id: null,
     lot_id: null,
     store_id: null,
     majhi_id: null,
@@ -322,10 +301,8 @@ const resetForm = () => {
     if (isEditMode.value && props.deliveryItem) {
         const store = storesStore.getStoreById(props.deliveryItem.store_id)
         const lot = store ? lotsStore.getLotById(store.lot_id) : null
-        const item = lot ? itemsStore.getItemById(lot.item_id) : null
 
         editForm.value = {
-            item_id: item?.id || null,
             lot_id: lot?.id || null,
             store_id: props.deliveryItem.store_id,
             majhi_id: props.deliveryItem.majhi_id || null,
@@ -349,10 +326,8 @@ const resetForm = () => {
     }
 }
 
-// Initialize on mount
 watch(() => props.deliveryItem, resetForm, { immediate: true })
 
-// ============= SUBMIT =============
 const submit = async () => {
     if (isEditMode.value && props.deliveryItem) {
         if (!editForm.value.store_id) {
@@ -413,7 +388,6 @@ const submit = async () => {
                 delivery_id: form.value.delivery_id,
                 store_id: item.store_id!,
                 majhi_id: item.majhi_id,
-                item_id: item.item_id!,
                 lot_id: item.lot_id!,
                 vehicle_number: item.vehicle_number.trim() || null,
                 driver_number: item.driver_number.trim() || null,
@@ -451,13 +425,11 @@ const submit = async () => {
     }
 }
 
-// ============= MOUNT =============
 onMounted(async () => {
     try {
         await Promise.all([
             deliveriesStore.fetchDeliveries(),
             storesStore.fetchStores(),
-            itemsStore.fetchItems(),
             lotsStore.fetchLots(),
             majhisStore.fetchMajhis(),
             customersStore.fetchCustomers(),

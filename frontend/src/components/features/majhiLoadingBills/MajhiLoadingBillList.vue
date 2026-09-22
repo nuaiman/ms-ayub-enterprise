@@ -159,7 +159,7 @@
             <div class="flex items-center gap-4 text-xs text-(--color-text-secondary)">
                 <span>Total Amount: {{ formatCurrency(majhiLoadingBillsStore.totalAmount) }}</span>
                 <span class="text-(--color-yellow)">Unpaid: {{ formatCurrency(majhiLoadingBillsStore.totalUnpaidAmount)
-                }}</span>
+                    }}</span>
             </div>
         </div>
 
@@ -281,7 +281,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useMajhiLoadingBillsStore } from '@/stores/majhiLoadingBills'
 import { useDeliveryItemsStore } from '@/stores/deliveryItems'
 import { useDeliveriesStore } from '@/stores/deliveries'
-import { useItemsStore } from '@/stores/items'
 import { useMajhisStore } from '@/stores/majhis'
 import { useLotsStore } from '@/stores/lots'
 import { useClipboardStore } from '@/stores/clipboard'
@@ -296,7 +295,6 @@ import { push } from 'notivue'
 const majhiLoadingBillsStore = useMajhiLoadingBillsStore()
 const deliveryItemsStore = useDeliveryItemsStore()
 const deliveriesStore = useDeliveriesStore()
-const itemsStore = useItemsStore()
 const majhisStore = useMajhisStore()
 const lotsStore = useLotsStore()
 const clipboardStore = useClipboardStore()
@@ -330,7 +328,6 @@ const fetchData = async () => {
         await Promise.all([
             deliveryItemsStore.fetchDeliveryItems(),
             deliveriesStore.fetchDeliveries(),
-            itemsStore.fetchItems(),
             majhisStore.fetchMajhis(),
             lotsStore.fetchLots(),
         ])

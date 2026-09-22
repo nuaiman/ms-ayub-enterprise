@@ -43,8 +43,9 @@ import { onMounted } from 'vue'
 import { useCustomerStorageBillsStore } from '@/stores/customerStorageBills'
 import { useLotsStore } from '@/stores/lots'
 import { useStoresStore } from '@/stores/stores'
-import { useItemsStore } from '@/stores/items'
 import { useCustomersStore } from '@/stores/customers'
+import { useDeliveryItemsStore } from '@/stores/deliveryItems'
+import { useDamagesStore } from '@/stores/damages'
 import AppLayout from '@/components/layouts/AppLayout.vue'
 import CustomerStorageBillList from '@/components/features/customerStorageBills/CustomerStorageBillList.vue'
 import { formatCurrency } from '@/utils/currency'
@@ -52,15 +53,17 @@ import { formatCurrency } from '@/utils/currency'
 const customerStorageBillsStore = useCustomerStorageBillsStore()
 const lotsStore = useLotsStore()
 const storesStore = useStoresStore()
-const itemsStore = useItemsStore()
 const customersStore = useCustomersStore()
+const deliveryItemsStore = useDeliveryItemsStore()
+const damagesStore = useDamagesStore()
 
 onMounted(async () => {
     await Promise.all([
         lotsStore.fetchLots(),
         storesStore.fetchStores(),
-        itemsStore.fetchItems(),
         customersStore.fetchCustomers(),
+        deliveryItemsStore.fetchDeliveryItems(),
+        damagesStore.fetchDamages(),
     ])
 })
 </script>
