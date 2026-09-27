@@ -49,7 +49,7 @@
             <div class="rounded-xl p-3 bg-(--color-surface) border border-(--color-border)">
                 <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Monthly Godown Bill</p>
                 <p class="text-lg font-bold text-(--color-blue) mt-1">{{ formatCurrency(monthlyBill) }}</p>
-                <p class="text-xs text-(--color-text-secondary) mt-0.5 capitalize">{{ store.store_bill_type }} Ã— {{
+                <p class="text-xs text-(--color-text-secondary) mt-0.5 capitalize">{{ store.store_bill_type }} ৳— {{
                     formatCurrency(store.godown_cut) }}</p>
             </div>
 
@@ -112,7 +112,7 @@
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Billing End
                     </p>
                     <p class="text-sm text-(--color-text-primary)">{{ store.billing_end ?
-                        formatDateShort(store.billing_end) : 'â€”' }}</p>
+                        formatDateShort(store.billing_end) : '৳' }}</p>
                 </div>
                 <div>
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Status</p>
@@ -177,7 +177,7 @@
                     <div class="flex items-start justify-between gap-3 flex-wrap">
                         <div>
                             <p class="text-sm font-semibold text-(--color-text-primary)">
-                                Delivery â€” {{ formatDate(di.created_at) }}
+                                Delivery ৳ {{ formatDate(di.created_at) }}
                             </p>
                             <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-(--color-text-secondary)">
                                 <span>Quantity: <span class="text-(--color-text-primary)">{{ di.quantity }} {{
@@ -289,20 +289,20 @@ const lot = computed(() => {
     return lotsStore.getLotById(props.store.lot_id) || null
 })
 
-const lotNumber = computed(() => lot.value?.lot_number ?? 'â€”')
+const lotNumber = computed(() => lot.value?.lot_number ?? '৳')
 
 const lotDisplayName = computed(() => {
-    if (!lot.value) return 'â€”'
+    if (!lot.value) return '৳'
     return lotsStore.getLotDisplayName(lot.value)
 })
 
 const customerName = computed(() => {
-    if (!lot.value?.customer_id) return 'â€”'
+    if (!lot.value?.customer_id) return '৳'
     return customersStore.getCustomerName(lot.value.customer_id)
 })
 
 const godownName = computed(() => {
-    if (!props.store) return 'â€”'
+    if (!props.store) return '৳'
     return godownsStore.getGodownName(props.store.godown_id)
 })
 
@@ -330,7 +330,7 @@ const outstanding = computed(() => {
 })
 
 const getMajhiName = (id: number | null): string => {
-    if (!id) return 'â€”'
+    if (!id) return '৳'
     return majhisStore.getMajhiName(id)
 }
 

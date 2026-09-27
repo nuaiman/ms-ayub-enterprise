@@ -13,7 +13,7 @@
                 </button>
                 <div>
                     <h1 class="text-xl font-bold text-(--color-text-primary)">Create Invoice</h1>
-                    <p class="text-sm text-(--color-text-secondary) mt-0.5">Select customer, invoice type, and items</p>
+                    <p class="text-sm text-(--color-text-secondary) mt-0.5">Select party, bills, and generate</p>
                 </div>
             </div>
 
@@ -75,24 +75,21 @@
                 </div>
             </div>
 
-            <!-- Step Content -->
             <div class="bg-(--color-surface) rounded-2xl border border-(--color-border) p-6 shadow-sm">
-                <!-- Step 1: Customer Selection -->
+                <!-- Step 1: Party Selection -->
                 <div v-if="step === 1" class="space-y-6">
-                    <InvoiceCustomerSelect v-model:customer-id="selectedCustomerId" v-model:invoice-type="invoiceType"
-                        @next="goToStep2" />
+                    <InvoicePartySelect v-model:party="party" v-model:party-id="partyId" @next="goToStep2" />
                 </div>
 
                 <!-- Step 2: Item Selection -->
                 <div v-if="step === 2" class="space-y-6">
-                    <InvoiceItemSelector :type="invoiceType" :customer-id="selectedCustomerId"
+                    <InvoiceItemSelector :party="party" :party-id="partyId" :party-name="partyName"
                         v-model:selected-items="selectedItems" @next="goToStep3" @back="goToStep1" />
                 </div>
 
                 <!-- Step 3: Preview -->
                 <div v-if="step === 3" class="space-y-6">
-                    <InvoicePreview :type="invoiceType" :invoice="currentInvoice" @update:invoice="updateInvoice"
-                        @back="goToStep2" @download="handleDownload" />
+                    <InvoicePreview :invoice="currentInvoice" @update:invoice="updateInvoice" @back="goToStep2" />
                 </div>
             </div>
         </div>
@@ -101,76 +98,88 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useInvoiceStore } from '@/stores/invoices'
 import { useCustomersStore } from '@/stores/customers'
+import { useBrokersStore } from '@/stores/brokers'
+import { useGodownsStore } from '@/stores/godowns'
+import { useMajhisStore } from '@/stores/majhis'
 import { useCustomerStorageBillsStore } from '@/stores/customerStorageBills'
 import { useCustomerLotBillsStore } from '@/stores/customerLotBills'
 import { useCustomerDeliveryBillsStore } from '@/stores/customerDeliveryBills'
 import { useCustomerTransportBillsStore } from '@/stores/customerTransportBills'
+import { useCustomerAdditionalBillsStore } from '@/stores/customerAdditionalBills'
+import { useBrokerVehicleBillsStore } from '@/stores/brokerVehicleBills'
+import { useGodownStoreBillsStore } from '@/stores/godownStoreBills'
+import { useMajhiLotBillsStore } from '@/stores/majhiLotBills'
+import { useMajhiLoadingBillsStore } from '@/stores/majhiLoadingBills'
 import { useLotsStore } from '@/stores/lots'
 import { useStoresStore } from '@/stores/stores'
 import { useDeliveriesStore } from '@/stores/deliveries'
 import { useDeliveryItemsStore } from '@/stores/deliveryItems'
 import { useTransportsStore } from '@/stores/transports'
 import { useVehiclesStore } from '@/stores/vehicles'
-import { useMajhisStore } from '@/stores/majhis'
-import { useBrokersStore } from '@/stores/brokers'
-import type { Invoice, AvailableItem, InvoiceType } from '@/types/invoice'
+import { useDamagesStore } from '@/stores/damages'
+import type { Invoice, AvailableItem, InvoiceParty } from '@/types/invoice'
 import { push } from 'notivue'
-import InvoiceCustomerSelect from '@/components/features/invoices/InvoiceCustomerSelect.vue'
+import InvoicePartySelect from '@/components/features/invoices/InvoicePartySelect.vue'
 import InvoiceItemSelector from '@/components/features/invoices/InvoiceItemSelector.vue'
 import InvoicePreview from '@/components/features/invoices/InvoicePreview.vue'
 
 const router = useRouter()
-const route = useRoute()
 const invoiceStore = useInvoiceStore()
 const customersStore = useCustomersStore()
+const brokersStore = useBrokersStore()
+const godownsStore = useGodownsStore()
+const majhisStore = useMajhisStore()
 const lotsStore = useLotsStore()
 const storesStore = useStoresStore()
 const deliveriesStore = useDeliveriesStore()
 const deliveryItemsStore = useDeliveryItemsStore()
 const transportsStore = useTransportsStore()
 const vehiclesStore = useVehiclesStore()
-const majhisStore = useMajhisStore()
-const brokersStore = useBrokersStore()
-const customerStorageBillsStore = useCustomerStorageBillsStore()
-const customerLotBillsStore = useCustomerLotBillsStore()
-const customerDeliveryBillsStore = useCustomerDeliveryBillsStore()
-const customerTransportBillsStore = useCustomerTransportBillsStore()
+const damagesStore = useDamagesStore()
 
 const step = ref(1)
-const selectedCustomerId = ref<number | null>(null)
-const invoiceType = ref<InvoiceType>('godown')
+const party = ref<InvoiceParty>('customer')
+const partyId = ref<number | null>(null)
 const selectedItems = ref<AvailableItem[]>([])
 const isLoading = ref(true)
 
 const steps = [
-    { label: 'Select Customer & Type' },
+    { label: 'Select Party' },
     { label: 'Choose Bills' },
-    { label: 'Review & Download' }
+    { label: 'Review & Download' },
 ]
 
 const currentInvoice = computed(() => invoiceStore.currentInvoice)
+
+const partyName = computed(() => {
+    if (!partyId.value) return ''
+    switch (party.value) {
+        case 'customer': return customersStore.getCustomerName(partyId.value)
+        case 'broker': return brokersStore.getBrokerName(partyId.value)
+        case 'godown': return godownsStore.getGodownName(partyId.value)
+        case 'majhi': return majhisStore.getMajhiName(partyId.value)
+        default: return ''
+    }
+})
 
 const loadInvoiceData = async () => {
     isLoading.value = true
     try {
         await Promise.all([
             customersStore.fetchCustomers(),
+            brokersStore.fetchBrokers(),
+            godownsStore.fetchGodowns(),
+            majhisStore.fetchMajhis(),
             lotsStore.fetchLots(),
             storesStore.fetchStores(),
             deliveriesStore.fetchDeliveries(),
             deliveryItemsStore.fetchDeliveryItems(),
             transportsStore.fetchTransports(),
             vehiclesStore.fetchVehicles(),
-            majhisStore.fetchMajhis(),
-            brokersStore.fetchBrokers(),
-            // Load bill stores
-            customerStorageBillsStore.setSearchQuery(''),
-            customerLotBillsStore.setSearchQuery(''),
-            customerDeliveryBillsStore.setSearchQuery(''),
-            customerTransportBillsStore.setSearchQuery(''),
+            damagesStore.fetchDamages(),
         ])
     } catch (error) {
         console.error('[INVOICE] Error loading data:', error)
@@ -181,20 +190,12 @@ const loadInvoiceData = async () => {
 }
 
 onMounted(async () => {
-    const customerId = route.query.customer_id
-    if (customerId) {
-        selectedCustomerId.value = Number(customerId)
-    }
-    const type = route.query.type as string
-    if (type === 'transport' || type === 'godown') {
-        invoiceType.value = type
-    }
     await loadInvoiceData()
 })
 
 const goToStep2 = () => {
-    if (!selectedCustomerId.value) {
-        push.error('Please select a customer')
+    if (!partyId.value) {
+        push.error('Please select a party')
         return
     }
     step.value = 2
@@ -207,22 +208,14 @@ const goToStep3 = () => {
         return
     }
 
-    if (!selectedCustomerId.value) {
-        push.error('Customer not selected')
+    if (!partyId.value) {
+        push.error('Party not selected')
         return
     }
-
-    const customer = customersStore.getCustomerById(selectedCustomerId.value)
-    if (!customer) {
-        push.error('Customer not found')
-        return
-    }
-
-    const customerName = customer.company_name || customer.contact_person || `Customer #${customer.id}`
 
     let invoice = currentInvoice.value
-    if (!invoice || invoice.customer_id !== selectedCustomerId.value) {
-        invoice = invoiceStore.createInvoice(invoiceType.value, selectedCustomerId.value, customerName)
+    if (!invoice || invoice.party_id !== partyId.value || invoice.party_type !== party.value) {
+        invoice = invoiceStore.createInvoice(party.value, partyId.value, partyName.value)
     }
 
     invoiceStore.buildInvoiceFromSelectedItems(selected)
@@ -244,14 +237,9 @@ const updateInvoice = (updates: Partial<Invoice>) => {
     }
 }
 
-const handleDownload = () => {
-    // Will be handled by preview component
-}
-
 const saveDraft = () => {
     if (currentInvoice.value && currentInvoice.value.items.length > 0) {
         invoiceStore.saveCurrentInvoice()
-        push.success('Draft saved successfully!')
     } else {
         push.warning('No items to save')
     }

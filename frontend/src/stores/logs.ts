@@ -198,25 +198,25 @@ export const useLogsStore = defineStore("logs", () => {
   const getActionBadgeClass = (action: string): string => {
     switch (action) {
       case 'create':
-        return 'bg-success-bg text-success-text';
+        return 'bg-(--color-green)/10 text-(--color-green)'
       case 'update':
-        return 'bg-info-bg text-info-text';
+        return 'bg-(--color-blue)/10 text-(--color-blue)'
       case 'delete':
-        return 'bg-danger-bg text-danger-text';
+        return 'bg-(--color-red)/10 text-(--color-red)'
       case 'login':
-        return 'bg-info-bg text-info-text';
+        return 'bg-(--color-blue)/10 text-(--color-blue)'
       case 'logout':
-        return 'bg-warning-bg text-warning-text';
+        return 'bg-(--color-yellow)/10 text-(--color-yellow)'
       case 'approve':
-        return 'bg-success-bg text-success-text';
+        return 'bg-(--color-green)/10 text-(--color-green)'
       case 'reject':
-        return 'bg-danger-bg text-danger-text';
+        return 'bg-(--color-red)/10 text-(--color-red)'
       case 'pay':
-        return 'bg-success-bg text-success-text';
+        return 'bg-(--color-green)/10 text-(--color-green)'
       case 'status_change':
-        return 'bg-warning-bg text-warning-text';
+        return 'bg-(--color-yellow)/10 text-(--color-yellow)'
       default:
-        return 'bg-surface-alt text-secondary';
+        return 'bg-(--color-muted-bg) text-(--color-text-secondary)'
     }
   };
 

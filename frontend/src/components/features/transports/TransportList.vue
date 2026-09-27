@@ -64,12 +64,25 @@
                 <!-- Header Row - 12 columns -->
                 <div
                     class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wider bg-(--color-muted-bg)/30 rounded-t-lg">
-                    <!-- Customer - 2 columns -->
-                    <div class="col-span-2 cursor-pointer hover:text-(--color-text-primary) transition-colors"
+                    <!-- Customer - 3 columns -->
+                    <div class="col-span-3 cursor-pointer hover:text-(--color-text-primary) transition-colors"
                         @click="toggleSort('customer_id')">
                         <span class="flex items-center gap-1">
                             Customer
                             <svg v-if="sortField === 'customer_id'" class="w-3 h-3"
+                                :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
+                                viewBox="0 0 24 24">
+                                <path d="M7 10l5 5 5-5z" />
+                            </svg>
+                        </span>
+                    </div>
+
+                    <!-- Type - 2 columns -->
+                    <div class="col-span-2 cursor-pointer hover:text-(--color-text-primary) transition-colors"
+                        @click="toggleSort('transport_type')">
+                        <span class="flex items-center gap-1">
+                            Type
+                            <svg v-if="sortField === 'transport_type'" class="w-3 h-3"
                                 :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
                                 viewBox="0 0 24 24">
                                 <path d="M7 10l5 5 5-5z" />
@@ -116,19 +129,6 @@
                         </span>
                     </div>
 
-                    <!-- Date - 2 columns -->
-                    <div class="col-span-2 cursor-pointer hover:text-(--color-text-primary) transition-colors"
-                        @click="toggleSort('transport_date')">
-                        <span class="flex items-center gap-1">
-                            Date
-                            <svg v-if="sortField === 'transport_date'" class="w-3 h-3"
-                                :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
-                                viewBox="0 0 24 24">
-                                <path d="M7 10l5 5 5-5z" />
-                            </svg>
-                        </span>
-                    </div>
-
                     <!-- Commission - 1 column -->
                     <div class="col-span-1 cursor-pointer hover:text-(--color-text-primary) transition-colors"
                         @click="toggleSort('office_commission_amount')">
@@ -142,7 +142,7 @@
                         </span>
                     </div>
 
-                    <!-- Actions - 1 column, right aligned -->
+                    <!-- Actions - 1 column -->
                     <div class="col-span-1 flex items-center justify-end">Actions</div>
                 </div>
 
@@ -179,7 +179,7 @@
                 <div v-else>
                     <TransportRow v-for="transport in filteredTransports" :key="transport.id" :transport="transport"
                         @view="openDetailDialog" @edit="handleEditTransport" @delete="handleDeleteTransport"
-                        @manage-vehicles="handleManageVehicles" @updated="fetchTransports" />
+                        @updated="fetchTransports" />
                 </div>
             </div>
         </div>
@@ -191,13 +191,12 @@
                 transportsStore.transports.length }} transports</p>
             <div class="flex items-center gap-4 text-xs text-(--color-text-secondary)">
                 <span>Total Commission: {{ formatCurrency(transportsStore.totalCommission) }}</span>
-                <span class="text-(--color-blue)">Total Customer Paid: {{
-                    formatCurrency(transportsStore.totalCustomerPaid || 0) }}</span>
+                <span class="text-(--color-blue)">Customer Paid: {{ formatCurrency(transportsStore.totalCustomerPaid)
+                }}</span>
             </div>
         </div>
 
         <!-- Dialogs -->
-        <!-- Create Dialog -->
         <BaseDialog v-model="createDialogOpen" max-width="3xl">
             <div class="mb-6">
                 <h2 class="text-xl font-bold text-(--color-text-primary)">Create New Transport</h2>
@@ -207,14 +206,11 @@
                 @cancel="createDialogOpen = false" />
         </BaseDialog>
 
-        <!-- Detail Dialog -->
         <BaseDialog v-model="detailDialogOpen" max-width="3xl">
             <TransportDetail v-if="selectedTransport" :transport="selectedTransport" @close="closeDetailDialog"
-                @edit="handleEditTransportFromDetail" @manage-vehicles="handleManageVehiclesFromDetail"
-                @updated="fetchTransports" />
+                @edit="handleEditTransportFromDetail" @updated="fetchTransports" />
         </BaseDialog>
 
-        <!-- Edit Dialog -->
         <BaseDialog v-model="editDialogOpen" max-width="3xl">
             <div class="mb-6">
                 <h2 class="text-xl font-bold text-(--color-text-primary)">Edit Transport</h2>
@@ -224,7 +220,6 @@
                 @transport-updated="handleTransportUpdated" @cancel="editDialogOpen = false" />
         </BaseDialog>
 
-        <!-- Delete Confirmation Dialog -->
         <BaseDialog v-model="deleteDialogOpen" max-width="sm">
             <div class="flex items-center gap-3">
                 <div
@@ -258,6 +253,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useTransportsStore } from '@/stores/transports'
 import { useCustomersStore } from '@/stores/customers'
 import { useUsersStore } from '@/stores/users'
+import { useVehiclesStore } from '@/stores/vehicles'
 import { useAuthStore } from '@/stores/auth'
 import { useClipboardStore } from '@/stores/clipboard'
 import type { Transport, TransportSortField, SortDirection } from '@/types/transport'
@@ -272,6 +268,7 @@ import { formatCurrency } from '@/utils/currency'
 const transportsStore = useTransportsStore()
 const customersStore = useCustomersStore()
 const usersStore = useUsersStore()
+const vehiclesStore = useVehiclesStore()
 const auth = useAuthStore()
 const clipboardStore = useClipboardStore()
 
@@ -281,7 +278,6 @@ const monthFilter = ref('')
 const sortField = ref<TransportSortField>('transport_date')
 const sortDirection = ref<SortDirection>('desc')
 
-// Dialogs
 const createDialogOpen = ref(false)
 const detailDialogOpen = ref(false)
 const editDialogOpen = ref(false)
@@ -294,7 +290,6 @@ const canManageTransports = computed(() => {
     return role === 'admin' || role === 'manager'
 })
 
-// Get unique months from transports
 const availableMonths = computed(() => {
     const months = new Set<string>()
     transportsStore.transports.forEach(t => {
@@ -306,14 +301,13 @@ const availableMonths = computed(() => {
 })
 
 const getCustomerName = (id: number | null): string => {
-    if (!id) return '—'
+    if (!id) return '৳'
     return customersStore.getCustomerName(id)
 }
 
 const filteredTransports = computed(() => {
     let result = [...transportsStore.transports]
 
-    // Search
     if (searchQuery.value) {
         const query = searchQuery.value.toLowerCase()
         result = result.filter(t =>
@@ -321,15 +315,15 @@ const filteredTransports = computed(() => {
             (t.to_location && t.to_location.toLowerCase().includes(query)) ||
             (t.notes && t.notes.toLowerCase().includes(query)) ||
             String(t.vehicle_quantity).includes(query) ||
-            (t.delivery_type && t.delivery_type.toLowerCase().includes(query)) ||
+            (t.transport_type && t.transport_type.toLowerCase().includes(query)) ||
             String(t.office_commission_amount).includes(query) ||
+            String(t.customer_total_charge || 0).includes(query) ||
             String(t.customer_total_paid || 0).includes(query) ||
             getCustomerName(t.customer_id).toLowerCase().includes(query) ||
             usersStore.getUserName(t.user_id).toLowerCase().includes(query)
         )
     }
 
-    // Filter by month
     if (monthFilter.value) {
         result = result.filter(t => {
             const date = new Date(t.transport_date)
@@ -338,7 +332,6 @@ const filteredTransports = computed(() => {
         })
     }
 
-    // Sort
     result.sort((a, b) => {
         let comparison = 0
         switch (sortField.value) {
@@ -354,8 +347,8 @@ const filteredTransports = computed(() => {
             case 'vehicle_quantity':
                 comparison = a.vehicle_quantity - b.vehicle_quantity
                 break
-            case 'delivery_type':
-                comparison = (a.delivery_type || '').localeCompare(b.delivery_type || '')
+            case 'transport_type':
+                comparison = (a.transport_type || '').localeCompare(b.transport_type || '')
                 break
             case 'transport_date':
                 comparison = new Date(a.transport_date).getTime() - new Date(b.transport_date).getTime()
@@ -381,7 +374,8 @@ const fetchTransports = async () => {
         await Promise.all([
             transportsStore.fetchTransports(),
             customersStore.fetchCustomers(),
-            usersStore.fetchUsers()
+            usersStore.fetchUsers(),
+            vehiclesStore.fetchVehicles(),
         ])
     } finally {
         loading.value = false
@@ -407,14 +401,13 @@ const toggleSort = (field: TransportSortField) => {
 }
 
 const handleCopyToClipboard = async () => {
-    const headers = 'Customer\tFrom\tTo\tVehicles\tDate\tCommission'
+    const headers = 'Customer\tType\tFrom\tTo\tVehicles\tDate\tCommission'
     const rows = filteredTransports.value.map(t => {
-        return `${getCustomerName(t.customer_id)}\t${t.from_location}\t${t.to_location || ''}\t${t.vehicle_quantity}\t${new Date(t.transport_date).toLocaleDateString()}\t${t.office_commission_amount.toFixed(2)}`
+        return `${getCustomerName(t.customer_id)}\t${t.transport_type || ''}\t${t.from_location}\t${t.to_location || ''}\t${t.vehicle_quantity}\t${new Date(t.transport_date).toLocaleDateString()}\t${t.office_commission_amount.toFixed(2)}`
     })
     await clipboardStore.copyToClipboard(headers + '\n' + rows.join('\n'))
 }
 
-// Dialog handlers
 const openDetailDialog = (transport: Transport) => {
     selectedTransport.value = transport
     detailDialogOpen.value = true
@@ -443,21 +436,6 @@ const handleDeleteTransport = (transport: Transport) => {
     deleteDialogOpen.value = true
 }
 
-const handleManageVehicles = (transport: Transport) => {
-    selectedTransport.value = transport
-    // Close detail dialog if open
-    detailDialogOpen.value = false
-    // This will be handled by the parent view
-    push.info(`Manage vehicles for transport #${transport.id}`)
-}
-
-const handleManageVehiclesFromDetail = (transport: Transport) => {
-    detailDialogOpen.value = false
-    setTimeout(() => {
-        handleManageVehicles(transport)
-    }, 300)
-}
-
 const confirmDelete = async () => {
     if (!selectedTransport.value) return
     const success = await transportsStore.deleteTransport(selectedTransport.value.id)
@@ -478,7 +456,6 @@ const handleTransportUpdated = async () => {
     await fetchTransports()
 }
 
-// Auto-select current month
 watch(() => transportsStore.transports, (newTransports) => {
     if (newTransports.length > 0 && !monthFilter.value) {
         const currentMonth = new Date().toISOString().slice(0, 7)

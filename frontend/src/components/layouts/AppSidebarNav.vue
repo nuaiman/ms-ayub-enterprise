@@ -1,21 +1,16 @@
 <!-- src/components/layouts/AppSidebarNav.vue -->
 <template>
     <nav class="flex-1 overflow-y-auto py-3 px-2.5 space-y-0.5">
-        <!-- Dashboard -->
         <AppSidebarNavItem to="/dashboard" icon="dashboard" label="Dashboard" :active="$route.path === '/dashboard'"
-            :collapsed="collapsed" @click="closeSidebar" />
+            @click="closeSidebar" />
 
-        <!-- Customers -->
         <AppSidebarNavItem to="/customers" icon="users" label="Customers" :active="$route.path === '/customers'"
-            :collapsed="collapsed" @click="closeSidebar" />
+            @click="closeSidebar" />
 
-        <!-- Navigation Groups -->
-        <AppSidebarNavGroup v-for="group in menuGroups" :key="group.id" :group="group" :collapsed="collapsed"
-            @close="closeSidebar" />
+        <AppSidebarNavGroup v-for="group in menuGroups" :key="group.id" :group="group" @close="closeSidebar" />
 
-        <!-- Support -->
         <AppSidebarNavItem to="/support" icon="support" label="Support" :active="$route.path === '/support'"
-            :collapsed="collapsed" @click="closeSidebar" />
+            @click="closeSidebar" />
     </nav>
 </template>
 
@@ -25,8 +20,12 @@ import AppSidebarNavItem from './AppSidebarNavItem.vue'
 import AppSidebarNavGroup from './AppSidebarNavGroup.vue'
 
 defineProps<{
-    collapsed: boolean
-    menuGroups: any[]
+    menuGroups: Array<{
+        id: string
+        label: string
+        icon: string
+        items: Array<{ path: string; label: string; icon: string }>
+    }>
 }>()
 
 const emit = defineEmits<{
@@ -34,8 +33,5 @@ const emit = defineEmits<{
 }>()
 
 const $route = useRoute()
-
-const closeSidebar = () => {
-    emit('close')
-}
+const closeSidebar = () => emit('close')
 </script>

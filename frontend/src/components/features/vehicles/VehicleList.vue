@@ -11,7 +11,6 @@
             </div>
 
             <div class="flex items-center gap-2 flex-wrap">
-                <!-- Search -->
                 <div class="relative flex-1 sm:flex-none w-full sm:w-auto">
                     <input :value="searchQuery" @input="handleSearch" type="text" placeholder="Search vehicles..."
                         class="w-full sm:w-56 pl-9 pr-8 py-2 rounded-lg text-sm bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent" />
@@ -29,7 +28,6 @@
                     </button>
                 </div>
 
-                <!-- Copy Button -->
                 <button @click="handleCopyToClipboard"
                     class="h-9 w-9 flex items-center justify-center border border-(--color-border) rounded-lg text-(--color-text-secondary) hover:bg-(--color-muted-bg) transition-colors relative shrink-0"
                     title="Copy table to clipboard">
@@ -44,7 +42,6 @@
                     </svg>
                 </button>
 
-                <!-- Create -->
                 <button v-if="canManageVehicles" @click="createDialogOpen = true"
                     class="h-9 px-4 flex items-center gap-2 bg-(--color-blue) text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-all duration-200 active:scale-95 whitespace-nowrap shrink-0">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -58,10 +55,9 @@
         <!-- Table -->
         <div class="flex-1 min-h-0 overflow-auto">
             <div class="min-w-225">
-                <!-- Header Row -->
                 <div
                     class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wider bg-(--color-muted-bg)/30 rounded-t-lg">
-                    <div class="col-span-4 cursor-pointer hover:text-(--color-text-primary) transition-colors"
+                    <div class="col-span-3 cursor-pointer hover:text-(--color-text-primary) transition-colors"
                         @click="toggleSort('vehicle_number')">
                         <span class="flex items-center gap-1">
                             Vehicle #
@@ -83,7 +79,7 @@
                             </svg>
                         </span>
                     </div>
-                    <div class="col-span-2 cursor-pointer hover:text-(--color-text-primary) transition-colors"
+                    <div class="col-span-3 cursor-pointer hover:text-(--color-text-primary) transition-colors"
                         @click="toggleSort('broker_id')">
                         <span class="flex items-center gap-1">
                             Broker
@@ -95,10 +91,10 @@
                         </span>
                     </div>
                     <div class="col-span-3 cursor-pointer hover:text-(--color-text-primary) transition-colors"
-                        @click="toggleSort('driver_name')">
+                        @click="toggleSort('joma_cost')">
                         <span class="flex items-center gap-1">
-                            Driver
-                            <svg v-if="sortField === 'driver_name'" class="w-3 h-3"
+                            Costs
+                            <svg v-if="sortField === 'joma_cost'" class="w-3 h-3"
                                 :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
                                 viewBox="0 0 24 24">
                                 <path d="M7 10l5 5 5-5z" />
@@ -108,7 +104,6 @@
                     <div class="col-span-1 flex items-center justify-end">Actions</div>
                 </div>
 
-                <!-- Loading -->
                 <div v-if="loading" class="flex items-center justify-center py-12">
                     <div class="text-center space-y-4">
                         <svg class="animate-spin w-10 h-10 text-(--color-blue) mx-auto" fill="none" viewBox="0 0 24 24">
@@ -120,7 +115,6 @@
                     </div>
                 </div>
 
-                <!-- Empty -->
                 <div v-else-if="filteredVehicles.length === 0" class="flex items-center justify-center py-12">
                     <div class="text-center space-y-3">
                         <div
@@ -137,7 +131,6 @@
                     </div>
                 </div>
 
-                <!-- Rows -->
                 <div v-else>
                     <VehicleRow v-for="vehicle in filteredVehicles" :key="vehicle.id" :vehicle="vehicle"
                         @view="openDetailDialog" @edit="handleEditVehicle" @delete="handleDeleteVehicle"
@@ -146,15 +139,12 @@
             </div>
         </div>
 
-        <!-- Footer -->
         <div v-if="!loading && filteredVehicles.length > 0"
             class="flex items-center justify-between py-3 px-1 border-t border-(--color-border) shrink-0 mt-auto">
             <p class="text-xs text-(--color-text-secondary)">Showing {{ filteredVehicles.length }} of {{
                 vehiclesStore.vehicles.length }} vehicles</p>
         </div>
 
-        <!-- Dialogs -->
-        <!-- Create Dialog -->
         <BaseDialog v-model="createDialogOpen" max-width="3xl">
             <div class="mb-6">
                 <h2 class="text-xl font-bold text-(--color-text-primary)">Create New Vehicle</h2>
@@ -163,13 +153,11 @@
             <VehicleForm mode="create" @vehicle-created="handleVehicleCreated" @cancel="createDialogOpen = false" />
         </BaseDialog>
 
-        <!-- Detail Dialog -->
         <BaseDialog v-model="detailDialogOpen" max-width="3xl">
             <VehicleDetail v-if="selectedVehicle" :vehicle="selectedVehicle" @close="closeDetailDialog"
                 @edit="handleEditVehicleFromDetail" @updated="fetchVehicles" />
         </BaseDialog>
 
-        <!-- Edit Dialog -->
         <BaseDialog v-model="editDialogOpen" max-width="3xl">
             <div class="mb-6">
                 <h2 class="text-xl font-bold text-(--color-text-primary)">Edit Vehicle</h2>
@@ -179,7 +167,6 @@
                 @vehicle-updated="handleVehicleUpdated" @cancel="editDialogOpen = false" />
         </BaseDialog>
 
-        <!-- Delete Confirmation Dialog -->
         <BaseDialog v-model="deleteDialogOpen" max-width="sm">
             <div class="flex items-center gap-3">
                 <div
@@ -211,8 +198,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useVehiclesStore } from '@/stores/vehicles'
-import { useBrokersStore } from '@/stores/brokers'
 import { useTransportsStore } from '@/stores/transports'
+import { useBrokersStore } from '@/stores/brokers'
 import { useUsersStore } from '@/stores/users'
 import { useAuthStore } from '@/stores/auth'
 import { useClipboardStore } from '@/stores/clipboard'
@@ -221,11 +208,10 @@ import VehicleRow from './VehicleRow.vue'
 import VehicleForm from './VehicleForm.vue'
 import VehicleDetail from './VehicleDetail.vue'
 import BaseDialog from '@/components/ui/BaseDialog.vue'
-import { push } from 'notivue'
 
 const vehiclesStore = useVehiclesStore()
-const brokersStore = useBrokersStore()
 const transportsStore = useTransportsStore()
+const brokersStore = useBrokersStore()
 const usersStore = useUsersStore()
 const auth = useAuthStore()
 const clipboardStore = useClipboardStore()
@@ -235,7 +221,6 @@ const searchQuery = ref('')
 const sortField = ref<VehicleSortField>('vehicle_number')
 const sortDirection = ref<SortDirection>('asc')
 
-// Dialogs
 const createDialogOpen = ref(false)
 const detailDialogOpen = ref(false)
 const editDialogOpen = ref(false)
@@ -251,20 +236,18 @@ const canManageVehicles = computed(() => {
 const filteredVehicles = computed(() => {
     let result = [...vehiclesStore.vehicles]
 
-    // Search
     if (searchQuery.value) {
         const query = searchQuery.value.toLowerCase()
         result = result.filter(v =>
             v.vehicle_number.toLowerCase().includes(query) ||
-            (v.driver_name && v.driver_name.toLowerCase().includes(query)) ||
-            (v.driver_phone && v.driver_phone.toLowerCase().includes(query)) ||
-            (v.demarage_reason && v.demarage_reason.toLowerCase().includes(query)) ||
-            (v.broker_id && brokersStore.getBrokerName(v.broker_id).toLowerCase().includes(query)) ||
-            usersStore.getUserName(v.user_id).toLowerCase().includes(query)
+            (v.notes && v.notes.toLowerCase().includes(query)) ||
+            String(v.joma_cost).includes(query) ||
+            String(v.vehicle_cost).includes(query) ||
+            usersStore.getUserName(v.user_id).toLowerCase().includes(query) ||
+            (v.broker_id && brokersStore.getBrokerName(v.broker_id).toLowerCase().includes(query))
         )
     }
 
-    // Sort
     result.sort((a, b) => {
         let comparison = 0
         switch (sortField.value) {
@@ -277,8 +260,11 @@ const filteredVehicles = computed(() => {
             case 'broker_id':
                 comparison = (a.broker_id || 0) - (b.broker_id || 0)
                 break
-            case 'driver_name':
-                comparison = (a.driver_name || '').localeCompare(b.driver_name || '')
+            case 'joma_cost':
+                comparison = a.joma_cost - b.joma_cost
+                break
+            case 'vehicle_cost':
+                comparison = a.vehicle_cost - b.vehicle_cost
                 break
             case 'created_at':
                 comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
@@ -297,9 +283,9 @@ const fetchVehicles = async () => {
     try {
         await Promise.all([
             vehiclesStore.fetchVehicles(),
-            brokersStore.fetchBrokers(),
             transportsStore.fetchTransports(),
-            usersStore.fetchUsers()
+            brokersStore.fetchBrokers(),
+            usersStore.fetchUsers(),
         ])
     } finally {
         loading.value = false
@@ -325,15 +311,14 @@ const toggleSort = (field: VehicleSortField) => {
 }
 
 const handleCopyToClipboard = async () => {
-    const headers = 'Vehicle #\tTransport\tBroker\tDriver'
+    const headers = 'Vehicle #\tTransport\tBroker\tJoma\tVehicle Cost'
     const rows = filteredVehicles.value.map(v => {
-        const brokerName = v.broker_id ? brokersStore.getBrokerName(v.broker_id) : ''
-        return `${v.vehicle_number}\t#${v.transport_id}\t${brokerName}\t${v.driver_name || ''}`
+        const broker = v.broker_id ? brokersStore.getBrokerName(v.broker_id) : ''
+        return `${v.vehicle_number}\t#${v.transport_id}\t${broker}\t${v.joma_cost.toFixed(2)}\t${v.vehicle_cost.toFixed(2)}`
     })
     await clipboardStore.copyToClipboard(headers + '\n' + rows.join('\n'))
 }
 
-// Dialog handlers
 const openDetailDialog = (vehicle: Vehicle) => {
     selectedVehicle.value = vehicle
     detailDialogOpen.value = true

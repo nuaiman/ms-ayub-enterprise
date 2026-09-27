@@ -119,7 +119,7 @@
                             <div v-if="event.meta && Object.keys(event.meta).length > 0" class="row-meta">
                                 <span v-for="(value, key) in event.meta" :key="key" class="meta-item">
                                     <span class="meta-key">{{ humanKey(String(key)) }}:</span>
-                                    <span class="meta-val">{{ value ?? 'â€”' }}</span>
+                                    <span class="meta-val">{{ value ?? '—' }}</span>
                                 </span>
                             </div>
                         </div>
@@ -131,7 +131,7 @@
             <footer class="page-footer">
                 <p class="footer-line-1">Ali Hossain Chairman Building (1st Floor), 958/27, Strand Road, Mazirghat,
                     Chattogram.</p>
-                <p class="footer-line-2">Cell : 01813-397288, 01705-727492, 01793-287709, 01864-106406 â€¢ E-mail :
+                <p class="footer-line-2">Cell : 01813-397288, 01705-727492, 01793-287709, 01864-106406 E-mail :
                     mdayubenterprise@gmail.com</p>
             </footer>
         </div>
@@ -179,6 +179,8 @@ const typeLabelMap: Record<LedgerEventType, string> = {
     unload_payment: 'Unload Payment',
     delivery_payment: 'Delivery Payment',
     transport_payment: 'Transport Payment',
+    additional_charge_created: 'Additional Charge',
+    additional_charge_payment: 'Additional Charge Payment',
 }
 
 const typeLabel = (t: LedgerEventType) => typeLabelMap[t] || t
@@ -195,7 +197,7 @@ const generatedDate = computed(() => {
 
 const periodLabel = computed(() => {
     if (props.dateFrom && props.dateTo) {
-        return `${shortDate(props.dateFrom)} â†’ ${shortDate(props.dateTo)}`
+        return `${shortDate(props.dateFrom)} – ${shortDate(props.dateTo)}`
     }
     if (props.dateFrom) return `From ${shortDate(props.dateFrom)}`
     if (props.dateTo) return `Up to ${shortDate(props.dateTo)}`
@@ -277,7 +279,7 @@ const shortDate = (dateStr: string): string => {
 
 const amountSign = (kind?: 'debit' | 'credit' | 'neutral'): string => {
     if (kind === 'debit') return '+'
-    if (kind === 'credit') return 'âˆ’'
+    if (kind === 'credit') return '−'
     return ''
 }
 

@@ -1,16 +1,15 @@
 // src/types/brokerVehicleBill.ts
 
 export interface BrokerVehicleBill {
-    id: number
-    vehicle_id: number
-    transport_id: number
+    id: number                 // vehicle id
     vehicle_number: string
-    broker_id: number | null
+    transport_id: number
+    broker_id: number
     broker_name: string
     joma_cost: number
     vehicle_cost: number
-    bill_amount: number
-    paid_amount: number  // From broker_total_paid
+    bill_amount: number        // joma_cost + vehicle_cost
+    paid_amount: number        // from vehicle.total_paid_to_broker
     status: 'unpaid' | 'paid' | 'cancelled'
     payment_date: string | null
     notes: string | null
@@ -18,5 +17,12 @@ export interface BrokerVehicleBill {
     updated_at: string
 }
 
-export type BrokerVehicleBillSortField = 'vehicle_number' | 'broker_name' | 'transport_id' | 'bill_amount' | 'status' | 'created_at'
+export type BrokerVehicleBillSortField =
+    | 'vehicle_number'
+    | 'broker_name'
+    | 'transport_id'
+    | 'bill_amount'
+    | 'status'
+    | 'created_at'
+
 export type SortDirection = 'asc' | 'desc'

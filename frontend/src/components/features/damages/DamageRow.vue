@@ -24,7 +24,7 @@
                         {{ godownName }}
                     </div>
                     <div class="text-xs text-(--color-text-secondary) truncate mt-0.5">
-                        {{ lotDisplayName }} Â· Lot #{{ lotNumber }}
+                        {{ lotDisplayName }} ৳· Lot #{{ lotNumber }}
                     </div>
                 </div>
             </div>
@@ -157,20 +157,20 @@ const isOpen = ref(false)
 
 const store = computed(() => storesStore.getStoreById(props.damage.store_id))
 const lot = computed(() => (store.value ? lotsStore.getLotById(store.value.lot_id) : null))
-const lotNumber = computed(() => lot.value?.lot_number ?? 'â€”')
+const lotNumber = computed(() => lot.value?.lot_number ?? '৳')
 
 const godownName = computed(() => {
-    if (!store.value) return 'â€”'
+    if (!store.value) return '৳'
     return godownsStore.getGodownName(store.value.godown_id)
 })
 
 const lotDisplayName = computed(() => {
-    if (!lot.value) return 'â€”'
+    if (!lot.value) return '৳'
     return lotsStore.getLotDisplayName(lot.value)
 })
 
 const customerName = computed(() => {
-    if (!lot.value?.customer_id) return 'â€”'
+    if (!lot.value?.customer_id) return '৳'
     return customersStore.getCustomerName(lot.value.customer_id)
 })
 

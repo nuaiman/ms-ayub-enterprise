@@ -141,7 +141,7 @@
                 <div v-else>
                     <CustomerRow v-for="customer in filteredCustomers" :key="customer.id" :customer="customer"
                         @view="openDetailDialog" @edit="handleEditCustomer" @delete="handleDeleteCustomer"
-                        @view-ledger="handleViewLedger" @updated="fetchCustomers" />
+                        @view-ledger="handleViewLedger" @add-charge="handleAddCharge" @updated="fetchCustomers" />
                 </div>
             </div>
         </div>
@@ -211,6 +211,16 @@
                     class="px-4 py-2 text-sm font-semibold bg-(--color-red) text-white rounded-lg hover:opacity-90 transition-colors">Delete</button>
             </template>
         </BaseDialog>
+
+        <!-- Add Charge Dialog -->
+        <BaseDialog v-model="chargeDialogOpen" max-width="3xl">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-(--color-text-primary)">Add Additional Charge</h2>
+                <p class="text-sm text-(--color-text-secondary) mt-1">Create a new charge for this customer</p>
+            </div>
+            <AdditionalChargeForm v-if="chargeCustomerId" :locked-customer-id="chargeCustomerId"
+                @charge-created="handleChargeCreated" @cancel="chargeDialogOpen = false" />
+        </BaseDialog>
     </div>
 </template>
 
@@ -233,6 +243,7 @@ import CustomerRow from './CustomerRow.vue'
 import CustomerForm from './CustomerForm.vue'
 import CustomerDetail from './CustomerDetail.vue'
 import CustomerLedger from './CustomerLedger.vue'
+import AdditionalChargeForm from '@/components/features/customerAdditionalBills/AdditionalChargeForm.vue'
 import BaseDialog from '@/components/ui/BaseDialog.vue'
 
 const customersStore = useCustomersStore()
@@ -257,9 +268,11 @@ const detailDialogOpen = ref(false)
 const ledgerDialogOpen = ref(false)
 const editDialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
+const chargeDialogOpen = ref(false)
 
 const selectedCustomer = ref<Customer | null>(null)
 const ledgerCustomerId = ref<number | null>(null)
+const chargeCustomerId = ref<number | null>(null)
 
 const canManageCustomers = computed(() => {
     const role = auth.user?.role
@@ -419,6 +432,17 @@ const handleCustomerCreated = async () => {
 const handleCustomerUpdated = async () => {
     editDialogOpen.value = false
     detailDialogOpen.value = false
+    await fetchCustomers()
+}
+
+const handleAddCharge = (customer: Customer) => {
+    chargeCustomerId.value = customer.id
+    chargeDialogOpen.value = true
+}
+
+const handleChargeCreated = async () => {
+    chargeDialogOpen.value = false
+    chargeCustomerId.value = null
     await fetchCustomers()
 }
 

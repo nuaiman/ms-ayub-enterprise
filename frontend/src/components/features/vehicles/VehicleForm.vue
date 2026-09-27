@@ -38,7 +38,7 @@
                 </div>
                 <p v-if="currentVehicleCount >= selectedTransport.vehicle_quantity"
                     class="text-xs text-(--color-red) mt-1.5">
-                    ⚠️ All vehicles already added for this transport
+                    All vehicles already added for this transport
                 </p>
                 <p v-else-if="currentVehicleCount > 0" class="text-xs text-(--color-text-secondary) mt-1.5">
                     {{ selectedTransport.vehicle_quantity - currentVehicleCount }} vehicle(s) remaining
@@ -66,43 +66,13 @@
                     Main Vehicle
                 </h4>
 
-                <VehicleFields v-model:transport-id="form.main_vehicle.transport_id"
-                    v-model:vehicle-number="form.main_vehicle.vehicle_number"
-                    v-model:broker-id="form.main_vehicle.broker_id" v-model:driver-name="form.main_vehicle.driver_name"
-                    v-model:driver-phone="form.main_vehicle.driver_phone"
-                    v-model:joma-cost="form.main_vehicle.joma_cost"
+                <VehicleFields v-model:vehicle-number="form.main_vehicle.vehicle_number"
+                    v-model:broker-id="form.main_vehicle.broker_id" v-model:joma-cost="form.main_vehicle.joma_cost"
                     v-model:vehicle-cost="form.main_vehicle.vehicle_cost"
-                    v-model:customer-charge="form.main_vehicle.customer_charge"
                     v-model:other-cost="form.main_vehicle.other_cost"
                     v-model:labour-cost="form.main_vehicle.labour_cost"
-                    v-model:demarage-amount="form.main_vehicle.demarage_amount"
-                    v-model:demarage-reason="form.main_vehicle.demarage_reason" :broker-options="brokerOptions"
-                    :disabled="submitting" :required="true" :standalone="false" />
-
-                <!-- Profit/Loss & Broker Due Summary for Main Vehicle -->
-                <div v-if="hasMainVehicleCosts"
-                    class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-lg bg-(--color-muted-bg)/30 border border-(--color-border)">
-                    <div>
-                        <p class="text-xs text-(--color-text-secondary)">Profit/Loss</p>
-                        <p class="text-sm font-semibold"
-                            :class="mainVehicleProfit >= 0 ? 'text-(--color-green)' : 'text-(--color-red)'">
-                            {{ formatCurrency(mainVehicleProfit) }}
-                        </p>
-                        <p class="text-[10px] text-(--color-text-secondary)">
-                            {{ formatCurrency(mainVehicleCustomerCharge) }} - ({{ formatCurrency(mainVehicleTotalCost)
-                            }})
-                        </p>
-                    </div>
-                    <div>
-                        <p class="text-xs text-(--color-text-secondary)">Broker Due</p>
-                        <p class="text-sm font-semibold text-(--color-blue)">
-                            {{ formatCurrency(mainVehicleBrokerDue) }}
-                        </p>
-                        <p class="text-[10px] text-(--color-text-secondary)">
-                            Joma + Vehicle Cost
-                        </p>
-                    </div>
-                </div>
+                    v-model:demarage-cost="form.main_vehicle.demarage_cost" v-model:notes="form.main_vehicle.notes"
+                    :broker-options="brokerOptions" :disabled="submitting" :required="true" />
             </div>
 
             <!-- Additional Vehicles -->
@@ -125,42 +95,13 @@
                         </button>
                     </div>
 
-                    <VehicleFields v-model:transport-id="vehicle.transport_id"
-                        v-model:vehicle-number="vehicle.vehicle_number" v-model:broker-id="vehicle.broker_id"
-                        v-model:driver-name="vehicle.driver_name" v-model:driver-phone="vehicle.driver_phone"
+                    <VehicleFields v-model:vehicle-number="vehicle.vehicle_number" v-model:broker-id="vehicle.broker_id"
                         v-model:joma-cost="vehicle.joma_cost" v-model:vehicle-cost="vehicle.vehicle_cost"
-                        v-model:customer-charge="vehicle.customer_charge" v-model:other-cost="vehicle.other_cost"
-                        v-model:labour-cost="vehicle.labour_cost" v-model:demarage-amount="vehicle.demarage_amount"
-                        v-model:demarage-reason="vehicle.demarage_reason" :broker-options="brokerOptions"
-                        :disabled="submitting" :required="false" :standalone="false" />
-
-                    <!-- Profit/Loss & Broker Due Summary for Additional Vehicle -->
-                    <div v-if="hasAdditionalVehicleCosts(index)"
-                        class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-lg bg-(--color-muted-bg)/30 border border-(--color-border)">
-                        <div>
-                            <p class="text-xs text-(--color-text-secondary)">Profit/Loss</p>
-                            <p class="text-sm font-semibold"
-                                :class="additionalVehicleProfit(index) >= 0 ? 'text-(--color-green)' : 'text-(--color-red)'">
-                                {{ formatCurrency(additionalVehicleProfit(index)) }}
-                            </p>
-                            <p class="text-[10px] text-(--color-text-secondary)">
-                                {{ formatCurrency(additionalVehicleCustomerCharge(index)) }} - ({{
-                                    formatCurrency(additionalVehicleTotalCost(index)) }})
-                            </p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-(--color-text-secondary)">Broker Due</p>
-                            <p class="text-sm font-semibold text-(--color-blue)">
-                                {{ formatCurrency(additionalVehicleBrokerDue(index)) }}
-                            </p>
-                            <p class="text-[10px] text-(--color-text-secondary)">
-                                Joma + Vehicle Cost
-                            </p>
-                        </div>
-                    </div>
+                        v-model:other-cost="vehicle.other_cost" v-model:labour-cost="vehicle.labour_cost"
+                        v-model:demarage-cost="vehicle.demarage_cost" v-model:notes="vehicle.notes"
+                        :broker-options="brokerOptions" :disabled="submitting" :required="false" />
                 </div>
 
-                <!-- Add Vehicle Button -->
                 <div v-if="remainingVehicles - 1 > form.additional_vehicles.length" class="mt-4">
                     <button type="button" @click="addAdditionalVehicle"
                         class="w-full py-3 text-sm font-medium rounded-lg border-2 border-dashed border-(--color-border) text-(--color-text-secondary) hover:border-(--color-blue) hover:text-(--color-blue) hover:bg-(--color-blue)/5 transition-all duration-200 flex items-center justify-center gap-2">
@@ -214,21 +155,16 @@ import { useTransportsStore } from '@/stores/transports'
 import { useBrokersStore } from '@/stores/brokers'
 import { push } from 'notivue'
 import VehicleFields from './VehicleFields.vue'
-import { formatCurrency } from '@/utils/currency'
 
 interface VehicleRow {
-    transport_id: number | null
     vehicle_number: string
     broker_id: number | null
-    driver_name: string
-    driver_phone: string
     joma_cost: number
     vehicle_cost: number
-    customer_charge: number
     other_cost: number
     labour_cost: number
-    demarage_amount: number
-    demarage_reason: string
+    demarage_cost: number
+    notes: string
 }
 
 const props = defineProps<{
@@ -249,73 +185,29 @@ const brokersStore = useBrokersStore()
 const submitting = ref(false)
 const isEditMode = computed(() => props.mode === 'edit' || !!props.vehicle)
 
-// Helper function
-const getTransportDisplayName = (transport: Transport): string => {
-    const fromTo = `${transport.from_location}${transport.to_location ? ` → ${transport.to_location}` : ''}`
-    return `${fromTo} (${transport.vehicle_quantity} vehicles)`
-}
-
-// ============= MAIN VEHICLE CALCULATIONS =============
-const mainVehicleTotalCost = computed(() => {
-    const v = form.value.main_vehicle
-    return v.joma_cost + v.vehicle_cost + v.other_cost + v.labour_cost + v.demarage_amount
-})
-
-const mainVehicleCustomerCharge = computed(() => {
-    return form.value.main_vehicle.customer_charge
-})
-
-const mainVehicleProfit = computed(() => {
-    return mainVehicleCustomerCharge.value - mainVehicleTotalCost.value
-})
-
-const mainVehicleBrokerDue = computed(() => {
-    const v = form.value.main_vehicle
-    return v.joma_cost + v.vehicle_cost
-})
-
-const hasMainVehicleCosts = computed(() => {
-    const v = form.value.main_vehicle
-    return v.joma_cost > 0 || v.vehicle_cost > 0 || v.other_cost > 0 ||
-        v.labour_cost > 0 || v.demarage_amount > 0 || v.customer_charge > 0
-})
-
-// ============= ADDITIONAL VEHICLE CALCULATIONS =============
-const additionalVehicleTotalCost = (index: number): number => {
-    const v = form.value.additional_vehicles[index]
-    if (!v) return 0
-    return v.joma_cost + v.vehicle_cost + v.other_cost + v.labour_cost + v.demarage_amount
-}
-
-const additionalVehicleCustomerCharge = (index: number): number => {
-    const v = form.value.additional_vehicles[index]
-    if (!v) return 0
-    return v.customer_charge
-}
-
-const additionalVehicleProfit = (index: number): number => {
-    return additionalVehicleCustomerCharge(index) - additionalVehicleTotalCost(index)
-}
-
-const additionalVehicleBrokerDue = (index: number): number => {
-    const v = form.value.additional_vehicles[index]
-    if (!v) return 0
-    return v.joma_cost + v.vehicle_cost
-}
-
-const hasAdditionalVehicleCosts = (index: number): boolean => {
-    const v = form.value.additional_vehicles[index]
-    if (!v) return false
-    return v.joma_cost > 0 || v.vehicle_cost > 0 || v.other_cost > 0 ||
-        v.labour_cost > 0 || v.demarage_amount > 0 || v.customer_charge > 0
-}
-
 const transportOptions = computed(() => transportsStore.transports)
 const brokerOptions = computed(() => brokersStore.brokers)
 
+const createEmptyVehicle = (): VehicleRow => ({
+    vehicle_number: '',
+    broker_id: null,
+    joma_cost: 0,
+    vehicle_cost: 0,
+    other_cost: 0,
+    labour_cost: 0,
+    demarage_cost: 0,
+    notes: '',
+})
+
+const form = ref({
+    transport_id: null as number | null,
+    main_vehicle: createEmptyVehicle(),
+    additional_vehicles: [] as VehicleRow[],
+})
+
 const selectedTransport = computed(() => {
     if (!form.value.transport_id) return null
-    return transportsStore.getTransportById(form.value.transport_id)
+    return transportsStore.getTransportById(form.value.transport_id) || null
 })
 
 const currentVehicleCount = computed(() => {
@@ -333,66 +225,29 @@ const progressPercentage = computed(() => {
     return Math.min((currentVehicleCount.value / selectedTransport.value.vehicle_quantity) * 100, 100)
 })
 
-const totalVehiclesToAdd = computed(() => {
-    return 1 + form.value.additional_vehicles.length
-})
+const totalVehiclesToAdd = computed(() => 1 + form.value.additional_vehicles.length)
 
 const canSubmit = computed(() => {
     if (isEditMode.value) {
-        return !!form.value.transport_id && !!form.value.main_vehicle.vehicle_number.trim()
+        return !!form.value.transport_id && !!form.value.main_vehicle.vehicle_number.trim() && !!form.value.main_vehicle.broker_id
     }
-
     if (!form.value.transport_id) return false
     if (!form.value.main_vehicle.vehicle_number.trim()) return false
-
-    // Check if all additional vehicles have numbers
-    const allHaveNumbers = form.value.additional_vehicles.every(v => v.vehicle_number.trim() !== '')
-    if (!allHaveNumbers) return false
-
-    // Check if we're not exceeding the remaining vehicles
+    if (!form.value.main_vehicle.broker_id) return false
+    const allValid = form.value.additional_vehicles.every(v => v.vehicle_number.trim() !== '' && v.broker_id !== null)
+    if (!allValid) return false
     if (form.value.additional_vehicles.length > remainingVehicles.value - 1) return false
-
     return true
 })
 
-const form = ref({
-    transport_id: null as number | null,
-    main_vehicle: {
-        transport_id: null as number | null,
-        vehicle_number: '',
-        broker_id: null as number | null,
-        driver_name: '',
-        driver_phone: '',
-        joma_cost: 0,
-        vehicle_cost: 0,
-        customer_charge: 0,
-        other_cost: 0,
-        labour_cost: 0,
-        demarage_amount: 0,
-        demarage_reason: '',
-    } as VehicleRow,
-    additional_vehicles: [] as VehicleRow[],
-})
-
-const createEmptyVehicle = (): VehicleRow => ({
-    transport_id: null,
-    vehicle_number: '',
-    broker_id: null,
-    driver_name: '',
-    driver_phone: '',
-    joma_cost: 0,
-    vehicle_cost: 0,
-    customer_charge: 0,
-    other_cost: 0,
-    labour_cost: 0,
-    demarage_amount: 0,
-    demarage_reason: '',
-})
+const getTransportDisplayName = (transport: Transport): string => {
+    const fromTo = `${transport.from_location}${transport.to_location ? ` ৳ ${transport.to_location}` : ''}`
+    return `${fromTo} (${transport.vehicle_quantity} vehicles)`
+}
 
 const initializeAdditionalVehicles = () => {
     if (!selectedTransport.value) return
-
-    const remaining = remainingVehicles.value - 1 // -1 for main vehicle
+    const remaining = remainingVehicles.value - 1
     const currentAdditional = form.value.additional_vehicles.length
 
     if (remaining <= 0) {
@@ -400,15 +255,12 @@ const initializeAdditionalVehicles = () => {
         return
     }
 
-    // If we have fewer additional vehicles than needed, add more
     if (currentAdditional < remaining) {
         const toAdd = remaining - currentAdditional
         for (let i = 0; i < toAdd; i++) {
             form.value.additional_vehicles.push(createEmptyVehicle())
         }
-    }
-    // If we have more than needed, remove extras
-    else if (currentAdditional > remaining) {
+    } else if (currentAdditional > remaining) {
         form.value.additional_vehicles = form.value.additional_vehicles.slice(0, remaining)
     }
 }
@@ -429,7 +281,6 @@ const removeAdditionalVehicle = (index: number) => {
 }
 
 const onTransportChange = () => {
-    // Reset vehicles when transport changes
     form.value.main_vehicle = createEmptyVehicle()
     form.value.additional_vehicles = []
     if (selectedTransport.value) {
@@ -442,18 +293,14 @@ const initializeForm = () => {
         form.value = {
             transport_id: props.vehicle.transport_id,
             main_vehicle: {
-                transport_id: props.vehicle.transport_id,
                 vehicle_number: props.vehicle.vehicle_number || '',
                 broker_id: props.vehicle.broker_id || null,
-                driver_name: props.vehicle.driver_name || '',
-                driver_phone: props.vehicle.driver_phone || '',
                 joma_cost: props.vehicle.joma_cost || 0,
                 vehicle_cost: props.vehicle.vehicle_cost || 0,
-                customer_charge: props.vehicle.customer_charge || 0,
                 other_cost: props.vehicle.other_cost || 0,
                 labour_cost: props.vehicle.labour_cost || 0,
-                demarage_amount: props.vehicle.demarage_amount || 0,
-                demarage_reason: props.vehicle.demarage_reason || '',
+                demarage_cost: props.vehicle.demarage_cost || 0,
+                notes: props.vehicle.notes || '',
             },
             additional_vehicles: [],
         }
@@ -468,7 +315,6 @@ const initializeForm = () => {
 
 watch(() => props.vehicle, initializeForm, { immediate: true })
 
-// Update additional vehicles when remaining changes
 watch(() => remainingVehicles.value, (newRemaining) => {
     if (!isEditMode.value && form.value.transport_id) {
         if (newRemaining <= 1) {
@@ -496,16 +342,18 @@ const submit = async () => {
         push.error('Please select a transport')
         return
     }
-
     if (!form.value.main_vehicle.vehicle_number.trim()) {
         push.error('Main vehicle number is required')
         return
     }
+    if (!form.value.main_vehicle.broker_id) {
+        push.error('Broker is required for the main vehicle')
+        return
+    }
 
-    // Validate additional vehicles
-    const invalidVehicles = form.value.additional_vehicles.filter(v => !v.vehicle_number.trim())
+    const invalidVehicles = form.value.additional_vehicles.filter(v => !v.vehicle_number.trim() || !v.broker_id)
     if (invalidVehicles.length > 0) {
-        push.error(`Please enter vehicle numbers for all ${form.value.additional_vehicles.length} additional vehicles`)
+        push.error(`Please fill in vehicle numbers and brokers for all ${form.value.additional_vehicles.length} additional vehicles`)
         return
     }
 
@@ -513,19 +361,15 @@ const submit = async () => {
 
     try {
         if (isEditMode.value && props.vehicle) {
-            // Edit mode - update the vehicle
             const success = await vehiclesStore.updateVehicle(props.vehicle.id, {
                 vehicle_number: form.value.main_vehicle.vehicle_number.trim(),
                 broker_id: form.value.main_vehicle.broker_id,
-                driver_name: form.value.main_vehicle.driver_name?.trim() || null,
-                driver_phone: form.value.main_vehicle.driver_phone?.trim() || null,
                 joma_cost: form.value.main_vehicle.joma_cost,
                 vehicle_cost: form.value.main_vehicle.vehicle_cost,
-                customer_charge: form.value.main_vehicle.customer_charge,
                 other_cost: form.value.main_vehicle.other_cost,
                 labour_cost: form.value.main_vehicle.labour_cost,
-                demarage_amount: form.value.main_vehicle.demarage_amount,
-                demarage_reason: form.value.main_vehicle.demarage_reason?.trim() || null,
+                demarage_cost: form.value.main_vehicle.demarage_cost,
+                notes: form.value.main_vehicle.notes.trim() || null,
             })
 
             if (success) {
@@ -533,20 +377,16 @@ const submit = async () => {
                 emit('vehicle-updated')
             }
         } else {
-            // Create mode - create main vehicle first
             const newVehicle = await vehiclesStore.createVehicle({
                 transport_id: form.value.transport_id,
                 vehicle_number: form.value.main_vehicle.vehicle_number.trim(),
                 broker_id: form.value.main_vehicle.broker_id,
-                driver_name: form.value.main_vehicle.driver_name?.trim() || null,
-                driver_phone: form.value.main_vehicle.driver_phone?.trim() || null,
                 joma_cost: form.value.main_vehicle.joma_cost,
                 vehicle_cost: form.value.main_vehicle.vehicle_cost,
-                customer_charge: form.value.main_vehicle.customer_charge,
                 other_cost: form.value.main_vehicle.other_cost,
                 labour_cost: form.value.main_vehicle.labour_cost,
-                demarage_amount: form.value.main_vehicle.demarage_amount,
-                demarage_reason: form.value.main_vehicle.demarage_reason?.trim() || null,
+                demarage_cost: form.value.main_vehicle.demarage_cost,
+                notes: form.value.main_vehicle.notes.trim() || null,
             })
 
             if (!newVehicle) {
@@ -554,12 +394,11 @@ const submit = async () => {
                 return
             }
 
-            // Create additional vehicles
             let createdCount = 0
             let failedCount = 0
 
             for (const vehicle of form.value.additional_vehicles) {
-                if (!vehicle.vehicle_number.trim()) {
+                if (!vehicle.vehicle_number.trim() || !vehicle.broker_id) {
                     failedCount++
                     continue
                 }
@@ -568,22 +407,16 @@ const submit = async () => {
                     transport_id: form.value.transport_id,
                     vehicle_number: vehicle.vehicle_number.trim(),
                     broker_id: vehicle.broker_id,
-                    driver_name: vehicle.driver_name?.trim() || null,
-                    driver_phone: vehicle.driver_phone?.trim() || null,
                     joma_cost: vehicle.joma_cost,
                     vehicle_cost: vehicle.vehicle_cost,
-                    customer_charge: vehicle.customer_charge,
                     other_cost: vehicle.other_cost,
                     labour_cost: vehicle.labour_cost,
-                    demarage_amount: vehicle.demarage_amount,
-                    demarage_reason: vehicle.demarage_reason?.trim() || null,
+                    demarage_cost: vehicle.demarage_cost,
+                    notes: vehicle.notes.trim() || null,
                 })
 
-                if (result) {
-                    createdCount++
-                } else {
-                    failedCount++
-                }
+                if (result) createdCount++
+                else failedCount++
             }
 
             if (createdCount > 0 && failedCount === 0) {
@@ -608,8 +441,8 @@ const submit = async () => {
 onMounted(async () => {
     await Promise.all([
         transportsStore.fetchTransports(),
+        vehiclesStore.fetchVehicles(),
         brokersStore.fetchBrokers(),
-        vehiclesStore.fetchVehicles()
     ])
 })
 </script>

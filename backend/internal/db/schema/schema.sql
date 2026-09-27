@@ -189,9 +189,6 @@ CREATE INDEX IF NOT EXISTS idx_customers_contact_person ON customers(contact_per
 -- =====================================================
 -- 8. LOTS
 -- =====================================================
--- Lots are now the top of the product hierarchy. They carry the
--- product identity (name, category) and the customer, previously
--- held on the items table.
 CREATE TABLE IF NOT EXISTS lots (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -230,9 +227,6 @@ CREATE INDEX IF NOT EXISTS idx_lots_is_active ON lots(is_active);
 -- =====================================================
 -- 9. STORES
 -- =====================================================
--- A lot can have multiple stores in the same godown
--- (i.e. multiple arrivals of the same lot). Each row represents
--- one distinct arrival with its own billing_start.
 CREATE TABLE IF NOT EXISTS stores (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     lot_id INTEGER NOT NULL,
@@ -360,24 +354,34 @@ CREATE INDEX IF NOT EXISTS idx_delivery_items_driver_number ON delivery_items(dr
 CREATE TABLE IF NOT EXISTS transports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    customer_id INTEGER,
+    customer_id INTEGER NOT NULL,
     from_location TEXT NOT NULL,
     to_location TEXT,
     vehicle_quantity REAL NOT NULL DEFAULT 0,
-    delivery_type TEXT CHECK (
-        delivery_type IN ('local', 'district')
-    ),
-    notes TEXT,
     transport_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    office_commission_amount REAL DEFAULT 0,
+    transport_type TEXT CHECK (
+        transport_type IN ('local', 'district')
+    ),
     image_url TEXT,
+    notes TEXT,
+    office_commission_amount REAL DEFAULT 0,
+
+    -- Customer billing
+    customer_charge_unit TEXT NOT NULL DEFAULT 'vehicle' CHECK (
+        customer_charge_unit IN ('vehicle', 'weight', 'quantity')
+    ),
+    customer_total_unit REAL NOT NULL DEFAULT 0 CHECK (customer_total_unit >= 0),
+    customer_charge_per_unit REAL NOT NULL DEFAULT 0 CHECK (customer_charge_per_unit >= 0),
+    customer_total_charge REAL NOT NULL DEFAULT 0 CHECK (customer_total_charge >= 0),
     customer_total_paid REAL NOT NULL DEFAULT 0 CHECK (customer_total_paid >= 0),
+    customer_total_paid_through DATETIME,
+
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CHECK (vehicle_quantity >= 0),
     CHECK (from_location != ''),
     FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE RESTRICT
 );
 
 CREATE INDEX IF NOT EXISTS idx_transports_user_id ON transports(user_id);
@@ -385,8 +389,7 @@ CREATE INDEX IF NOT EXISTS idx_transports_customer_id ON transports(customer_id)
 CREATE INDEX IF NOT EXISTS idx_transports_from_location ON transports(from_location);
 CREATE INDEX IF NOT EXISTS idx_transports_to_location ON transports(to_location);
 CREATE INDEX IF NOT EXISTS idx_transports_transport_date ON transports(transport_date);
-CREATE INDEX IF NOT EXISTS idx_transports_delivery_type ON transports(delivery_type);
-CREATE INDEX IF NOT EXISTS idx_transports_vehicle_quantity ON transports(vehicle_quantity);
+CREATE INDEX IF NOT EXISTS idx_transports_transport_type ON transports(transport_type);
 
 -- =====================================================
 -- 14. VEHICLES
@@ -396,32 +399,27 @@ CREATE TABLE IF NOT EXISTS vehicles (
     user_id INTEGER NOT NULL,
     transport_id INTEGER NOT NULL,
     vehicle_number TEXT NOT NULL,
-    broker_id INTEGER,
-    driver_name TEXT,
-    driver_phone TEXT,
+    broker_id INTEGER NOT NULL,
     joma_cost REAL DEFAULT 0,
     vehicle_cost REAL DEFAULT 0,
-    customer_charge REAL DEFAULT 0,
+    total_paid_to_broker REAL NOT NULL DEFAULT 0 CHECK (total_paid_to_broker >= 0),
     other_cost REAL DEFAULT 0,
     labour_cost REAL DEFAULT 0,
-    demarage_amount REAL DEFAULT 0,
-    demarage_reason TEXT,
-    broker_total_paid REAL NOT NULL DEFAULT 0 CHECK (broker_total_paid >= 0),
+    demarage_cost REAL DEFAULT 0,
+    notes TEXT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CHECK (vehicle_number != ''),
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (transport_id) REFERENCES transports(id) ON DELETE CASCADE,
-    FOREIGN KEY (broker_id) REFERENCES brokers(id) ON DELETE SET NULL
+    FOREIGN KEY (broker_id) REFERENCES brokers(id) ON DELETE RESTRICT
 );
 
 CREATE INDEX IF NOT EXISTS idx_vehicles_user_id ON vehicles(user_id);
 CREATE INDEX IF NOT EXISTS idx_vehicles_transport_id ON vehicles(transport_id);
-CREATE INDEX IF NOT EXISTS idx_vehicles_broker_id ON vehicles(broker_id);
 CREATE INDEX IF NOT EXISTS idx_vehicles_vehicle_number ON vehicles(vehicle_number);
+CREATE INDEX IF NOT EXISTS idx_vehicles_broker_id ON vehicles(broker_id);
 CREATE INDEX IF NOT EXISTS idx_vehicles_created_at ON vehicles(created_at);
-CREATE INDEX IF NOT EXISTS idx_vehicles_driver_name ON vehicles(driver_name);
-CREATE INDEX IF NOT EXISTS idx_vehicles_driver_phone ON vehicles(driver_phone);
 
 -- =====================================================
 -- 15. EXPENSES
@@ -467,10 +465,36 @@ CREATE INDEX IF NOT EXISTS idx_logs_created_at ON logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_logs_entity_created ON logs(entity_type, entity_id, created_at DESC);
 
 -- =====================================================
+-- 17. CUSTOMER ADDITIONAL CHARGES
+-- =====================================================
+CREATE TABLE IF NOT EXISTS customer_additional_charges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    customer_id INTEGER NOT NULL,
+    entity_type TEXT NOT NULL CHECK (
+        entity_type IN ('lot', 'store', 'delivery', 'transport', 'damage', 'godown')
+    ),
+    entity_id INTEGER NOT NULL,
+    amount REAL NOT NULL CHECK (amount >= 0),
+    description TEXT NOT NULL,
+    customer_total_paid REAL NOT NULL DEFAULT 0 CHECK (customer_total_paid >= 0),
+    customer_total_paid_through DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK (description != ''),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE RESTRICT
+);
+
+CREATE INDEX IF NOT EXISTS idx_customer_additional_charges_user_id ON customer_additional_charges(user_id);
+CREATE INDEX IF NOT EXISTS idx_customer_additional_charges_customer_id ON customer_additional_charges(customer_id);
+CREATE INDEX IF NOT EXISTS idx_customer_additional_charges_entity ON customer_additional_charges(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_customer_additional_charges_created_at ON customer_additional_charges(created_at);
+
+-- =====================================================
 -- INVENTORY MANAGEMENT TRIGGERS
 -- =====================================================
 
--- TRIGGER: Check stock BEFORE delivery insert
 CREATE TRIGGER IF NOT EXISTS check_stock_before_delivery_insert
 BEFORE INSERT ON delivery_items
 BEGIN
@@ -486,7 +510,6 @@ BEGIN
     END;
 END;
 
--- TRIGGER: Check stock BEFORE delivery update
 CREATE TRIGGER IF NOT EXISTS check_stock_before_delivery_update
 BEFORE UPDATE ON delivery_items
 BEGIN
@@ -502,7 +525,6 @@ BEGIN
     END;
 END;
 
--- TRIGGER: Update store on delivery insert
 CREATE TRIGGER IF NOT EXISTS update_store_on_delivery_insert
 AFTER INSERT ON delivery_items
 BEGIN
@@ -514,7 +536,6 @@ BEGIN
     WHERE id = NEW.store_id;
 END;
 
--- TRIGGER: Update store on delivery update
 CREATE TRIGGER IF NOT EXISTS update_store_on_delivery_update
 AFTER UPDATE ON delivery_items
 BEGIN
@@ -526,7 +547,6 @@ BEGIN
     WHERE id = NEW.store_id;
 END;
 
--- TRIGGER: Restore store on delivery delete
 CREATE TRIGGER IF NOT EXISTS restore_store_on_delivery_delete
 AFTER DELETE ON delivery_items
 BEGIN
@@ -538,7 +558,6 @@ BEGIN
     WHERE id = OLD.store_id;
 END;
 
--- TRIGGER: Prevent negative inventory
 CREATE TRIGGER IF NOT EXISTS prevent_negative_inventory
 AFTER UPDATE ON stores
 BEGIN
@@ -549,14 +568,6 @@ BEGIN
             RAISE(ABORT, 'Cannot have negative weight in store')
     END;
 END;
-
--- =====================================================
--- AUTO-DEACTIVATION CASCADE
--- =====================================================
--- When a store's quantity and weight both reach 0, deactivate the store
--- and stamp its billing_end. Then, if every store of the lot is empty,
--- deactivate the lot. No item-level cascade because items no longer exist.
--- No auto-reactivation is performed.
 
 CREATE TRIGGER IF NOT EXISTS deactivate_empty_store
 AFTER UPDATE ON stores
@@ -617,97 +628,67 @@ CREATE INDEX IF NOT EXISTS idx_inventory_audit_store ON inventory_audit(store_id
 CREATE INDEX IF NOT EXISTS idx_inventory_audit_delivery ON inventory_audit(delivery_item_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_audit_created_at ON inventory_audit(created_at);
 
--- TRIGGER: Log inventory changes on delivery insert
 CREATE TRIGGER IF NOT EXISTS log_inventory_on_delivery_insert
 AFTER INSERT ON delivery_items
 BEGIN
     INSERT INTO inventory_audit (
-        store_id, 
-        delivery_item_id, 
-        action, 
-        quantity_change, 
-        weight_change,
-        previous_quantity,
-        new_quantity,
-        previous_weight,
-        new_weight,
+        store_id, delivery_item_id, action,
+        quantity_change, weight_change,
+        previous_quantity, new_quantity,
+        previous_weight, new_weight,
         created_by
     )
     SELECT 
-        NEW.store_id,
-        NEW.id,
-        'delivery_out',
-        -NEW.quantity,
-        -NEW.weight,
+        NEW.store_id, NEW.id, 'delivery_out',
+        -NEW.quantity, -NEW.weight,
         (SELECT quantity FROM stores WHERE id = NEW.store_id) + NEW.quantity,
         (SELECT quantity FROM stores WHERE id = NEW.store_id),
         (SELECT weight FROM stores WHERE id = NEW.store_id) + NEW.weight,
         (SELECT weight FROM stores WHERE id = NEW.store_id),
         (SELECT user_id FROM deliveries WHERE id = NEW.delivery_id)
-    FROM stores 
-    WHERE id = NEW.store_id;
+    FROM stores WHERE id = NEW.store_id;
 END;
 
--- TRIGGER: Log inventory changes on delivery update
 CREATE TRIGGER IF NOT EXISTS log_inventory_on_delivery_update
 AFTER UPDATE ON delivery_items
 BEGIN
     INSERT INTO inventory_audit (
-        store_id, 
-        delivery_item_id, 
-        action, 
-        quantity_change, 
-        weight_change,
-        previous_quantity,
-        new_quantity,
-        previous_weight,
-        new_weight,
+        store_id, delivery_item_id, action,
+        quantity_change, weight_change,
+        previous_quantity, new_quantity,
+        previous_weight, new_weight,
         created_by
     )
     SELECT 
-        NEW.store_id,
-        NEW.id,
-        'delivery_update',
-        -NEW.quantity,
-        -NEW.weight,
+        NEW.store_id, NEW.id, 'delivery_update',
+        -NEW.quantity, -NEW.weight,
         (SELECT quantity FROM stores WHERE id = NEW.store_id) + NEW.quantity,
         (SELECT quantity FROM stores WHERE id = NEW.store_id),
         (SELECT weight FROM stores WHERE id = NEW.store_id) + NEW.weight,
         (SELECT weight FROM stores WHERE id = NEW.store_id),
         (SELECT user_id FROM deliveries WHERE id = NEW.delivery_id)
-    FROM stores 
-    WHERE id = NEW.store_id;
+    FROM stores WHERE id = NEW.store_id;
 END;
 
--- TRIGGER: Log inventory changes on delivery delete
 CREATE TRIGGER IF NOT EXISTS log_inventory_on_delivery_delete
 AFTER DELETE ON delivery_items
 BEGIN
     INSERT INTO inventory_audit (
-        store_id, 
-        delivery_item_id, 
-        action, 
-        quantity_change, 
-        weight_change,
-        previous_quantity,
-        new_quantity,
-        previous_weight,
-        new_weight,
+        store_id, delivery_item_id, action,
+        quantity_change, weight_change,
+        previous_quantity, new_quantity,
+        previous_weight, new_weight,
         created_by
     )
     SELECT 
-        OLD.store_id,
-        OLD.id,
-        'delivery_return',
-        OLD.quantity,
-        OLD.weight,
+        OLD.store_id, OLD.id, 'delivery_return',
+        OLD.quantity, OLD.weight,
         (SELECT quantity FROM stores WHERE id = OLD.store_id) - OLD.quantity,
         (SELECT quantity FROM stores WHERE id = OLD.store_id),
         (SELECT weight FROM stores WHERE id = OLD.store_id) - OLD.weight,
         (SELECT weight FROM stores WHERE id = OLD.store_id),
         (SELECT user_id FROM deliveries WHERE id = OLD.delivery_id)
-    FROM stores 
-    WHERE id = OLD.store_id;
+    FROM stores WHERE id = OLD.store_id;
 END;
 
 -- =====================================================
@@ -802,4 +783,10 @@ CREATE TRIGGER IF NOT EXISTS update_expenses_timestamp
 AFTER UPDATE ON expenses
 BEGIN
     UPDATE expenses SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS update_customer_additional_charges_timestamp
+AFTER UPDATE ON customer_additional_charges
+BEGIN
+    UPDATE customer_additional_charges SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;

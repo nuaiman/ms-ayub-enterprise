@@ -144,7 +144,7 @@
                 <div class="p-3 rounded-lg border border-(--color-border) bg-(--color-muted-bg)/20">
                     <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Bill Type</p>
                     <p class="text-lg font-bold text-(--color-text-primary) mt-1 capitalize">{{ store.store_bill_type
-                        }}</p>
+                    }}</p>
                 </div>
                 <div class="p-3 rounded-lg border border-(--color-border) bg-(--color-muted-bg)/20">
                     <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Status</p>
@@ -207,25 +207,25 @@ const lot = computed(() => {
     return lotsStore.getLotById(store.value.lot_id) || null
 })
 
-const lotNumber = computed(() => lot.value?.lot_number ?? 'â€”')
+const lotNumber = computed(() => lot.value?.lot_number ?? '৳')
 
 const lotDisplayName = computed(() => {
-    if (!lot.value) return 'â€”'
+    if (!lot.value) return '৳'
     return lotsStore.getLotDisplayName(lot.value)
 })
 
 const customerName = computed(() => {
-    if (!lot.value?.customer_id) return 'â€”'
+    if (!lot.value?.customer_id) return '৳'
     return customersStore.getCustomerName(lot.value.customer_id)
 })
 
 const godownName = computed(() => {
-    if (!store.value) return 'â€”'
+    if (!store.value) return '৳'
     return godownsStore.getGodownName(store.value.godown_id)
 })
 
 const recordedBy = computed(() => {
-    if (!props.damage) return 'â€”'
+    if (!props.damage) return '৳'
     return usersStore.getUserName(props.damage.user_id)
 })
 

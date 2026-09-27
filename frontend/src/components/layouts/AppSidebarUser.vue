@@ -2,17 +2,13 @@
 <template>
     <div ref="dropdownRef" class="p-2.5 border-t border-(--color-border)/40 shrink-0 relative">
         <!-- User Card - Click to toggle dropdown -->
-        <button @click="toggleDropdown" class="w-full flex items-center rounded-xl transition-colors duration-150"
-            :class="[
-                collapsed
-                    ? 'lg:justify-center lg:p-1'
-                    : 'lg:p-2 lg:gap-2.5 lg:bg-(--color-muted-bg)/30 lg:hover:bg-(--color-muted-bg)/50'
-            ]">
+        <button @click="toggleDropdown"
+            class="w-full flex items-center p-2 gap-2.5 rounded-xl bg-(--color-muted-bg)/30 hover:bg-(--color-muted-bg)/50 transition-colors duration-150">
             <div
                 class="w-8 h-8 rounded-lg bg-(--color-blue)/15 text-(--color-blue) border border-(--color-blue)/15 flex items-center justify-center text-[11px] font-bold shrink-0">
                 {{ userInitials }}
             </div>
-            <div v-if="!collapsed" class="flex-1 min-w-0 text-left">
+            <div class="flex-1 min-w-0 text-left">
                 <p class="text-[12.5px] font-semibold text-(--color-text-primary) truncate leading-tight">
                     {{ auth.user?.name }}
                 </p>
@@ -20,16 +16,13 @@
                     {{ auth.user?.role }}
                 </p>
             </div>
-            <ChevronDown v-if="!collapsed"
-                class="w-3.5 h-3.5 text-(--color-text-secondary)/40 shrink-0 transition-transform duration-200"
+            <ChevronDown class="w-3.5 h-3.5 text-(--color-text-secondary)/40 shrink-0 transition-transform duration-200"
                 :class="{ 'rotate-180': dropdownOpen }" :stroke-width="2.5" />
         </button>
 
         <!-- Dropdown Menu -->
         <div v-if="dropdownOpen"
-            class="absolute bottom-full left-0 right-0 mb-2 bg-(--color-surface) border border-(--color-border) rounded-xl shadow-lg overflow-hidden z-50"
-            :class="collapsed ? 'lg:w-56 lg:left-auto lg:right-0' : ''">
-            <!-- User Info Header -->
+            class="absolute bottom-full left-0 right-0 mb-2 bg-(--color-surface) border border-(--color-border) rounded-xl shadow-lg overflow-hidden z-50">
             <div class="px-4 py-3 border-b border-(--color-border)/40">
                 <div class="flex items-center gap-3">
                     <div
@@ -52,7 +45,6 @@
                 </div>
             </div>
 
-            <!-- Menu Items -->
             <UserMenuItems @change-password="handleChangePassword" @reset-all-passwords="handleResetAllPasswords"
                 @download-backup="handleDownloadBackup" @logout="handleLogout" />
         </div>
@@ -60,15 +52,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
-import { useClickOutside } from '@/composables/useClickOutside'
 import UserMenuItems from './UserMenuItems.vue'
-
-defineProps<{
-    collapsed: boolean
-}>()
 
 const emit = defineEmits<{
     (e: 'logout'): void
@@ -81,22 +68,6 @@ const auth = useAuthStore()
 
 const dropdownRef = ref<HTMLElement | null>(null)
 const dropdownOpen = ref(false)
-
-useClickOutside(dropdownRef, () => {
-    dropdownOpen.value = false
-})
-
-const handleResize = () => {
-    dropdownOpen.value = false
-}
-
-onMounted(() => {
-    window.addEventListener('resize', handleResize)
-})
-
-onUnmounted(() => {
-    window.removeEventListener('resize', handleResize)
-})
 
 const userInitials = computed(() => {
     if (!auth.user?.name) return '?'

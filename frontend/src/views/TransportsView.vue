@@ -7,7 +7,7 @@
                 <div class="rounded-xl p-4 bg-(--color-surface) border border-(--color-border)">
                     <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Total Transports</p>
                     <p class="text-2xl font-bold text-(--color-text-primary) mt-1">{{ transportsStore.transports.length
-                        }}</p>
+                    }}</p>
                 </div>
                 <div class="rounded-xl p-4 bg-(--color-surface) border border-(--color-border)">
                     <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">With Customer</p>
@@ -36,6 +36,7 @@
 import { computed, onMounted } from 'vue'
 import { useTransportsStore } from '@/stores/transports'
 import { useCustomersStore } from '@/stores/customers'
+import { useBrokersStore } from '@/stores/brokers'
 import { useUsersStore } from '@/stores/users'
 import AppLayout from '@/components/layouts/AppLayout.vue'
 import TransportList from '@/components/features/transports/TransportList.vue'
@@ -43,6 +44,7 @@ import { formatCurrency } from '@/utils/currency'
 
 const transportsStore = useTransportsStore()
 const customersStore = useCustomersStore()
+const brokersStore = useBrokersStore()
 const usersStore = useUsersStore()
 
 const withCustomerCount = computed(() => {
@@ -63,7 +65,8 @@ onMounted(async () => {
     await Promise.all([
         transportsStore.fetchTransports(),
         customersStore.fetchCustomers(),
-        usersStore.fetchUsers()
+        brokersStore.fetchBrokers(),
+        usersStore.fetchUsers(),
     ])
 })
 </script>

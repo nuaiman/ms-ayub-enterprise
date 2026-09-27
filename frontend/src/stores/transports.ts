@@ -7,8 +7,8 @@ import type {
   Transport,
   CreateTransportPayload,
   UpdateTransportPayload,
-  UpdateCustomerPaymentPayload,  // NEW
-  DeliveryType,
+  UpdateTransportCustomerPaymentPayload,
+  TransportType,
   TransportSortField,
   SortDirection,
 } from "@/types/transport";
@@ -24,17 +24,14 @@ import { useExpensesStore } from "./expenses";
 export const useTransportsStore = defineStore("transports", () => {
   const { displayLoader, destroyLoader } = useGlobalLoader();
 
-  // ============= STATE =============
   const transports = ref<Transport[]>([]);
   const searchQuery = ref("");
   const sortField = ref<TransportSortField>("transport_date");
   const sortDirection = ref<SortDirection>("desc");
 
-  // ============= COMPUTED =============
   const filteredTransports = computed(() => {
     let result = [...transports.value];
 
-    // Filter by search query
     if (searchQuery.value) {
       const query = searchQuery.value.toLowerCase();
       const customersStore = useCustomersStore();
@@ -45,20 +42,21 @@ export const useTransportsStore = defineStore("transports", () => {
           (transport.to_location && transport.to_location.toLowerCase().includes(query)) ||
           (transport.notes && transport.notes.toLowerCase().includes(query)) ||
           String(transport.vehicle_quantity).includes(query) ||
-          (transport.delivery_type && transport.delivery_type.toLowerCase().includes(query)) ||
+          (transport.transport_type && transport.transport_type.toLowerCase().includes(query)) ||
           String(transport.office_commission_amount).includes(query) ||
-          String(transport.customer_total_paid).includes(query) ||  // NEW
-          (transport.customer_id && customersStore.getCustomerName(transport.customer_id).toLowerCase().includes(query)) ||
+          String(transport.customer_total_charge).includes(query) ||
+          String(transport.customer_total_paid).includes(query) ||
+          String(transport.customer_total_unit).includes(query) ||
+          customersStore.getCustomerName(transport.customer_id).toLowerCase().includes(query) ||
           usersStore.getUserName(transport.user_id).toLowerCase().includes(query)
       );
     }
 
-    // Sort
     result.sort((a, b) => {
       let comparison = 0;
       switch (sortField.value) {
         case "customer_id":
-          comparison = (a.customer_id || 0) - (b.customer_id || 0);
+          comparison = a.customer_id - b.customer_id;
           break;
         case "from_location":
           comparison = a.from_location.localeCompare(b.from_location);
@@ -69,8 +67,8 @@ export const useTransportsStore = defineStore("transports", () => {
         case "vehicle_quantity":
           comparison = a.vehicle_quantity - b.vehicle_quantity;
           break;
-        case "delivery_type":
-          comparison = (a.delivery_type || "").localeCompare(b.delivery_type || "");
+        case "transport_type":
+          comparison = (a.transport_type || "").localeCompare(b.transport_type || "");
           break;
         case "transport_date":
           comparison = new Date(a.transport_date).getTime() - new Date(b.transport_date).getTime();
@@ -96,7 +94,7 @@ export const useTransportsStore = defineStore("transports", () => {
     return transports.value.reduce((sum, transport) => sum + transport.office_commission_amount, 0);
   });
 
-  const totalCustomerPaid = computed(() => {  // NEW
+  const totalCustomerPaid = computed(() => {
     return transports.value.reduce((sum, transport) => sum + transport.customer_total_paid, 0);
   });
 
@@ -252,7 +250,10 @@ export const useTransportsStore = defineStore("transports", () => {
         push.error("From location is required");
         return null;
       }
-
+      if (!payload.customer_id) {
+        push.error("Customer is required");
+        return null;
+      }
       if (payload.vehicle_quantity < 0) {
         push.error("Vehicle quantity cannot be negative");
         return null;
@@ -267,7 +268,6 @@ export const useTransportsStore = defineStore("transports", () => {
       const newTransport = res.data.data;
       transports.value.push(newTransport);
 
-      // Create expense for this transport if commission > 0
       const expensesStore = useExpensesStore();
 
       if (newTransport.office_commission_amount > 0) {
@@ -316,7 +316,6 @@ export const useTransportsStore = defineStore("transports", () => {
         transports.value[index] = updatedTransport;
       }
 
-      // Find associated expense
       const expenseId = await findAssociatedExpense(id);
       const expensesStore = useExpensesStore();
 
@@ -397,8 +396,7 @@ export const useTransportsStore = defineStore("transports", () => {
     }
   };
 
-  // NEW: Update customer payment for a transport
-  const updateCustomerPayment = async (id: number, payload: UpdateCustomerPaymentPayload): Promise<Transport | null> => {
+  const updateCustomerPayment = async (id: number, payload: UpdateTransportCustomerPaymentPayload): Promise<Transport | null> => {
     displayLoader();
     try {
       if (payload.customer_total_paid < 0) {
@@ -495,7 +493,6 @@ export const useTransportsStore = defineStore("transports", () => {
     }
   };
 
-  // ============= SORT =============
   const setSort = (field: TransportSortField) => {
     if (sortField.value === field) {
       sortDirection.value = sortDirection.value === "asc" ? "desc" : "asc";
@@ -505,7 +502,6 @@ export const useTransportsStore = defineStore("transports", () => {
     }
   };
 
-  // ============= SEARCH =============
   const setSearchQuery = (query: string) => {
     searchQuery.value = query;
   };
@@ -513,8 +509,6 @@ export const useTransportsStore = defineStore("transports", () => {
   const clearSearch = () => {
     searchQuery.value = "";
   };
-
-  // ============= UTILITIES =============
 
   const getTransportById = (id: number): Transport | undefined => {
     return transports.value.find((t) => t.id === id);
@@ -530,9 +524,9 @@ export const useTransportsStore = defineStore("transports", () => {
     return customersStore.getCustomerName(transport.customer_id);
   };
 
-  const formatDeliveryType = (deliveryType: DeliveryType | null): string => {
-    if (!deliveryType) return "N/A";
-    return deliveryType.charAt(0).toUpperCase() + deliveryType.slice(1);
+  const formatTransportType = (transportType: TransportType | null): string => {
+    if (!transportType) return "N/A";
+    return transportType.charAt(0).toUpperCase() + transportType.slice(1);
   };
 
   const formatTransportDate = (dateStr: string): string => {
@@ -564,7 +558,7 @@ export const useTransportsStore = defineStore("transports", () => {
     filteredTransports,
     totalTransports,
     totalCommission,
-    totalCustomerPaid,  // NEW
+    totalCustomerPaid,
 
     fetchTransports,
     searchTransports,
@@ -574,7 +568,7 @@ export const useTransportsStore = defineStore("transports", () => {
 
     createTransport,
     updateTransport,
-    updateCustomerPayment,  // NEW
+    updateCustomerPayment,
     deleteTransport,
     deleteTransportsByCustomer,
 
@@ -585,7 +579,7 @@ export const useTransportsStore = defineStore("transports", () => {
     getTransportById,
     getTransportsByCustomerId,
     getCustomerNameForTransport,
-    formatDeliveryType,
+    formatTransportType,
     formatTransportDate,
     hasVehicles,
     getTransportExpenseId,

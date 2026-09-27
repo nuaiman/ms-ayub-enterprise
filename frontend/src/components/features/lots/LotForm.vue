@@ -77,7 +77,7 @@
                         class="relative w-24 h-24 rounded-lg overflow-hidden border border-(--color-border)">
                         <img :src="imagePreview" alt="Preview" class="w-full h-full object-cover" />
                         <button type="button" @click="removeImage"
-                            class="absolute top-1 right-1 w-5 h-5 bg-(--color-red) text-white rounded-full flex items-center justify-center text-xs hover:opacity-90 transition-opacity">Ã—</button>
+                            class="absolute top-1 right-1 w-5 h-5 bg-(--color-red) text-white rounded-full flex items-center justify-center text-xs hover:opacity-90 transition-opacity">৳—</button>
                     </div>
                     <div v-else
                         class="w-24 h-24 rounded-lg border-2 border-dashed border-(--color-border) flex items-center justify-center bg-(--color-muted-bg)">
@@ -133,7 +133,7 @@
             <div class="p-4 rounded-lg bg-(--color-muted-bg)/30 border border-(--color-border)">
                 <p class="text-sm font-medium text-(--color-text-primary)">Summary</p>
                 <div class="mt-2 space-y-1 text-sm text-(--color-text-secondary)">
-                    <p>âœ“ {{ stores.length }} store(s) will be created</p>
+                    <p>৳œ“ {{ stores.length }} store(s) will be created</p>
                     <p class="text-xs text-(--color-text-secondary) mt-2">Lot will be created first, then stores</p>
                 </div>
             </div>

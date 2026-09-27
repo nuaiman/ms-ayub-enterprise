@@ -5,7 +5,7 @@
         <!-- Transport - 1 column -->
         <div class="col-span-1">
             <span class="text-sm font-medium text-(--color-text-primary)">
-                #{{ bill.transport_id }}
+                #{{ bill.id }}
             </span>
         </div>
 
@@ -26,7 +26,7 @@
         <!-- To - 2 columns -->
         <div class="col-span-2 min-w-0">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ bill.to_location || '—' }}
+                {{ bill.to_location || '৳' }}
             </span>
         </div>
 
@@ -56,7 +56,7 @@
             </span>
         </div>
 
-        <!-- Actions - 1 column, right aligned -->
+        <!-- Actions - 1 column -->
         <div class="col-span-1 flex items-center justify-end relative" @click.stop>
             <button @click="toggleMenu"
                 class="w-7 h-7 flex items-center justify-center border border-(--color-border) rounded-md hover:bg-(--color-muted-bg) transition-all duration-200">

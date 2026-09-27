@@ -72,7 +72,6 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 		// SALARIES
 		// =====================================================
 		r.Route("/salaries", func(r chi.Router) {
-			// Admin/Manager only routes (using higherManagementOnly)
 			r.Get("/", higherManagementOnly(handler.GetAllSalariesHandler))
 			r.Post("/", higherManagementOnly(handler.CreateSalaryHandler))
 			r.Get("/{id}", higherManagementOnly(handler.GetSalaryHandler))
@@ -81,7 +80,6 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 			r.Patch("/{id}/cancel", higherManagementOnly(handler.CancelSalaryHandler))
 			r.Delete("/{id}", higherManagementOnly(handler.DeleteSalaryHandler))
 
-			// Special routes
 			r.Get("/employee/{id}", higherManagementOnly(handler.GetSalariesByEmployeeHandler))
 			r.Get("/month/{month}", higherManagementOnly(handler.GetSalariesByMonthHandler))
 		})
@@ -90,7 +88,6 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 		// BROKERS
 		// =====================================================
 		r.Route("/brokers", func(r chi.Router) {
-			// Admin/Manager only routes (using higherManagementOnly)
 			r.Get("/", higherManagementOnly(handler.GetAllBrokersHandler))
 			r.Post("/", higherManagementOnly(handler.CreateBrokerHandler))
 			r.Get("/{id}", higherManagementOnly(handler.GetBrokerHandler))
@@ -102,7 +99,6 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 		// MAJHIS
 		// =====================================================
 		r.Route("/majhis", func(r chi.Router) {
-			// Admin/Manager only routes (using higherManagementOnly)
 			r.Get("/", higherManagementOnly(handler.GetAllMajhisHandler))
 			r.Post("/", higherManagementOnly(handler.CreateMajhiHandler))
 			r.Get("/{id}", higherManagementOnly(handler.GetMajhiHandler))
@@ -140,7 +136,6 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 		// CUSTOMERS
 		// =====================================================
 		r.Route("/customers", func(r chi.Router) {
-			// Admin/Manager only routes (using higherManagementOnly)
 			r.Get("/", higherManagementOnly(handler.GetAllCustomersHandler))
 			r.Post("/", higherManagementOnly(handler.CreateCustomerHandler))
 			r.Get("/{id}", higherManagementOnly(handler.GetCustomerHandler))
@@ -152,7 +147,6 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 		// LOTS
 		// =====================================================
 		r.Route("/lots", func(r chi.Router) {
-			// Admin/Manager only routes
 			r.Get("/", higherManagementOnly(handler.GetAllLotsHandler))
 			r.Post("/", higherManagementOnly(handler.CreateLotHandler))
 			r.Get("/{id}", higherManagementOnly(handler.GetLotHandler))
@@ -161,7 +155,7 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 			r.Delete("/{id}", higherManagementOnly(handler.DeleteLotHandler))
 
 			r.Patch("/{id}/customer-payment", higherManagementOnly(handler.UpdateLotCustomerPaymentHandler))
-			r.Patch("/{id}/customer-unload-payment", higherManagementOnly(handler.UpdateLotCustomerUnloadPaymentHandler)) // ADD THIS
+			r.Patch("/{id}/customer-unload-payment", higherManagementOnly(handler.UpdateLotCustomerUnloadPaymentHandler))
 			r.Patch("/{id}/majhi-payment", higherManagementOnly(handler.UpdateLotMajhiPaymentHandler))
 		})
 
@@ -169,7 +163,6 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 		// STORES
 		// =====================================================
 		r.Route("/stores", func(r chi.Router) {
-			// Admin/Manager only routes (using higherManagementOnly)
 			r.Get("/", higherManagementOnly(handler.GetAllStoresHandler))
 			r.Post("/", higherManagementOnly(handler.CreateStoreHandler))
 			r.Get("/{id}", higherManagementOnly(handler.GetStoreHandler))
@@ -182,7 +175,6 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 		// DAMAGES
 		// =====================================================
 		r.Route("/damages", func(r chi.Router) {
-			// Admin/Manager only routes (using higherManagementOnly)
 			r.Get("/", higherManagementOnly(handler.GetAllDamagesHandler))
 			r.Post("/", higherManagementOnly(handler.CreateDamageHandler))
 			r.Get("/{id}", higherManagementOnly(handler.GetDamageHandler))
@@ -194,7 +186,6 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 		// DELIVERIES
 		// =====================================================
 		r.Route("/deliveries", func(r chi.Router) {
-			// Admin/Manager only routes (using higherManagementOnly)
 			r.Get("/", higherManagementOnly(handler.GetAllDeliveriesHandler))
 			r.Post("/", higherManagementOnly(handler.CreateDeliveryHandler))
 			r.Get("/{id}", higherManagementOnly(handler.GetDeliveryHandler))
@@ -206,14 +197,12 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 		// DELIVERY ITEMS
 		// =====================================================
 		r.Route("/delivery-items", func(r chi.Router) {
-			// Admin/Manager only routes (using higherManagementOnly)
 			r.Get("/", higherManagementOnly(handler.GetAllDeliveryItemsHandler))
 			r.Post("/", higherManagementOnly(handler.CreateDeliveryItemHandler))
 			r.Get("/{id}", higherManagementOnly(handler.GetDeliveryItemHandler))
 			r.Patch("/{id}", higherManagementOnly(handler.UpdateDeliveryItemHandler))
 			r.Delete("/{id}", higherManagementOnly(handler.DeleteDeliveryItemHandler))
 
-			// Payment endpoints for delivery items
 			r.Patch("/{id}/customer-unload-payment", higherManagementOnly(handler.UpdateDeliveryItemCustomerUnloadPaymentHandler))
 			r.Patch("/{id}/majhi-payment", higherManagementOnly(handler.UpdateDeliveryItemMajhiPaymentHandler))
 		})
@@ -222,33 +211,29 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 		// TRANSPORTS
 		// =====================================================
 		r.Route("/transports", func(r chi.Router) {
-			// Admin/Manager only routes (using higherManagementOnly)
 			r.Get("/", higherManagementOnly(handler.GetAllTransportsHandler))
 			r.Post("/", higherManagementOnly(handler.CreateTransportHandler))
 			r.Get("/{id}", higherManagementOnly(handler.GetTransportHandler))
 			r.Patch("/{id}", higherManagementOnly(handler.UpdateTransportHandler))
 			r.Delete("/{id}", higherManagementOnly(handler.DeleteTransportHandler))
-			r.Patch("/{id}/customer-payment", higherManagementOnly(handler.UpdateCustomerPaymentHandler)) // NEW
+			r.Patch("/{id}/customer-payment", higherManagementOnly(handler.UpdateTransportCustomerPaymentHandler))
 		})
 
 		// =====================================================
 		// VEHICLES
 		// =====================================================
 		r.Route("/vehicles", func(r chi.Router) {
-			// Admin/Manager only routes (using higherManagementOnly)
 			r.Get("/", higherManagementOnly(handler.GetAllVehiclesHandler))
 			r.Post("/", higherManagementOnly(handler.CreateVehicleHandler))
 			r.Get("/{id}", higherManagementOnly(handler.GetVehicleHandler))
 			r.Patch("/{id}", higherManagementOnly(handler.UpdateVehicleHandler))
 			r.Delete("/{id}", higherManagementOnly(handler.DeleteVehicleHandler))
-			r.Patch("/{id}/broker-payment", higherManagementOnly(handler.UpdateVehicleBrokerPaymentHandler)) // NEW
 		})
 
 		// =====================================================
 		// EXPENSES
 		// =====================================================
 		r.Route("/expenses", func(r chi.Router) {
-			// Admin/Manager only routes (using higherManagementOnly)
 			r.Get("/", higherManagementOnly(handler.GetAllExpensesHandler))
 			r.Post("/", higherManagementOnly(handler.CreateExpenseHandler))
 			r.Get("/{id}", higherManagementOnly(handler.GetExpenseHandler))
@@ -261,6 +246,18 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 		// =====================================================
 		r.Route("/logs", func(r chi.Router) {
 			r.Get("/", higherManagementOnly(handler.GetAllLogsHandler))
+		})
+
+		// =====================================================
+		// CUSTOMER ADDITIONAL CHARGES
+		// =====================================================
+		r.Route("/customer-additional-charges", func(r chi.Router) {
+			r.Get("/", higherManagementOnly(handler.GetAllAdditionalChargesHandler))
+			r.Post("/", higherManagementOnly(handler.CreateAdditionalChargeHandler))
+			r.Get("/{id}", higherManagementOnly(handler.GetAdditionalChargeHandler))
+			r.Patch("/{id}", higherManagementOnly(handler.UpdateAdditionalChargeHandler))
+			r.Patch("/{id}/customer-payment", higherManagementOnly(handler.UpdateAdditionalChargeCustomerPaymentHandler))
+			r.Delete("/{id}", higherManagementOnly(handler.DeleteAdditionalChargeHandler))
 		})
 
 		// =====================================================

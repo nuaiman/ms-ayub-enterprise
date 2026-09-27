@@ -3,7 +3,6 @@
     <div v-if="vehicle" class="space-y-6">
         <!-- Header -->
         <div class="flex items-start gap-4">
-            <!-- Icon -->
             <div class="shrink-0">
                 <div
                     class="w-20 h-20 rounded-full bg-(--color-blue)/10 border-2 border-(--color-border) flex items-center justify-center">
@@ -14,15 +13,12 @@
                 </div>
             </div>
 
-            <!-- Info -->
             <div class="flex-1 min-w-0">
                 <h2 class="text-2xl font-bold text-(--color-text-primary)">{{ vehicle.vehicle_number }}</h2>
                 <div class="flex items-center gap-2 flex-wrap mt-1">
                     <span class="text-sm text-(--color-text-secondary)">Transport #{{ vehicle.transport_id }}</span>
                     <span class="w-1 h-1 rounded-full bg-(--color-text-secondary)"></span>
-                    <span class="text-sm text-(--color-text-secondary)">{{ getBrokerName(vehicle.broker_id) }}</span>
-                    <span class="w-1 h-1 rounded-full bg-(--color-text-secondary)"></span>
-                    <span class="text-sm text-(--color-text-secondary)">{{ vehicle.driver_name || 'No driver' }}</span>
+                    <span class="text-sm text-(--color-text-secondary)">{{ brokerName }}</span>
                 </div>
             </div>
         </div>
@@ -38,76 +34,63 @@
 
         <!-- Details -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Transport -->
             <div>
                 <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Transport</p>
                 <p class="text-sm text-(--color-text-primary)">#{{ vehicle.transport_id }}</p>
             </div>
 
-            <!-- Vehicle Number -->
             <div>
                 <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Vehicle Number</p>
                 <p class="text-sm text-(--color-text-primary)">{{ vehicle.vehicle_number }}</p>
             </div>
 
-            <!-- Broker -->
             <div>
                 <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Broker</p>
-                <p class="text-sm text-(--color-text-primary)">{{ getBrokerName(vehicle.broker_id) }}</p>
+                <p class="text-sm text-(--color-text-primary)">{{ brokerName }}</p>
             </div>
 
-            <!-- Driver -->
             <div>
-                <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Driver</p>
-                <p class="text-sm text-(--color-text-primary)">{{ vehicle.driver_name || '—' }}</p>
-                <p v-if="vehicle.driver_phone" class="text-xs text-(--color-text-secondary)">{{ vehicle.driver_phone }}
-                </p>
+                <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Created By</p>
+                <p class="text-sm text-(--color-text-primary)">{{ getUserName(vehicle.user_id) }}</p>
             </div>
 
-            <!-- Joma Cost -->
             <div>
                 <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Joma Cost</p>
                 <p class="text-sm text-(--color-text-primary)">{{ formatCurrency(vehicle.joma_cost) }}</p>
             </div>
 
-            <!-- Vehicle Cost -->
             <div>
                 <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Vehicle Cost</p>
                 <p class="text-sm text-(--color-text-primary)">{{ formatCurrency(vehicle.vehicle_cost) }}</p>
             </div>
 
-            <!-- Customer Charge -->
             <div>
-                <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Customer Charge
+                <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Total Paid to
+                    Broker</p>
+                <p class="text-sm font-semibold text-(--color-green)">{{ formatCurrency(vehicle.total_paid_to_broker) }}
                 </p>
-                <p class="text-sm text-(--color-text-primary)">{{ formatCurrency(vehicle.customer_charge) }}</p>
             </div>
 
-            <!-- Other Cost -->
             <div>
                 <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Other Cost</p>
                 <p class="text-sm text-(--color-text-primary)">{{ formatCurrency(vehicle.other_cost) }}</p>
             </div>
 
-            <!-- Labour Cost -->
             <div>
                 <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Labour Cost</p>
                 <p class="text-sm text-(--color-text-primary)">{{ formatCurrency(vehicle.labour_cost) }}</p>
             </div>
 
-            <!-- Demarage -->
             <div>
-                <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Demarage Amount
-                </p>
-                <p class="text-sm text-(--color-text-primary)">{{ formatCurrency(vehicle.demarage_amount) }}</p>
-                <p v-if="vehicle.demarage_reason" class="text-xs text-(--color-text-secondary)">{{
-                    vehicle.demarage_reason }}</p>
+                <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Demarage Cost</p>
+                <p class="text-sm text-(--color-text-primary)">{{ formatCurrency(vehicle.demarage_cost) }}</p>
             </div>
 
-            <!-- Created By -->
-            <div>
-                <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Created By</p>
-                <p class="text-sm text-(--color-text-primary)">{{ getUserName(vehicle.user_id) }}</p>
+            <div v-if="vehicle.notes" class="md:col-span-2">
+                <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Notes</p>
+                <div class="p-4 rounded-lg bg-(--color-muted-bg)/50 border border-(--color-border) mt-1">
+                    <p class="text-sm text-(--color-text-secondary) whitespace-pre-wrap">{{ vehicle.notes }}</p>
+                </div>
             </div>
         </div>
 
@@ -126,6 +109,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { Vehicle } from '@/types/vehicle'
 import { useBrokersStore } from '@/stores/brokers'
 import { useUsersStore } from '@/stores/users'
@@ -144,14 +128,12 @@ const emit = defineEmits<{
 const brokersStore = useBrokersStore()
 const usersStore = useUsersStore()
 
-const getBrokerName = (id: number | null): string => {
-    if (!id) return '—'
-    return brokersStore.getBrokerName(id)
-}
+const brokerName = computed(() => {
+    if (!props.vehicle?.broker_id) return '৳'
+    return brokersStore.getBrokerName(props.vehicle.broker_id)
+})
 
-const getUserName = (id: number): string => {
-    return usersStore.getUserName(id)
-}
+const getUserName = (id: number): string => usersStore.getUserName(id)
 
 const formatDate = (dateStr: string): string => {
     return new Date(dateStr).toLocaleDateString('en-US', {
@@ -159,7 +141,7 @@ const formatDate = (dateStr: string): string => {
         day: 'numeric',
         year: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
     })
 }
 </script>

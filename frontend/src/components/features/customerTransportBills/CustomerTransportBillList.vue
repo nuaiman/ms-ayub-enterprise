@@ -67,10 +67,10 @@
                     class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wider bg-(--color-muted-bg)/30 rounded-t-lg">
                     <!-- Transport - 1 column -->
                     <div class="col-span-1 cursor-pointer hover:text-(--color-text-primary) transition-colors"
-                        @click="toggleSort('transport_id')">
+                        @click="toggleSort('id')">
                         <span class="flex items-center gap-1">
                             Trp.
-                            <svg v-if="sortField === 'transport_id'" class="w-3 h-3"
+                            <svg v-if="sortField === 'id'" class="w-3 h-3"
                                 :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
                                 viewBox="0 0 24 24">
                                 <path d="M7 10l5 5 5-5z" />
@@ -189,7 +189,7 @@
                         <p class="text-xs text-(--color-text-secondary)">
                             {{ searchQuery
                                 ? 'Try adjusting your search'
-                                : 'Transports with vehicles having customer_charge > 0 will appear here'
+                                : 'Transports with customer charges will appear here'
                             }}
                         </p>
                     </div>
@@ -233,8 +233,7 @@
                     </div>
                     <div>
                         <h2 class="text-lg font-bold text-(--color-text-primary)">Record Payment</h2>
-                        <p class="text-xs text-(--color-text-secondary)">For Transport #{{ selectedBill?.transport_id }}
-                        </p>
+                        <p class="text-xs text-(--color-text-secondary)">For Transport #{{ selectedBill?.id }}</p>
                     </div>
                 </div>
 
@@ -315,17 +314,15 @@
                     </div>
                     <div>
                         <h2 class="text-lg font-bold text-(--color-text-primary)">Cancel Bill</h2>
-                        <p class="text-xs text-(--color-text-secondary)">This will set customer_charge to 0 on all
-                            vehicles</p>
+                        <p class="text-xs text-(--color-text-secondary)">This will set the charge per unit to 0</p>
                     </div>
                 </div>
                 <p class="text-sm text-(--color-text-secondary) mt-4">
                     Are you sure you want to cancel this bill for "<span
-                        class="font-medium text-(--color-text-primary)">Transport
-                        #{{ selectedBill?.transport_id }}</span>"?
+                        class="font-medium text-(--color-text-primary)">Transport #{{ selectedBill?.id }}</span>"?
                 </p>
                 <p class="text-xs text-(--color-text-secondary) mt-2">
-                    This will set customer_charge to 0 on all {{ selectedBill?.total_vehicles }} vehicles.
+                    This will set the customer charge per unit to 0. The bill will no longer appear.
                 </p>
             </div>
 
@@ -432,7 +429,7 @@ const handleCopyToClipboard = async () => {
     const headers = 'Transport\tCustomer\tFrom\tTo\tVehicles\tAmount\tPaid\tStatus'
     const rows = filteredBills.value.map((b: CustomerTransportBill) => {
         const outstanding = b.bill_amount - b.paid_amount
-        return `#${b.transport_id}\t${b.customer_name}\t${b.from_location}\t${b.to_location || ''}\t${b.total_vehicles}\t${b.bill_amount.toFixed(2)}\t${b.paid_amount.toFixed(2)}\t${outstanding.toFixed(2)}\t${b.status}`
+        return `#${b.id}\t${b.customer_name}\t${b.from_location}\t${b.to_location || ''}\t${b.total_vehicles}\t${b.bill_amount.toFixed(2)}\t${b.paid_amount.toFixed(2)}\t${outstanding.toFixed(2)}\t${b.status}`
     })
     await clipboardStore.copyToClipboard(headers + '\n' + rows.join('\n'))
 }
@@ -491,7 +488,7 @@ const confirmPayment = async () => {
     const paymentDate = formatDateForBackend(paymentForm.value.payment_date)
 
     const result = await store.markBillAsPaid(
-        selectedBill.value.transport_id,
+        selectedBill.value.id,
         {
             amount: paymentForm.value.amount,
             payment_date: paymentDate,
@@ -509,7 +506,7 @@ const confirmPayment = async () => {
 const confirmCancel = async () => {
     if (!selectedBill.value) return
 
-    const result = await store.cancelBill(selectedBill.value.transport_id)
+    const result = await store.cancelBill(selectedBill.value.id)
     if (result) {
         push.success('Bill cancelled successfully')
         cancelDialogOpen.value = false

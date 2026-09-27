@@ -14,7 +14,7 @@
                 v-model:billing-start="form.billing_start" v-model:billing-end="form.billing_end"
                 v-model:notes="form.notes" :lot-options="lotOptions" :godown-options="godownOptions"
                 :disabled="submitting" :required="true" :standalone="false" :can-edit-lot="!isEditMode && !isReaddMode"
-                :can-edit-godown="!isEditMode" :show-active="true" />
+                :can-edit-godown="!isEditMode && !isReaddMode" :show-active="true" />
         </div>
 
         <!-- Actions -->

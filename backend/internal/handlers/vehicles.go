@@ -18,18 +18,15 @@ func (h *Handler) CreateVehicleHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[VEHICLES] CreateVehicleHandler called - Method: %s, Path: %s", r.Method, r.URL.Path)
 
 	type request struct {
-		TransportID    int64   `json:"transport_id"`
-		VehicleNumber  string  `json:"vehicle_number"`
-		BrokerID       *int64  `json:"broker_id,omitempty"`
-		DriverName     *string `json:"driver_name,omitempty"`
-		DriverPhone    *string `json:"driver_phone,omitempty"`
-		JomaCost       float64 `json:"joma_cost"`
-		VehicleCost    float64 `json:"vehicle_cost"`
-		CustomerCharge float64 `json:"customer_charge"`
-		OtherCost      float64 `json:"other_cost"`
-		LabourCost     float64 `json:"labour_cost"`
-		DemarageAmount float64 `json:"demarage_amount"`
-		DemarageReason *string `json:"demarage_reason,omitempty"`
+		TransportID   int64   `json:"transport_id"`
+		VehicleNumber string  `json:"vehicle_number"`
+		BrokerID      int64   `json:"broker_id"`
+		JomaCost      float64 `json:"joma_cost"`
+		VehicleCost   float64 `json:"vehicle_cost"`
+		OtherCost     float64 `json:"other_cost"`
+		LabourCost    float64 `json:"labour_cost"`
+		DemarageCost  float64 `json:"demarage_cost"`
+		Notes         *string `json:"notes,omitempty"`
 	}
 
 	var req request
@@ -40,7 +37,6 @@ func (h *Handler) CreateVehicleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate required fields
 	if req.TransportID == 0 {
 		utils.ErrorJson(w, http.StatusBadRequest, "transport_id is required")
 		return
@@ -49,39 +45,38 @@ func (h *Handler) CreateVehicleHandler(w http.ResponseWriter, r *http.Request) {
 		utils.ErrorJson(w, http.StatusBadRequest, "vehicle_number is required")
 		return
 	}
-	if req.JomaCost < 0 || req.VehicleCost < 0 || req.CustomerCharge < 0 ||
-		req.OtherCost < 0 || req.LabourCost < 0 || req.DemarageAmount < 0 {
+	if req.BrokerID == 0 {
+		utils.ErrorJson(w, http.StatusBadRequest, "broker_id is required")
+		return
+	}
+	if req.JomaCost < 0 || req.VehicleCost < 0 ||
+		req.OtherCost < 0 || req.LabourCost < 0 || req.DemarageCost < 0 {
 		utils.ErrorJson(w, http.StatusBadRequest, "costs cannot be negative")
 		return
 	}
 
-	// Check if transport exists
-	exists, err := h.app.Models.Transport.Exists(r.Context(), req.TransportID)
+	transportExists, err := h.app.Models.Transport.Exists(r.Context(), req.TransportID)
 	if err != nil {
 		log.Printf("[VEHICLES] CreateVehicleHandler ERROR: failed to verify transport - %v", err)
 		utils.ErrorJson(w, http.StatusInternalServerError, "failed to verify transport")
 		return
 	}
-	if !exists {
+	if !transportExists {
 		utils.ErrorJson(w, http.StatusNotFound, "transport not found")
 		return
 	}
 
-	// Check if broker exists if provided
-	if req.BrokerID != nil {
-		exists, err := h.app.Models.Broker.Exists(r.Context(), *req.BrokerID)
-		if err != nil {
-			log.Printf("[VEHICLES] CreateVehicleHandler ERROR: failed to verify broker - %v", err)
-			utils.ErrorJson(w, http.StatusInternalServerError, "failed to verify broker")
-			return
-		}
-		if !exists {
-			utils.ErrorJson(w, http.StatusNotFound, "broker not found")
-			return
-		}
+	brokerExists, err := h.app.Models.Broker.Exists(r.Context(), req.BrokerID)
+	if err != nil {
+		log.Printf("[VEHICLES] CreateVehicleHandler ERROR: failed to verify broker - %v", err)
+		utils.ErrorJson(w, http.StatusInternalServerError, "failed to verify broker")
+		return
+	}
+	if !brokerExists {
+		utils.ErrorJson(w, http.StatusNotFound, "broker not found")
+		return
 	}
 
-	// Get current user ID
 	userID, ok := r.Context().Value(middlewares.UserIDKey).(int64)
 	if !ok {
 		log.Printf("[VEHICLES] CreateVehicleHandler ERROR: invalid user context")
@@ -90,20 +85,17 @@ func (h *Handler) CreateVehicleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vehicle := &models.Vehicle{
-		UserID:          userID,
-		TransportID:     req.TransportID,
-		VehicleNumber:   req.VehicleNumber,
-		BrokerID:        req.BrokerID,
-		DriverName:      req.DriverName,
-		DriverPhone:     req.DriverPhone,
-		JomaCost:        req.JomaCost,
-		VehicleCost:     req.VehicleCost,
-		CustomerCharge:  req.CustomerCharge,
-		OtherCost:       req.OtherCost,
-		LabourCost:      req.LabourCost,
-		DemarageAmount:  req.DemarageAmount,
-		DemarageReason:  req.DemarageReason,
-		BrokerTotalPaid: 0, // Default to 0 on creation
+		UserID:            userID,
+		TransportID:       req.TransportID,
+		VehicleNumber:     req.VehicleNumber,
+		BrokerID:          req.BrokerID,
+		JomaCost:          req.JomaCost,
+		VehicleCost:       req.VehicleCost,
+		TotalPaidToBroker: 0,
+		OtherCost:         req.OtherCost,
+		LabourCost:        req.LabourCost,
+		DemarageCost:      req.DemarageCost,
+		Notes:             req.Notes,
 	}
 
 	id, err := h.app.Models.Vehicle.Insert(r.Context(), vehicle)
@@ -117,7 +109,6 @@ func (h *Handler) CreateVehicleHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[VEHICLES] CreateVehicleHandler SUCCESS: created vehicle ID=%d", id)
 
-	// Audit log
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
 	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
@@ -149,7 +140,6 @@ func (h *Handler) GetVehicleHandler(w http.ResponseWriter, r *http.Request) {
 		utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch vehicle")
 		return
 	}
-
 	if vehicle == nil {
 		log.Printf("[VEHICLES] GetVehicleHandler NOT FOUND: ID=%d", id)
 		utils.ErrorJson(w, http.StatusNotFound, "vehicle not found")
@@ -209,17 +199,14 @@ func (h *Handler) UpdateVehicleHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[VEHICLES] UpdateVehicleHandler called - ID: %d", id)
 
 	type request struct {
-		VehicleNumber  *string  `json:"vehicle_number,omitempty"`
-		BrokerID       *int64   `json:"broker_id,omitempty"`
-		DriverName     *string  `json:"driver_name,omitempty"`
-		DriverPhone    *string  `json:"driver_phone,omitempty"`
-		JomaCost       *float64 `json:"joma_cost,omitempty"`
-		VehicleCost    *float64 `json:"vehicle_cost,omitempty"`
-		CustomerCharge *float64 `json:"customer_charge,omitempty"`
-		OtherCost      *float64 `json:"other_cost,omitempty"`
-		LabourCost     *float64 `json:"labour_cost,omitempty"`
-		DemarageAmount *float64 `json:"demarage_amount,omitempty"`
-		DemarageReason *string  `json:"demarage_reason,omitempty"`
+		VehicleNumber *string  `json:"vehicle_number,omitempty"`
+		BrokerID      *int64   `json:"broker_id,omitempty"`
+		JomaCost      *float64 `json:"joma_cost,omitempty"`
+		VehicleCost   *float64 `json:"vehicle_cost,omitempty"`
+		OtherCost     *float64 `json:"other_cost,omitempty"`
+		LabourCost    *float64 `json:"labour_cost,omitempty"`
+		DemarageCost  *float64 `json:"demarage_cost,omitempty"`
+		Notes         *string  `json:"notes,omitempty"`
 	}
 
 	var req request
@@ -230,7 +217,6 @@ func (h *Handler) UpdateVehicleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get existing vehicle
 	vehicle, err := h.app.Models.Vehicle.GetByID(r.Context(), id)
 	if err != nil {
 		log.Printf("[VEHICLES] UpdateVehicleHandler ERROR: failed to fetch vehicle - %v", err)
@@ -243,22 +229,6 @@ func (h *Handler) UpdateVehicleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate broker if provided
-	if req.BrokerID != nil {
-		if *req.BrokerID != 0 {
-			exists, err := h.app.Models.Broker.Exists(r.Context(), *req.BrokerID)
-			if err != nil {
-				log.Printf("[VEHICLES] UpdateVehicleHandler ERROR: failed to verify broker - %v", err)
-				utils.ErrorJson(w, http.StatusInternalServerError, "failed to verify broker")
-				return
-			}
-			if !exists {
-				utils.ErrorJson(w, http.StatusNotFound, "broker not found")
-				return
-			}
-		}
-		vehicle.BrokerID = req.BrokerID
-	}
 	if req.VehicleNumber != nil {
 		if *req.VehicleNumber == "" {
 			utils.ErrorJson(w, http.StatusBadRequest, "vehicle_number cannot be empty")
@@ -266,11 +236,22 @@ func (h *Handler) UpdateVehicleHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		vehicle.VehicleNumber = *req.VehicleNumber
 	}
-	if req.DriverName != nil {
-		vehicle.DriverName = req.DriverName
-	}
-	if req.DriverPhone != nil {
-		vehicle.DriverPhone = req.DriverPhone
+	if req.BrokerID != nil {
+		if *req.BrokerID == 0 {
+			utils.ErrorJson(w, http.StatusBadRequest, "broker_id is required")
+			return
+		}
+		exists, err := h.app.Models.Broker.Exists(r.Context(), *req.BrokerID)
+		if err != nil {
+			log.Printf("[VEHICLES] UpdateVehicleHandler ERROR: failed to verify broker - %v", err)
+			utils.ErrorJson(w, http.StatusInternalServerError, "failed to verify broker")
+			return
+		}
+		if !exists {
+			utils.ErrorJson(w, http.StatusNotFound, "broker not found")
+			return
+		}
+		vehicle.BrokerID = *req.BrokerID
 	}
 	if req.JomaCost != nil {
 		if *req.JomaCost < 0 {
@@ -286,13 +267,6 @@ func (h *Handler) UpdateVehicleHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		vehicle.VehicleCost = *req.VehicleCost
 	}
-	if req.CustomerCharge != nil {
-		if *req.CustomerCharge < 0 {
-			utils.ErrorJson(w, http.StatusBadRequest, "customer_charge cannot be negative")
-			return
-		}
-		vehicle.CustomerCharge = *req.CustomerCharge
-	}
 	if req.OtherCost != nil {
 		if *req.OtherCost < 0 {
 			utils.ErrorJson(w, http.StatusBadRequest, "other_cost cannot be negative")
@@ -307,15 +281,15 @@ func (h *Handler) UpdateVehicleHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		vehicle.LabourCost = *req.LabourCost
 	}
-	if req.DemarageAmount != nil {
-		if *req.DemarageAmount < 0 {
-			utils.ErrorJson(w, http.StatusBadRequest, "demarage_amount cannot be negative")
+	if req.DemarageCost != nil {
+		if *req.DemarageCost < 0 {
+			utils.ErrorJson(w, http.StatusBadRequest, "demarage_cost cannot be negative")
 			return
 		}
-		vehicle.DemarageAmount = *req.DemarageAmount
+		vehicle.DemarageCost = *req.DemarageCost
 	}
-	if req.DemarageReason != nil {
-		vehicle.DemarageReason = req.DemarageReason
+	if req.Notes != nil {
+		vehicle.Notes = req.Notes
 	}
 
 	if err := h.app.Models.Vehicle.Update(r.Context(), vehicle); err != nil {
@@ -326,7 +300,6 @@ func (h *Handler) UpdateVehicleHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[VEHICLES] UpdateVehicleHandler SUCCESS: updated vehicle ID=%d", id)
 
-	// Audit log
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
@@ -340,13 +313,11 @@ func (h *Handler) UpdateVehicleHandler(w http.ResponseWriter, r *http.Request) {
 		UserAgent:   &ua,
 	})
 
-	// Fetch updated vehicle
 	updatedVehicle, _ := h.app.Models.Vehicle.GetByID(r.Context(), id)
 	utils.SuccessJson(w, http.StatusOK, "vehicle updated successfully", updatedVehicle)
 }
 
 // UpdateVehicleBrokerPaymentHandler - PATCH /api/vehicles/{id}/broker-payment
-// Updates the broker total paid amount for a vehicle
 func (h *Handler) UpdateVehicleBrokerPaymentHandler(w http.ResponseWriter, r *http.Request) {
 	id, ok := utils.GetParamID(w, r)
 	if !ok {
@@ -357,7 +328,7 @@ func (h *Handler) UpdateVehicleBrokerPaymentHandler(w http.ResponseWriter, r *ht
 	log.Printf("[VEHICLES] UpdateVehicleBrokerPaymentHandler called - ID: %d", id)
 
 	type request struct {
-		BrokerTotalPaid float64 `json:"broker_total_paid"`
+		TotalPaidToBroker float64 `json:"total_paid_to_broker"`
 	}
 
 	var req request
@@ -368,12 +339,11 @@ func (h *Handler) UpdateVehicleBrokerPaymentHandler(w http.ResponseWriter, r *ht
 		return
 	}
 
-	if req.BrokerTotalPaid < 0 {
-		utils.ErrorJson(w, http.StatusBadRequest, "broker_total_paid cannot be negative")
+	if req.TotalPaidToBroker < 0 {
+		utils.ErrorJson(w, http.StatusBadRequest, "total_paid_to_broker cannot be negative")
 		return
 	}
 
-	// Check if vehicle exists
 	vehicle, err := h.app.Models.Vehicle.GetByID(r.Context(), id)
 	if err != nil {
 		log.Printf("[VEHICLES] UpdateVehicleBrokerPaymentHandler ERROR: failed to fetch vehicle - %v", err)
@@ -386,29 +356,27 @@ func (h *Handler) UpdateVehicleBrokerPaymentHandler(w http.ResponseWriter, r *ht
 		return
 	}
 
-	if err := h.app.Models.Vehicle.UpdateBrokerPayment(r.Context(), id, req.BrokerTotalPaid); err != nil {
+	if err := h.app.Models.Vehicle.UpdateBrokerPayment(r.Context(), id, req.TotalPaidToBroker); err != nil {
 		log.Printf("[VEHICLES] UpdateVehicleBrokerPaymentHandler ERROR: failed to update broker payment - %v", err)
 		utils.ErrorJson(w, http.StatusInternalServerError, "failed to update broker payment")
 		return
 	}
 
-	log.Printf("[VEHICLES] UpdateVehicleBrokerPaymentHandler SUCCESS: updated broker payment for vehicle ID=%d to %.2f", id, req.BrokerTotalPaid)
+	log.Printf("[VEHICLES] UpdateVehicleBrokerPaymentHandler SUCCESS: updated broker payment for vehicle ID=%d to %.2f", id, req.TotalPaidToBroker)
 
-	// Audit log
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
 	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
 		UserID:      userID,
 		Action:      "update",
-		Description: "Updated broker payment for vehicle #" + strconv.FormatInt(id, 10) + " to " + strconv.FormatFloat(req.BrokerTotalPaid, 'f', 2, 64),
+		Description: "Updated broker payment for vehicle #" + strconv.FormatInt(id, 10) + " to " + strconv.FormatFloat(req.TotalPaidToBroker, 'f', 2, 64),
 		EntityType:  "vehicles",
 		EntityID:    id,
 		IPAddress:   &ip,
 		UserAgent:   &ua,
 	})
 
-	// Fetch updated vehicle
 	updatedVehicle, _ := h.app.Models.Vehicle.GetByID(r.Context(), id)
 	utils.SuccessJson(w, http.StatusOK, "broker payment updated successfully", updatedVehicle)
 }
@@ -423,7 +391,6 @@ func (h *Handler) DeleteVehicleHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[VEHICLES] DeleteVehicleHandler called - ID: %d", id)
 
-	// Check if vehicle exists
 	vehicle, err := h.app.Models.Vehicle.GetByID(r.Context(), id)
 	if err != nil {
 		log.Printf("[VEHICLES] DeleteVehicleHandler ERROR: failed to fetch vehicle - %v", err)
@@ -444,7 +411,6 @@ func (h *Handler) DeleteVehicleHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[VEHICLES] DeleteVehicleHandler SUCCESS: deleted vehicle ID=%d", id)
 
-	// Audit log
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()

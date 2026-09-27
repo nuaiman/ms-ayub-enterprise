@@ -11,6 +11,7 @@ import { useDamagesStore } from './damages'
 import { useTransportsStore } from './transports'
 import { useVehiclesStore } from './vehicles'
 import { useGodownsStore } from './godowns'
+import { useCustomerAdditionalBillsStore } from './customerAdditionalBills'
 
 export type LedgerEventType =
     | 'customer_created'
@@ -25,6 +26,8 @@ export type LedgerEventType =
     | 'unload_payment'
     | 'delivery_payment'
     | 'transport_payment'
+    | 'additional_charge_created'
+    | 'additional_charge_payment'
 
 export interface LedgerEvent {
     id: string
@@ -50,6 +53,8 @@ const CUSTOMER_VISIBLE_TYPES: LedgerEventType[] = [
     'unload_payment',
     'delivery_payment',
     'transport_payment',
+    'additional_charge_created',
+    'additional_charge_payment',
 ]
 
 const CUSTOMER_HIDDEN_META: Partial<Record<LedgerEventType, string[]>> = {
@@ -69,6 +74,7 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
     const transportsStore = useTransportsStore()
     const vehiclesStore = useVehiclesStore()
     const godownsStore = useGodownsStore()
+    const additionalChargesStore = useCustomerAdditionalBillsStore()
 
     const selectedCustomerId = ref<number | null>(null)
     const typeFilter = ref<LedgerEventType[]>([])
@@ -83,7 +89,6 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
         const customer = customersStore.getCustomerById(customerId)
         if (!customer) return events
 
-        // --- Customer created ---
         events.push({
             id: `customer_${customer.id}`,
             type: 'customer_created',
@@ -101,7 +106,6 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
             },
         })
 
-        // --- Lots of this customer ---
         const customerLots = lotsStore.lots.filter(l => l.customer_id === customerId)
         const customerLotIds = new Set(customerLots.map(l => l.id))
 
@@ -127,7 +131,6 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
             })
         }
 
-        // --- Stores of those lots ---
         const customerStores = storesStore.stores.filter(s => customerLotIds.has(s.lot_id))
 
         for (const store of customerStores) {
@@ -152,7 +155,6 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
             })
         }
 
-        // --- Deliveries for this customer ---
         const customerDeliveries = deliveriesStore.deliveries.filter(d => d.customer_id === customerId)
         const customerDeliveryIds = new Set(customerDeliveries.map(d => d.id))
 
@@ -177,7 +179,6 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
             })
         }
 
-        // --- Delivery items (via the customer's deliveries) ---
         const customerDeliveryItems = deliveryItemsStore.deliveryItems.filter(di =>
             customerDeliveryIds.has(di.delivery_id)
         )
@@ -234,7 +235,6 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
             }
         }
 
-        // --- Damages for this customer's stores ---
         const customerStoreIds = new Set(customerStores.map(s => s.id))
         const customerDamages = damagesStore.damages.filter(d => customerStoreIds.has(d.store_id))
 
@@ -259,7 +259,6 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
             })
         }
 
-        // --- Storage payments (from lots) ---
         for (const lot of customerLots) {
             const lotName = lotsStore.getLotDisplayName(lot)
 
@@ -304,10 +303,11 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
             }
         }
 
-        // --- Transports for this customer ---
         const customerTransports = transportsStore.transports.filter(t => t.customer_id === customerId)
 
         for (const transport of customerTransports) {
+            const totalCharge = transport.customer_total_charge || 0
+
             events.push({
                 id: `transport_${transport.id}`,
                 type: 'transport_created',
@@ -317,14 +317,18 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
                     ? `${transport.from_location}${transport.to_location ? ` → ${transport.to_location}` : ''}`
                     : `Transport #${transport.id}`,
                 reference: `Transport #${transport.id}`,
-                amount: transport.office_commission_amount,
-                amountLabel: 'Commission',
-                amountKind: 'neutral',
+                amount: totalCharge,
+                amountLabel: 'Billed',
+                amountKind: 'debit',
                 icon: '🚛',
                 color: 'orange',
                 meta: {
                     vehicle_quantity: transport.vehicle_quantity,
-                    delivery_type: transport.delivery_type,
+                    transport_type: transport.transport_type,
+                    customer_charge_unit: transport.customer_charge_unit,
+                    customer_total_unit: transport.customer_total_unit,
+                    customer_charge_per_unit: transport.customer_charge_per_unit,
+                    customer_total_charge: transport.customer_total_charge,
                     customer_total_paid: transport.customer_total_paid,
                     office_commission_amount: transport.office_commission_amount,
                 },
@@ -334,7 +338,7 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
                 events.push({
                     id: `transport_payment_${transport.id}`,
                     type: 'transport_payment',
-                    date: transport.updated_at,
+                    date: transport.customer_total_paid_through || transport.updated_at,
                     title: `Transport payment`,
                     description: `Payment for Transport #${transport.id}`,
                     reference: `Transport #${transport.id}`,
@@ -345,12 +349,12 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
                     color: 'emerald',
                     meta: {
                         total_paid: transport.customer_total_paid,
+                        paid_through: transport.customer_total_paid_through,
                     },
                 })
             }
         }
 
-        // --- Vehicles of the customer's transports ---
         const customerTransportIds = new Set(customerTransports.map(t => t.id))
         const customerVehicles = vehiclesStore.vehicles.filter(v => customerTransportIds.has(v.transport_id))
 
@@ -362,23 +366,64 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
                 title: `Vehicle added`,
                 description: `${vehicle.vehicle_number}`,
                 reference: `Transport #${vehicle.transport_id}`,
-                amount: vehicle.customer_charge,
-                amountLabel: 'Customer Charge',
-                amountKind: 'debit',
+                amountKind: 'neutral',
                 icon: '🚗',
                 color: 'amber',
                 meta: {
-                    driver_name: vehicle.driver_name,
-                    driver_phone: vehicle.driver_phone,
                     joma_cost: vehicle.joma_cost,
                     vehicle_cost: vehicle.vehicle_cost,
                     other_cost: vehicle.other_cost,
                     labour_cost: vehicle.labour_cost,
-                    demarage_amount: vehicle.demarage_amount,
-                    demarage_reason: vehicle.demarage_reason,
-                    customer_charge: vehicle.customer_charge,
+                    demarage_cost: vehicle.demarage_cost,
+                    notes: vehicle.notes,
                 },
             })
+        }
+
+        // ============= ADDITIONAL CHARGES =============
+        const customerAdditionalBills = additionalChargesStore.bills.filter(
+            b => b.customer_id === customerId
+        )
+
+        for (const bill of customerAdditionalBills) {
+            events.push({
+                id: `additional_charge_created_${bill.id}`,
+                type: 'additional_charge_created',
+                date: bill.created_at,
+                title: `Additional charge added`,
+                description: bill.description,
+                reference: `${bill.entity_type} #${bill.entity_id}`,
+                amount: bill.amount,
+                amountLabel: 'Billed',
+                amountKind: 'debit',
+                icon: '➕',
+                color: 'purple',
+                meta: {
+                    entity_type: bill.entity_type,
+                    entity_id: bill.entity_id,
+                    description: bill.description,
+                },
+            })
+
+            if ((bill.paid_amount || 0) > 0) {
+                events.push({
+                    id: `additional_charge_payment_${bill.id}`,
+                    type: 'additional_charge_payment',
+                    date: bill.payment_date || bill.updated_at,
+                    title: `Additional charge payment`,
+                    description: `Payment for additional charge: ${bill.description}`,
+                    reference: `${bill.entity_type} #${bill.entity_id}`,
+                    amount: bill.paid_amount,
+                    amountLabel: 'Paid',
+                    amountKind: 'credit',
+                    icon: '💵',
+                    color: 'emerald',
+                    meta: {
+                        paid_amount: bill.paid_amount,
+                        paid_through: bill.payment_date,
+                    },
+                })
+            }
         }
 
         return events
@@ -400,20 +445,8 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
             meta = Object.keys(cleaned).length > 0 ? cleaned : undefined
         }
 
-        let amount = event.amount
-        let amountLabel = event.amountLabel
-        let amountKind = event.amountKind
-        if (event.type === 'transport_created') {
-            amount = undefined
-            amountLabel = undefined
-            amountKind = undefined
-        }
-
         return {
             ...event,
-            amount,
-            amountLabel,
-            amountKind,
             meta,
         }
     }
@@ -549,6 +582,8 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
             unload_payment: 'Unload Payment',
             delivery_payment: 'Delivery Payment',
             transport_payment: 'Transport Payment',
+            additional_charge_created: 'Additional Charge',
+            additional_charge_payment: 'Additional Charge Payment',
         }
         return labels[type] || type
     }

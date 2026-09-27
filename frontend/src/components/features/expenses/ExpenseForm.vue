@@ -43,7 +43,7 @@
                                     <span class="flex items-center gap-2">
                                         <span>{{ suggestion }}</span>
                                         <span class="text-xs text-(--color-text-secondary) ml-auto">
-                                            {{ getUsageCount(suggestion) }}Ã—
+                                            {{ getUsageCount(suggestion) }}৳—
                                         </span>
                                     </span>
                                 </button>
@@ -98,7 +98,7 @@
                         class="relative w-24 h-24 rounded-lg overflow-hidden border border-(--color-border)">
                         <img :src="imagePreview" alt="Preview" class="w-full h-full object-cover" />
                         <button type="button" @click="removeImage"
-                            class="absolute top-1 right-1 w-5 h-5 bg-(--color-red) text-white rounded-full flex items-center justify-center text-xs hover:opacity-90 transition-opacity">Ã—</button>
+                            class="absolute top-1 right-1 w-5 h-5 bg-(--color-red) text-white rounded-full flex items-center justify-center text-xs hover:opacity-90 transition-opacity">৳—</button>
                     </div>
                     <div v-else
                         class="w-24 h-24 rounded-lg border-2 border-dashed border-(--color-border) flex items-center justify-center bg-(--color-muted-bg)">
@@ -166,7 +166,7 @@
                     {{ justCreatedId ? 'Retrying image...' : (isEditMode ? 'Saving...' : 'Creating...') }}
                 </span>
                 <span v-else>{{ justCreatedId ? 'Retry Image Upload' : (isEditMode ? 'Save Changes' : 'Create Expense')
-                }}</span>
+                    }}</span>
             </button>
         </div>
     </form>

@@ -7,7 +7,7 @@ import type {
   Vehicle,
   CreateVehiclePayload,
   UpdateVehiclePayload,
-  UpdateBrokerPaymentPayload,  // ← Fixed import name
+  UpdateBrokerPaymentPayload,
   VehicleSortField,
   SortDirection,
 } from "@/types/vehicle";
@@ -22,13 +22,11 @@ import { useExpensesStore } from "./expenses";
 export const useVehiclesStore = defineStore("vehicles", () => {
   const { displayLoader, destroyLoader } = useGlobalLoader();
 
-  // ============= STATE =============
   const vehicles = ref<Vehicle[]>([]);
   const searchQuery = ref("");
   const sortField = ref<VehicleSortField>("vehicle_number");
   const sortDirection = ref<SortDirection>("asc");
 
-  // ============= COMPUTED =============
   const filteredVehicles = computed(() => {
     let result = [...vehicles.value];
 
@@ -39,16 +37,13 @@ export const useVehiclesStore = defineStore("vehicles", () => {
       result = result.filter(
         (vehicle) =>
           vehicle.vehicle_number.toLowerCase().includes(query) ||
-          (vehicle.driver_name && vehicle.driver_name.toLowerCase().includes(query)) ||
-          (vehicle.driver_phone && vehicle.driver_phone.toLowerCase().includes(query)) ||
-          (vehicle.demarage_reason && vehicle.demarage_reason.toLowerCase().includes(query)) ||
+          (vehicle.notes && vehicle.notes.toLowerCase().includes(query)) ||
           String(vehicle.joma_cost).includes(query) ||
           String(vehicle.vehicle_cost).includes(query) ||
-          String(vehicle.customer_charge).includes(query) ||
+          String(vehicle.total_paid_to_broker).includes(query) ||
           String(vehicle.other_cost).includes(query) ||
           String(vehicle.labour_cost).includes(query) ||
-          String(vehicle.demarage_amount).includes(query) ||
-          String(vehicle.broker_total_paid).includes(query) ||
+          String(vehicle.demarage_cost).includes(query) ||
           (vehicle.broker_id && brokersStore.getBrokerName(vehicle.broker_id).toLowerCase().includes(query)) ||
           usersStore.getUserName(vehicle.user_id).toLowerCase().includes(query)
       );
@@ -66,17 +61,11 @@ export const useVehiclesStore = defineStore("vehicles", () => {
         case "broker_id":
           comparison = (a.broker_id || 0) - (b.broker_id || 0);
           break;
-        case "driver_name":
-          comparison = (a.driver_name || "").localeCompare(b.driver_name || "");
-          break;
         case "joma_cost":
           comparison = a.joma_cost - b.joma_cost;
           break;
         case "vehicle_cost":
           comparison = a.vehicle_cost - b.vehicle_cost;
-          break;
-        case "customer_charge":
-          comparison = a.customer_charge - b.customer_charge;
           break;
         case "created_at":
           comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
@@ -92,33 +81,24 @@ export const useVehiclesStore = defineStore("vehicles", () => {
 
   const totalVehicles = computed(() => vehicles.value.length);
 
-  const totalJomaCost = computed(() => {
-    return vehicles.value.reduce((sum, vehicle) => sum + vehicle.joma_cost, 0);
-  });
-
-  const totalVehicleCost = computed(() => {
-    return vehicles.value.reduce((sum, vehicle) => sum + vehicle.vehicle_cost, 0);
-  });
-
-  const totalCustomerCharge = computed(() => {
-    return vehicles.value.reduce((sum, vehicle) => sum + vehicle.customer_charge, 0);
-  });
-
-  const totalOtherCost = computed(() => {
-    return vehicles.value.reduce((sum, vehicle) => sum + vehicle.other_cost, 0);
-  });
-
-  const totalLabourCost = computed(() => {
-    return vehicles.value.reduce((sum, vehicle) => sum + vehicle.labour_cost, 0);
-  });
-
-  const totalDemarageAmount = computed(() => {
-    return vehicles.value.reduce((sum, vehicle) => sum + vehicle.demarage_amount, 0);
-  });
-
-  const totalBrokerPaid = computed(() => {
-    return vehicles.value.reduce((sum, vehicle) => sum + vehicle.broker_total_paid, 0);
-  });
+  const totalJomaCost = computed(() =>
+    vehicles.value.reduce((sum, v) => sum + v.joma_cost, 0)
+  );
+  const totalVehicleCost = computed(() =>
+    vehicles.value.reduce((sum, v) => sum + v.vehicle_cost, 0)
+  );
+  const totalOtherCost = computed(() =>
+    vehicles.value.reduce((sum, v) => sum + v.other_cost, 0)
+  );
+  const totalLabourCost = computed(() =>
+    vehicles.value.reduce((sum, v) => sum + v.labour_cost, 0)
+  );
+  const totalDemarageCost = computed(() =>
+    vehicles.value.reduce((sum, v) => sum + v.demarage_cost, 0)
+  );
+  const totalBrokerPaid = computed(() =>
+    vehicles.value.reduce((sum, v) => sum + v.total_paid_to_broker, 0)
+  );
 
   // ============= EXPENSE HELPERS =============
 
@@ -132,11 +112,8 @@ export const useVehiclesStore = defineStore("vehicles", () => {
 
   const generateExpenseNotes = (vehicle: Vehicle, costType: string): string => {
     let notes = `Vehicle record #${vehicle.id} - ${costType}`;
-    if (vehicle.driver_name) {
-      notes = `${notes} - Driver: ${vehicle.driver_name}`;
-    }
-    if (vehicle.demarage_reason) {
-      notes = `${notes} - ${vehicle.demarage_reason}`;
+    if (vehicle.notes) {
+      notes = `${notes} - ${vehicle.notes}`;
     }
     return notes;
   };
@@ -260,10 +237,13 @@ export const useVehiclesStore = defineStore("vehicles", () => {
         push.error("Vehicle number is required");
         return null;
       }
-
+      if (!payload.broker_id) {
+        push.error("Broker is required");
+        return null;
+      }
       if (payload.joma_cost < 0 || payload.vehicle_cost < 0 ||
-        payload.customer_charge < 0 || payload.other_cost < 0 ||
-        payload.labour_cost < 0 || payload.demarage_amount < 0) {
+        payload.other_cost < 0 || payload.labour_cost < 0 ||
+        payload.demarage_cost < 0) {
         push.error("Costs cannot be negative");
         return null;
       }
@@ -277,37 +257,33 @@ export const useVehiclesStore = defineStore("vehicles", () => {
       const newVehicle = res.data.data;
       vehicles.value.push(newVehicle);
 
-      // Create expenses for Other Cost, Labour Cost, and Demarage Amount
       const expensesStore = useExpensesStore();
 
       if (newVehicle.other_cost > 0) {
-        const expensePayload = {
+        await expensesStore.createExpense({
           title: generateExpenseTitle(newVehicle, 'Other Cost'),
           amount: newVehicle.other_cost,
           expense_date: new Date().toISOString(),
           notes: generateExpenseNotes(newVehicle, 'Other Cost'),
-        };
-        await expensesStore.createExpense(expensePayload);
+        });
       }
 
       if (newVehicle.labour_cost > 0) {
-        const expensePayload = {
+        await expensesStore.createExpense({
           title: generateExpenseTitle(newVehicle, 'Labour Cost'),
           amount: newVehicle.labour_cost,
           expense_date: new Date().toISOString(),
           notes: generateExpenseNotes(newVehicle, 'Labour Cost'),
-        };
-        await expensesStore.createExpense(expensePayload);
+        });
       }
 
-      if (newVehicle.demarage_amount > 0) {
-        const expensePayload = {
-          title: generateExpenseTitle(newVehicle, 'Demarage Amount'),
-          amount: newVehicle.demarage_amount,
+      if (newVehicle.demarage_cost > 0) {
+        await expensesStore.createExpense({
+          title: generateExpenseTitle(newVehicle, 'Demarage Cost'),
+          amount: newVehicle.demarage_cost,
           expense_date: new Date().toISOString(),
-          notes: generateExpenseNotes(newVehicle, 'Demarage Amount'),
-        };
-        await expensesStore.createExpense(expensePayload);
+          notes: generateExpenseNotes(newVehicle, 'Demarage Cost'),
+        });
       }
 
       push.success(res.data.message);
@@ -340,7 +316,7 @@ export const useVehiclesStore = defineStore("vehicles", () => {
 
       const expensesStore = useExpensesStore();
 
-      // Check and update Other Cost
+      // Other Cost
       if (oldVehicle && oldVehicle.other_cost !== updatedVehicle.other_cost) {
         const expenseId = await findAssociatedExpense(id, 'Other Cost');
         if (expenseId) {
@@ -363,7 +339,7 @@ export const useVehiclesStore = defineStore("vehicles", () => {
         }
       }
 
-      // Check and update Labour Cost
+      // Labour Cost
       if (oldVehicle && oldVehicle.labour_cost !== updatedVehicle.labour_cost) {
         const expenseId = await findAssociatedExpense(id, 'Labour Cost');
         if (expenseId) {
@@ -386,25 +362,25 @@ export const useVehiclesStore = defineStore("vehicles", () => {
         }
       }
 
-      // Check and update Demarage Amount
-      if (oldVehicle && oldVehicle.demarage_amount !== updatedVehicle.demarage_amount) {
-        const expenseId = await findAssociatedExpense(id, 'Demarage Amount');
+      // Demarage Cost
+      if (oldVehicle && oldVehicle.demarage_cost !== updatedVehicle.demarage_cost) {
+        const expenseId = await findAssociatedExpense(id, 'Demarage Cost');
         if (expenseId) {
-          if (updatedVehicle.demarage_amount > 0) {
+          if (updatedVehicle.demarage_cost > 0) {
             await expensesStore.updateExpense(expenseId, {
-              amount: updatedVehicle.demarage_amount,
-              title: generateExpenseTitle(updatedVehicle, 'Demarage Amount'),
-              notes: generateExpenseNotes(updatedVehicle, 'Demarage Amount'),
+              amount: updatedVehicle.demarage_cost,
+              title: generateExpenseTitle(updatedVehicle, 'Demarage Cost'),
+              notes: generateExpenseNotes(updatedVehicle, 'Demarage Cost'),
             });
           } else {
             await expensesStore.deleteExpense(expenseId);
           }
-        } else if (updatedVehicle.demarage_amount > 0) {
+        } else if (updatedVehicle.demarage_cost > 0) {
           await expensesStore.createExpense({
-            title: generateExpenseTitle(updatedVehicle, 'Demarage Amount'),
-            amount: updatedVehicle.demarage_amount,
+            title: generateExpenseTitle(updatedVehicle, 'Demarage Cost'),
+            amount: updatedVehicle.demarage_cost,
             expense_date: new Date().toISOString(),
-            notes: generateExpenseNotes(updatedVehicle, 'Demarage Amount'),
+            notes: generateExpenseNotes(updatedVehicle, 'Demarage Cost'),
           });
         }
       }
@@ -420,11 +396,10 @@ export const useVehiclesStore = defineStore("vehicles", () => {
     }
   };
 
-  // NEW: Update broker payment for a vehicle
   const updateVehicleBrokerPayment = async (id: number, payload: UpdateBrokerPaymentPayload): Promise<Vehicle | null> => {
     displayLoader();
     try {
-      if (payload.broker_total_paid < 0) {
+      if (payload.total_paid_to_broker < 0) {
         push.error("Broker total paid cannot be negative");
         return null;
       }
@@ -523,7 +498,6 @@ export const useVehiclesStore = defineStore("vehicles", () => {
     }
   };
 
-  // ============= SORT =============
   const setSort = (field: VehicleSortField) => {
     if (sortField.value === field) {
       sortDirection.value = sortDirection.value === "asc" ? "desc" : "asc";
@@ -533,7 +507,6 @@ export const useVehiclesStore = defineStore("vehicles", () => {
     }
   };
 
-  // ============= SEARCH =============
   const setSearchQuery = (query: string) => {
     searchQuery.value = query;
   };
@@ -541,8 +514,6 @@ export const useVehiclesStore = defineStore("vehicles", () => {
   const clearSearch = () => {
     searchQuery.value = "";
   };
-
-  // ============= UTILITIES =============
 
   const getVehicleById = (id: number): Vehicle | undefined => {
     return vehicles.value.find((v) => v.id === id);
@@ -566,13 +537,19 @@ export const useVehiclesStore = defineStore("vehicles", () => {
     return vehicles.value
       .filter((vehicle) => vehicle.transport_id === transportId)
       .reduce((sum, vehicle) => sum + vehicle.joma_cost + vehicle.vehicle_cost +
-        vehicle.other_cost + vehicle.labour_cost + vehicle.demarage_amount, 0);
+        vehicle.other_cost + vehicle.labour_cost + vehicle.demarage_cost, 0);
   };
 
-  const getTotalChargeByTransport = (transportId: number): number => {
+  const getTotalJomaPlusVehicleByTransport = (transportId: number): number => {
     return vehicles.value
       .filter((vehicle) => vehicle.transport_id === transportId)
-      .reduce((sum, vehicle) => sum + vehicle.customer_charge, 0);
+      .reduce((sum, vehicle) => sum + vehicle.joma_cost + vehicle.vehicle_cost, 0);
+  };
+
+  const getTotalBrokerPaidByTransport = (transportId: number): number => {
+    return vehicles.value
+      .filter((vehicle) => vehicle.transport_id === transportId)
+      .reduce((sum, vehicle) => sum + vehicle.total_paid_to_broker, 0);
   };
 
   const getVehicleExpenses = async (vehicleId: number): Promise<number[]> => {
@@ -589,11 +566,10 @@ export const useVehiclesStore = defineStore("vehicles", () => {
     totalVehicles,
     totalJomaCost,
     totalVehicleCost,
-    totalCustomerCharge,
     totalOtherCost,
     totalLabourCost,
-    totalDemarageAmount,
-    totalBrokerPaid, // NEW
+    totalDemarageCost,
+    totalBrokerPaid,
 
     fetchVehicles,
     fetchVehiclesByTransport,
@@ -602,7 +578,7 @@ export const useVehiclesStore = defineStore("vehicles", () => {
 
     createVehicle,
     updateVehicle,
-    updateVehicleBrokerPayment, // NEW
+    updateVehicleBrokerPayment,
     deleteVehicle,
     deleteVehiclesByTransport,
 
@@ -615,7 +591,8 @@ export const useVehiclesStore = defineStore("vehicles", () => {
     getVehiclesByBrokerId,
     getBrokerNameForVehicle,
     getTotalCostByTransport,
-    getTotalChargeByTransport,
+    getTotalJomaPlusVehicleByTransport,
+    getTotalBrokerPaidByTransport,
     getVehicleExpenses,
   };
 });

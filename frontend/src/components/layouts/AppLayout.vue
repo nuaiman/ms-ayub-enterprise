@@ -2,9 +2,8 @@
 <template>
     <div class="min-h-screen bg-(--color-bg) text-(--color-text-primary) flex selection:bg-(--color-blue)/20">
         <!-- Sidebar -->
-        <AppSidebar :is-open="sidebarOpen" :is-collapsed="isCollapsed" :is-mobile="isMobile" :menu-groups="menuGroups"
-            @toggle="toggleSidebar" @close="closeSidebar" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave"
-            @logout="handleLogout" @change-password="handleOpenChangePassword" @reset-all-passwords="handleOpenResetAll"
+        <AppSidebar :is-open="sidebarOpen" :menu-groups="menuGroups" @close="closeSidebar" @logout="handleLogout"
+            @change-password="handleOpenChangePassword" @reset-all-passwords="handleOpenResetAll"
             @download-backup="handleDownloadBackup" />
 
         <!-- Mobile Overlay -->
@@ -13,12 +12,10 @@
 
         <!-- Main Content -->
         <div class="flex-1 flex flex-col min-w-0">
-            <!-- Header -->
             <AppHeader @toggle-sidebar="toggleSidebar" @logout="handleLogout"
                 @change-password="handleOpenChangePassword" @reset-all-passwords="handleOpenResetAll"
                 @download-backup="handleDownloadBackup" />
 
-            <!-- Page Content -->
             <main class="flex-1 px-3 sm:px-4 lg:px-6 py-4 sm:py-5">
                 <slot />
             </main>
@@ -140,7 +137,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { KeyRound, Lock, AlertTriangle } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
@@ -162,16 +159,6 @@ const showLogoutDialog = ref(false)
 const showChangePassword = ref(false)
 const showResetAll = ref(false)
 
-// ============= RESPONSIVE =============
-const isMobile = ref(window.innerWidth < 1024)
-const isHovered = ref(false)
-
-// Collapsed only applies on desktop
-const isCollapsed = computed(() => {
-    if (isMobile.value) return false
-    return !isHovered.value
-})
-
 // ============= SIDEBAR HANDLERS =============
 const toggleSidebar = () => {
     sidebarOpen.value = !sidebarOpen.value
@@ -181,24 +168,12 @@ const closeSidebar = () => {
     sidebarOpen.value = false
 }
 
-const handleMouseEnter = () => {
-    if (!isMobile.value) {
-        isHovered.value = true
-    }
-}
+// Close mobile sidebar on route change
+const route = useRouter()
 
-const handleMouseLeave = () => {
-    if (!isMobile.value) {
-        isHovered.value = false
-    }
-}
-
-// ============= RESPONSIVE =============
+// ============= RESIZE =============
 const updateMobileStatus = () => {
-    const wasMobile = isMobile.value
-    isMobile.value = window.innerWidth < 1024
-
-    if (wasMobile && !isMobile.value && sidebarOpen.value) {
+    if (window.innerWidth >= 1024) {
         sidebarOpen.value = false
     }
 }
@@ -323,6 +298,7 @@ const menuGroups = [
             { path: '/majhi-loading-bills', label: 'Majhi Loading Bills', icon: 'majhi-loading-bills' },
             { path: '/broker-vehicle-bills', label: 'Broker Vehicle Bills', icon: 'broker-vehicle-bills' },
             { path: '/customer-transport-bills', label: 'Customer Transport Bills', icon: 'customer-transport-bills' },
+            { path: '/customer-additional-bills', label: 'Customer Additional Bills', icon: 'customer-additional-bills' },
         ],
     },
     {

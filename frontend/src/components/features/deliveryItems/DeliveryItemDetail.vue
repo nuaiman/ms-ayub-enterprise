@@ -22,8 +22,8 @@
                     <span class="w-1 h-1 rounded-full bg-(--color-text-secondary)"></span>
                     <span class="text-sm text-(--color-text-secondary)">{{ formatDateShort(deliveryItem.created_at)
                         }}</span>
-                    <span v-if="majhiName !== 'â€”'" class="w-1 h-1 rounded-full bg-(--color-text-secondary)"></span>
-                    <span v-if="majhiName !== 'â€”'" class="text-sm text-(--color-text-secondary)">{{ majhiName
+                    <span v-if="majhiName !== '৳'" class="w-1 h-1 rounded-full bg-(--color-text-secondary)"></span>
+                    <span v-if="majhiName !== '৳'" class="text-sm text-(--color-text-secondary)">{{ majhiName
                         }}</span>
                 </div>
             </div>
@@ -45,7 +45,7 @@
                 <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Loading Bill</p>
                 <p class="text-lg font-bold text-(--color-blue) mt-1">{{ formatCurrency(loadingBillAmount) }}</p>
                 <p class="text-xs text-(--color-text-secondary) mt-0.5 capitalize">{{ deliveryItem.customer_charge_type
-                    }} Ã— {{ formatCurrency(deliveryItem.loading_rate) }}</p>
+                    }} ৳— {{ formatCurrency(deliveryItem.loading_rate) }}</p>
             </div>
             <div class="rounded-xl p-3 bg-(--color-surface) border border-(--color-border)">
                 <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Paid</p>
@@ -85,12 +85,12 @@
                 <div>
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Vehicle
                         Number</p>
-                    <p class="text-sm text-(--color-text-primary)">{{ deliveryItem.vehicle_number || 'â€”' }}</p>
+                    <p class="text-sm text-(--color-text-primary)">{{ deliveryItem.vehicle_number || '৳' }}</p>
                 </div>
                 <div>
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Driver
                         Number</p>
-                    <p class="text-sm text-(--color-text-primary)">{{ deliveryItem.driver_number || 'â€”' }}</p>
+                    <p class="text-sm text-(--color-text-primary)">{{ deliveryItem.driver_number || '৳' }}</p>
                 </div>
                 <div>
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Quantity</p>
@@ -242,10 +242,10 @@ const lot = computed(() => {
     return lotsStore.getLotById(props.deliveryItem.lot_id) || null
 })
 
-const lotNumber = computed(() => lot.value?.lot_number ?? 'â€”')
+const lotNumber = computed(() => lot.value?.lot_number ?? '৳')
 
 const lotDisplayName = computed(() => {
-    if (!lot.value) return 'â€”'
+    if (!lot.value) return '৳'
     return lotsStore.getLotDisplayName(lot.value)
 })
 
@@ -255,17 +255,17 @@ const store = computed(() => {
 })
 
 const godownName = computed(() => {
-    if (!store.value) return 'â€”'
+    if (!store.value) return '৳'
     return godownsStore.getGodownName(store.value.godown_id)
 })
 
 const customerName = computed(() => {
-    if (!lot.value?.customer_id) return 'â€”'
+    if (!lot.value?.customer_id) return '৳'
     return customersStore.getCustomerName(lot.value.customer_id)
 })
 
 const majhiName = computed(() => {
-    if (!props.deliveryItem?.majhi_id) return 'â€”'
+    if (!props.deliveryItem?.majhi_id) return '৳'
     return majhisStore.getMajhiName(props.deliveryItem.majhi_id)
 })
 

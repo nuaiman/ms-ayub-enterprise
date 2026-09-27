@@ -39,7 +39,7 @@
             <div class="rounded-xl p-3 bg-(--color-surface) border border-(--color-border)">
                 <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Stock on Hand</p>
                 <div class="mt-1">
-                    <p v-if="stockTotals.length === 0" class="text-lg font-bold text-(--color-text-primary)">â€”</p>
+                    <p v-if="stockTotals.length === 0" class="text-lg font-bold text-(--color-text-primary)">৳</p>
                     <p v-else v-for="(line, idx) in stockTotals" :key="idx"
                         class="text-lg font-bold text-(--color-text-primary) leading-tight">
                         {{ line }}
@@ -91,11 +91,11 @@
                 <div>
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Product Name
                     </p>
-                    <p class="text-sm text-(--color-text-primary)">{{ lot.product_name || 'â€”' }}</p>
+                    <p class="text-sm text-(--color-text-primary)">{{ lot.product_name || '৳' }}</p>
                 </div>
                 <div>
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Category</p>
-                    <p class="text-sm text-(--color-text-primary)">{{ lot.category || 'â€”' }}</p>
+                    <p class="text-sm text-(--color-text-primary)">{{ lot.category || '৳' }}</p>
                 </div>
                 <div>
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Customer
@@ -320,7 +320,7 @@
                             <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-(--color-text-secondary)">
                                 <span v-if="store.billing_start">Billing: <span class="text-(--color-text-primary)">{{
                                     formatDateShort(store.billing_start) }}</span></span>
-                                <span v-if="store.billing_end">â†’ <span class="text-(--color-text-primary)">{{
+                                <span v-if="store.billing_end">৳†’ <span class="text-(--color-text-primary)">{{
                                     formatDateShort(store.billing_end) }}</span></span>
                             </div>
                         </div>
@@ -355,7 +355,7 @@
                     <div class="flex items-start justify-between gap-3 flex-wrap">
                         <div>
                             <p class="text-sm font-semibold text-(--color-text-primary)">
-                                Delivery â€” {{ formatDate(di.created_at) }}
+                                Delivery ৳ {{ formatDate(di.created_at) }}
                             </p>
                             <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-(--color-text-secondary)">
                                 <span>Quantity: <span class="text-(--color-text-primary)">{{ di.quantity }} {{
@@ -484,17 +484,17 @@ const majhiLotBillsStore = useMajhiLotBillsStore()
 const majhiLoadingBillsStore = useMajhiLoadingBillsStore()
 
 const lotDisplayName = computed(() => {
-    if (!props.lot) return 'â€”'
+    if (!props.lot) return '৳'
     return lotsStore.getLotDisplayName(props.lot)
 })
 
 const customerName = computed(() => {
-    if (!props.lot?.customer_id) return 'â€”'
+    if (!props.lot?.customer_id) return '৳'
     return customersStore.getCustomerName(props.lot.customer_id)
 })
 
 const majhiName = computed(() => {
-    if (!props.lot?.majhi_id) return 'â€”'
+    if (!props.lot?.majhi_id) return '৳'
     return majhisStore.getMajhiName(props.lot.majhi_id)
 })
 
@@ -598,7 +598,7 @@ const billingSummary = computed(() => {
 const getGodownName = (id: number): string => godownsStore.getGodownName(id)
 
 const getMajhiName = (id: number | null): string => {
-    if (!id) return 'â€”'
+    if (!id) return '৳'
     return majhisStore.getMajhiName(id)
 }
 

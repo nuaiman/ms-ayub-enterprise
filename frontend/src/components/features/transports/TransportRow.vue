@@ -2,8 +2,8 @@
 <template>
     <div class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) transition-all duration-200 hover:bg-(--color-muted-bg)/30 cursor-pointer"
         @click="handleView">
-        <!-- Customer - 2 columns -->
-        <div class="col-span-2 min-w-0">
+        <!-- Customer - 3 columns -->
+        <div class="col-span-3 min-w-0">
             <div class="flex items-center gap-2.5">
                 <div class="shrink-0">
                     <div v-if="transport.image_url"
@@ -27,6 +27,13 @@
             </div>
         </div>
 
+        <!-- Transport Type - 2 columns -->
+        <div class="col-span-2 min-w-0">
+            <span class="text-sm text-(--color-text-secondary) truncate block capitalize">
+                {{ transport.transport_type || '৳' }}
+            </span>
+        </div>
+
         <!-- From - 2 columns -->
         <div class="col-span-2 min-w-0">
             <span class="text-sm text-(--color-text-secondary) truncate block">
@@ -37,32 +44,28 @@
         <!-- To - 2 columns -->
         <div class="col-span-2 min-w-0">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ transport.to_location || 'â€”' }}
+                {{ transport.to_location || '৳' }}
+            </span>
+            <span class="text-xs text-(--color-text-secondary)/70 truncate block mt-0.5">
+                {{ formatDate(transport.transport_date) }}
             </span>
         </div>
 
-        <!-- Vehicles - 1 column -->
+        <!-- Vehicle Count - 1 column -->
         <div class="col-span-1">
             <span class="text-sm text-(--color-text-secondary)">
                 {{ transport.vehicle_quantity }}
             </span>
         </div>
 
-        <!-- Date - 2 columns -->
-        <div class="col-span-2">
-            <span class="text-xs text-(--color-text-secondary)">
-                {{ formatDate(transport.transport_date) }}
-            </span>
-        </div>
-
-        <!-- Commission - 1 columns -->
+        <!-- Commission - 1 column -->
         <div class="col-span-1">
             <span class="text-sm font-semibold text-(--color-text-primary)">
                 {{ formatCurrency(transport.office_commission_amount) }}
             </span>
         </div>
 
-        <!-- Actions - 1 column, right aligned -->
+        <!-- Actions - 1 column -->
         <div class="col-span-1 flex items-center justify-end relative" @click.stop>
             <button @click="toggleMenu"
                 class="w-7 h-7 flex items-center justify-center border border-(--color-border) rounded-md hover:bg-(--color-muted-bg) transition-all duration-200">
@@ -79,7 +82,7 @@
                 leave-from-class="opacity-100 scale-100 translate-y-0"
                 leave-to-class="opacity-0 scale-95 translate-y-1">
                 <div v-if="isOpen"
-                    class="absolute right-0 top-9 w-48 bg-(--color-surface) border border-(--color-border) rounded-xl shadow-lg overflow-hidden z-50 py-1">
+                    class="absolute right-0 top-9 w-52 bg-(--color-surface) border border-(--color-border) rounded-xl shadow-lg overflow-hidden z-50 py-1">
                     <button @click="handleView"
                         class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-text-secondary) hover:bg-(--color-muted-bg) transition-colors">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -100,13 +103,13 @@
                         Edit
                     </button>
 
-                    <button @click="handleManageVehicles"
-                        class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-blue) hover:bg-(--color-muted-bg) transition-colors">
+                    <button @click="handleOpenDemarage" :disabled="transportVehicles.length === 0"
+                        class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-yellow) hover:bg-(--color-muted-bg) transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Manage Vehicles
+                        Add Demarage
                     </button>
 
                     <button @click="handleDelete"
@@ -122,15 +125,86 @@
 
             <div v-if="isOpen" class="fixed inset-0 z-40" @click="closeMenu"></div>
         </div>
+
+        <!-- Demarage Dialog -->
+        <BaseDialog v-model="demarageDialogOpen" max-width="sm">
+            <div class="space-y-4">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="w-10 h-10 rounded-full bg-(--color-yellow)/10 text-(--color-yellow) flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-(--color-text-primary)">Add Demarage</h2>
+                        <p class="text-xs text-(--color-text-secondary)">
+                            Transport #{{ transport.id }}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
+                            Vehicle <span class="text-(--color-red)">*</span>
+                        </label>
+                        <select v-model="demarageForm.vehicleId"
+                            class="w-full px-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent">
+                            <option :value="null">Select a vehicle</option>
+                            <option v-for="v in transportVehicles" :key="v.id" :value="v.id">
+                                {{ v.vehicle_number }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- Existing value notice -->
+                    <div v-if="selectedDemarageVehicle && selectedDemarageVehicle.demarage_cost > 0"
+                        class="p-3 rounded-lg bg-(--color-yellow)/10 border border-(--color-yellow)/20 text-xs text-(--color-yellow)">
+                        Existing demarage on {{ selectedDemarageVehicle.vehicle_number }}:
+                        {{ formatCurrency(selectedDemarageVehicle.demarage_cost) }}.
+                        Saving will overwrite it.
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
+                            Demarage Amount <span class="text-(--color-red)">*</span>
+                        </label>
+                        <div class="relative">
+                            <span
+                                class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-(--color-text-secondary)">৳</span>
+                            <input v-model.number="demarageForm.amount" type="number" step="0.01" min="0"
+                                placeholder="0.00" :disabled="!demarageForm.vehicleId"
+                                class="w-full pl-7 pr-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <template #actions>
+                <button @click="demarageDialogOpen = false"
+                    class="px-4 py-2 text-sm rounded-lg hover:bg-(--color-muted-bg) transition-colors">
+                    Cancel
+                </button>
+                <button @click="confirmDemarage" :disabled="!demarageForm.vehicleId || savingDemarage"
+                    class="px-4 py-2 text-sm font-semibold bg-(--color-yellow) text-white rounded-lg hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    {{ savingDemarage ? 'Saving...' : 'Save Demarage' }}
+                </button>
+            </template>
+        </BaseDialog>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { Transport } from '@/types/transport'
 import { useCustomersStore } from '@/stores/customers'
+import { useVehiclesStore } from '@/stores/vehicles'
 import { formatCurrency } from '@/utils/currency'
 import { getImageUrl } from '@/utils/image'
+import { push } from 'notivue'
+import BaseDialog from '@/components/ui/BaseDialog.vue'
 
 const props = defineProps<{
     transport: Transport
@@ -140,51 +214,90 @@ const emit = defineEmits<{
     'view': [transport: Transport]
     'edit': [transport: Transport]
     'delete': [transport: Transport]
-    'manage-vehicles': [transport: Transport]
     'updated': []
 }>()
 
 const customersStore = useCustomersStore()
+const vehiclesStore = useVehiclesStore()
 const isOpen = ref(false)
 
 const customerLabel = computed(() => {
-    if (!props.transport.customer_id) return 'â€”'
+    if (!props.transport.customer_id) return '৳'
     return customersStore.getCustomerName(props.transport.customer_id)
 })
+
+const transportVehicles = computed(() => vehiclesStore.getVehiclesByTransportId(props.transport.id))
 
 const formatDate = (dateStr: string): string => {
     return new Date(dateStr).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
-        year: 'numeric'
+        year: 'numeric',
     })
 }
 
-const toggleMenu = () => {
-    isOpen.value = !isOpen.value
-}
+const toggleMenu = () => { isOpen.value = !isOpen.value }
+const closeMenu = () => { isOpen.value = false }
+const handleView = () => { closeMenu(); emit('view', props.transport) }
+const handleEdit = () => { closeMenu(); emit('edit', props.transport) }
+const handleDelete = () => { closeMenu(); emit('delete', props.transport) }
 
-const closeMenu = () => {
-    isOpen.value = false
-}
+// ============= Demarage =============
 
-const handleView = () => {
+const demarageDialogOpen = ref(false)
+const savingDemarage = ref(false)
+const demarageForm = ref({
+    vehicleId: null as number | null,
+    amount: 0,
+})
+
+const selectedDemarageVehicle = computed(() => {
+    if (!demarageForm.value.vehicleId) return null
+    return transportVehicles.value.find(v => v.id === demarageForm.value.vehicleId) || null
+})
+
+const handleOpenDemarage = () => {
     closeMenu()
-    emit('view', props.transport)
+    demarageForm.value = {
+        vehicleId: null,
+        amount: 0,
+    }
+    demarageDialogOpen.value = true
 }
 
-const handleEdit = () => {
-    closeMenu()
-    emit('edit', props.transport)
-}
+watch(() => demarageForm.value.vehicleId, (newId) => {
+    if (!newId) {
+        demarageForm.value.amount = 0
+        return
+    }
+    const v = transportVehicles.value.find(x => x.id === newId)
+    if (v) {
+        demarageForm.value.amount = v.demarage_cost || 0
+    }
+})
 
-const handleManageVehicles = () => {
-    closeMenu()
-    emit('manage-vehicles', props.transport)
-}
+const confirmDemarage = async () => {
+    if (!demarageForm.value.vehicleId) {
+        push.error('Please select a vehicle')
+        return
+    }
+    if (demarageForm.value.amount < 0) {
+        push.error('Demarage amount cannot be negative')
+        return
+    }
 
-const handleDelete = () => {
-    closeMenu()
-    emit('delete', props.transport)
+    savingDemarage.value = true
+    try {
+        const result = await vehiclesStore.updateVehicle(demarageForm.value.vehicleId, {
+            demarage_cost: demarageForm.value.amount,
+        })
+
+        if (result) {
+            demarageDialogOpen.value = false
+            emit('updated')
+        }
+    } finally {
+        savingDemarage.value = false
+    }
 }
 </script>

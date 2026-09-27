@@ -1,32 +1,11 @@
-import { ref, computed, watch } from "vue";
+// src/stores/settings.ts
 import { defineStore } from "pinia";
 import api from "@/utils/axios";
-import type { Theme } from "@/types/settings";
 import { push } from "notivue";
 import { useGlobalLoader } from "vue-global-loader";
 
 export const useSettingsStore = defineStore('settings', () => {
     const { displayLoader, destroyLoader } = useGlobalLoader();
-
-    // STATE
-    const theme = ref<Theme>((localStorage.getItem('theme') as Theme) || 'light');
-
-    // COMPUTED
-    const isDark = computed(() => theme.value === 'dark');
-    const themeLabel = computed(() =>
-        theme.value === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'
-    );
-
-    // ACTIONS
-    const applyTheme = (value: Theme) => {
-        theme.value = value;
-        document.documentElement.setAttribute('data-theme', value);
-        localStorage.setItem('theme', value);
-    };
-
-    const toggleTheme = () => {
-        applyTheme(theme.value === 'dark' ? 'light' : 'dark');
-    };
 
     const downloadBackup = async (): Promise<boolean> => {
         displayLoader();
@@ -64,18 +43,7 @@ export const useSettingsStore = defineStore('settings', () => {
         }
     };
 
-    // WATCH
-    watch(theme, (newTheme) => {
-        document.documentElement.setAttribute('data-theme', newTheme);
-        localStorage.setItem('theme', newTheme);
-    }, { immediate: true });
-
     return {
-        theme,
-        isDark,
-        themeLabel,
-        applyTheme,
-        toggleTheme,
         downloadBackup,
     };
 });

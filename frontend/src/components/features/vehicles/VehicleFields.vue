@@ -1,7 +1,7 @@
 <!-- src/components/features/vehicles/VehicleFields.vue -->
 <template>
     <div class="space-y-4">
-        <!-- Transport (only shown when standalone is true - VehicleForm) -->
+        <!-- Transport (only when standalone=true) -->
         <div v-if="standalone">
             <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
                 Transport <span v-if="required" class="text-(--color-red)">*</span>
@@ -37,7 +37,7 @@
         <!-- Broker -->
         <div>
             <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
-                Broker
+                Broker <span v-if="required" class="text-(--color-red)">*</span>
             </label>
             <select :value="brokerId"
                 @change="$emit('update:brokerId', parseInt(($event.target as HTMLSelectElement).value) || null)"
@@ -50,30 +50,8 @@
             </select>
         </div>
 
-        <!-- Driver Info -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
-                    Driver Name
-                </label>
-                <input :value="driverName"
-                    @input="$emit('update:driverName', ($event.target as HTMLInputElement).value)" type="text"
-                    placeholder="Enter driver name" :disabled="disabled"
-                    class="w-full px-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed" />
-            </div>
-            <div>
-                <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
-                    Driver Phone
-                </label>
-                <input :value="driverPhone"
-                    @input="$emit('update:driverPhone', ($event.target as HTMLInputElement).value)" type="tel"
-                    placeholder="Enter driver phone" :disabled="disabled"
-                    class="w-full px-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed" />
-            </div>
-        </div>
-
         <!-- Costs - Row 1 -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
                     Joma Cost
@@ -101,23 +79,9 @@
                         class="w-full pl-7 pr-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed" />
                 </div>
             </div>
-
-            <div>
-                <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
-                    Customer Charge
-                </label>
-                <div class="relative">
-                    <span
-                        class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-(--color-text-secondary)">৳</span>
-                    <input :value="customerCharge"
-                        @input="$emit('update:customerCharge', parseFloat(($event.target as HTMLInputElement).value) || 0)"
-                        type="number" step="0.01" min="0" placeholder="0.00" :disabled="disabled"
-                        class="w-full pl-7 pr-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed" />
-                </div>
-            </div>
         </div>
 
-        <!-- Costs - Row 2 (Expense Costs) -->
+        <!-- Expense Costs -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
                 <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
@@ -151,13 +115,13 @@
 
             <div>
                 <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
-                    Demarage Amount <span class="text-xs font-normal text-(--color-text-secondary)">(expense)</span>
+                    Demarage Cost <span class="text-xs font-normal text-(--color-text-secondary)">(expense)</span>
                 </label>
                 <div class="relative">
                     <span
                         class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-(--color-text-secondary)">৳</span>
-                    <input :value="demarageAmount"
-                        @input="$emit('update:demarageAmount', parseFloat(($event.target as HTMLInputElement).value) || 0)"
+                    <input :value="demarageCost"
+                        @input="$emit('update:demarageCost', parseFloat(($event.target as HTMLInputElement).value) || 0)"
                         type="number" step="0.01" min="0" placeholder="0.00" :disabled="disabled"
                         class="w-full pl-7 pr-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed" />
                 </div>
@@ -165,15 +129,14 @@
             </div>
         </div>
 
-        <!-- Demarage Reason -->
+        <!-- Notes -->
         <div>
             <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
-                Demarage Reason
+                Notes
             </label>
-            <input :value="demarageReason"
-                @input="$emit('update:demarageReason', ($event.target as HTMLInputElement).value)" type="text"
-                placeholder="Enter demarage reason" :disabled="disabled"
-                class="w-full px-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed" />
+            <textarea :value="notes" @input="$emit('update:notes', ($event.target as HTMLTextAreaElement).value)"
+                rows="2" placeholder="Enter any notes about this vehicle" :disabled="disabled"
+                class="w-full px-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent resize-none disabled:opacity-50 disabled:cursor-not-allowed"></textarea>
         </div>
     </div>
 </template>
@@ -182,20 +145,16 @@
 import type { Transport } from '@/types/transport'
 import type { Broker } from '@/types/broker'
 
-// Props
 defineProps<{
-    transportId: number | null
+    transportId?: number | null
     vehicleNumber: string
-    brokerId: number | null
-    driverName: string
-    driverPhone: string
+    brokerId?: number | null
     jomaCost: number
     vehicleCost: number
-    customerCharge: number
     otherCost: number
     labourCost: number
-    demarageAmount: number
-    demarageReason: string
+    demarageCost: number
+    notes?: string
     transportOptions?: Transport[]
     brokerOptions?: Broker[]
     disabled?: boolean
@@ -204,25 +163,20 @@ defineProps<{
     canEditTransport?: boolean
 }>()
 
-// Emits
 defineEmits<{
     (e: 'update:transportId', value: number | null): void
     (e: 'update:vehicleNumber', value: string): void
     (e: 'update:brokerId', value: number | null): void
-    (e: 'update:driverName', value: string): void
-    (e: 'update:driverPhone', value: string): void
     (e: 'update:jomaCost', value: number): void
     (e: 'update:vehicleCost', value: number): void
-    (e: 'update:customerCharge', value: number): void
     (e: 'update:otherCost', value: number): void
     (e: 'update:labourCost', value: number): void
-    (e: 'update:demarageAmount', value: number): void
-    (e: 'update:demarageReason', value: string): void
+    (e: 'update:demarageCost', value: number): void
+    (e: 'update:notes', value: string): void
 }>()
 
-// Helper
 const getTransportDisplayName = (transport: Transport): string => {
-    const fromTo = `${transport.from_location}${transport.to_location ? ` → ${transport.to_location}` : ''}`
+    const fromTo = `${transport.from_location}${transport.to_location ? ` ৳ ${transport.to_location}` : ''}`
     return `${fromTo} (${transport.vehicle_quantity} vehicles)`
 }
 </script>

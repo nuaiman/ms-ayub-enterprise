@@ -22,7 +22,7 @@
                         }}</span>
                     <span v-if="delivery.from_location" class="w-1 h-1 rounded-full bg-(--color-text-secondary)"></span>
                     <span v-if="delivery.from_location" class="text-sm text-(--color-text-secondary)">{{
-                        delivery.from_location }}{{ delivery.to_location ? ` â†’ ${delivery.to_location}` : '' }}</span>
+                        delivery.from_location }}{{ delivery.to_location ? `৳’ ${delivery.to_location}` : '' }}</span>
                 </div>
             </div>
         </div>
@@ -36,7 +36,7 @@
             <div class="rounded-xl p-3 bg-(--color-surface) border border-(--color-border)">
                 <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Total Quantity</p>
                 <div class="mt-1">
-                    <p v-if="totalQuantityByUnit.length === 0" class="text-lg font-bold text-(--color-text-primary)">â€”
+                    <p v-if="totalQuantityByUnit.length === 0" class="text-lg font-bold text-(--color-text-primary)">৳
                     </p>
                     <p v-else v-for="(line, idx) in totalQuantityByUnit" :key="idx"
                         class="text-lg font-bold text-(--color-text-primary) leading-tight">
@@ -47,7 +47,7 @@
             <div class="rounded-xl p-3 bg-(--color-surface) border border-(--color-border)">
                 <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Total Weight</p>
                 <div class="mt-1">
-                    <p v-if="totalWeightByUnit.length === 0" class="text-lg font-bold text-(--color-text-primary)">â€”
+                    <p v-if="totalWeightByUnit.length === 0" class="text-lg font-bold text-(--color-text-primary)">৳
                     </p>
                     <p v-else v-for="(line, idx) in totalWeightByUnit" :key="idx"
                         class="text-lg font-bold text-(--color-text-primary) leading-tight">
@@ -58,7 +58,7 @@
             <div class="rounded-xl p-3 bg-(--color-surface) border border-(--color-border)">
                 <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Receiver</p>
                 <p class="text-sm font-semibold text-(--color-text-primary) mt-1 truncate">
-                    {{ delivery.receiver_name || 'â€”' }}
+                    {{ delivery.receiver_name || '৳' }}
                 </p>
                 <p v-if="delivery.receiver_phone" class="text-xs text-(--color-text-secondary) mt-0.5 truncate">
                     {{ delivery.receiver_phone }}
@@ -84,20 +84,20 @@
                 </div>
                 <div>
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">From</p>
-                    <p class="text-sm text-(--color-text-primary)">{{ delivery.from_location || 'â€”' }}</p>
+                    <p class="text-sm text-(--color-text-primary)">{{ delivery.from_location || '৳' }}</p>
                 </div>
                 <div>
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">To</p>
-                    <p class="text-sm text-(--color-text-primary)">{{ delivery.to_location || 'â€”' }}</p>
+                    <p class="text-sm text-(--color-text-primary)">{{ delivery.to_location || '৳' }}</p>
                 </div>
                 <div>
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Receiver</p>
-                    <p class="text-sm text-(--color-text-primary)">{{ delivery.receiver_name || 'â€”' }}</p>
+                    <p class="text-sm text-(--color-text-primary)">{{ delivery.receiver_name || '৳' }}</p>
                 </div>
                 <div>
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Receiver
                         Phone</p>
-                    <p class="text-sm text-(--color-text-primary)">{{ delivery.receiver_phone || 'â€”' }}</p>
+                    <p class="text-sm text-(--color-text-primary)">{{ delivery.receiver_phone || '৳' }}</p>
                 </div>
                 <div>
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Recorded By
@@ -224,12 +224,12 @@ const lotsStore = useLotsStore()
 const majhisStore = useMajhisStore()
 
 const customerName = computed(() => {
-    if (!props.delivery?.customer_id) return 'â€”'
+    if (!props.delivery?.customer_id) return '৳'
     return customersStore.getCustomerName(props.delivery.customer_id)
 })
 
 const recordedBy = computed(() => {
-    if (!props.delivery) return 'â€”'
+    if (!props.delivery) return '৳'
     return usersStore.getUserName(props.delivery.user_id)
 })
 
@@ -269,10 +269,10 @@ const totalWeightByUnit = computed<string[]>(() => {
 const getLotName = (id: number): string => lotsStore.getLotName(id)
 const getLotNumber = (lotId: number): number | string => {
     const lot = lotsStore.getLotById(lotId)
-    return lot ? lot.lot_number : 'â€”'
+    return lot ? lot.lot_number : '৳'
 }
 const getMajhiName = (id: number | null): string => {
-    if (!id) return 'â€”'
+    if (!id) return '৳'
     return majhisStore.getMajhiName(id)
 }
 

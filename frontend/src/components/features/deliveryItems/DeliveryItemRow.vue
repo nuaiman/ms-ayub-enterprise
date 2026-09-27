@@ -132,15 +132,15 @@ const majhisStore = useMajhisStore()
 const isOpen = ref(false)
 
 const lot = computed(() => lotsStore.getLotById(props.deliveryItem.lot_id))
-const lotNumber = computed(() => lot.value?.lot_number ?? 'â€”')
+const lotNumber = computed(() => lot.value?.lot_number ?? '৳')
 
 const lotDisplayName = computed(() => {
-    if (!lot.value) return 'â€”'
+    if (!lot.value) return '৳'
     return lotsStore.getLotDisplayName(lot.value)
 })
 
 const customerName = computed(() => {
-    if (!lot.value?.customer_id) return 'â€”'
+    if (!lot.value?.customer_id) return '৳'
     return customersStore.getCustomerName(lot.value.customer_id)
 })
 
@@ -151,7 +151,7 @@ const customerPhone = computed(() => {
 })
 
 const majhiName = computed(() => {
-    if (!props.deliveryItem.majhi_id) return 'â€”'
+    if (!props.deliveryItem.majhi_id) return '৳'
     return majhisStore.getMajhiName(props.deliveryItem.majhi_id)
 })
 

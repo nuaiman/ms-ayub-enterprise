@@ -6,16 +6,15 @@
             class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl bg-(--color-muted-bg)/30 border border-(--color-border) gap-3">
             <div>
                 <p class="text-sm font-medium text-(--color-text-primary)">
-                    Customer: <span class="font-semibold">{{ customerName }}</span>
+                    {{ partyTypeLabel(party) }}: <span class="font-semibold">{{ partyName }}</span>
                 </p>
                 <p class="text-xs text-(--color-text-secondary) mt-0.5">
-                    Select unpaid or partially paid bills (max 12 items)
+                    Select unpaid or partially paid bills
                 </p>
             </div>
             <div class="flex items-center gap-4">
-                <span class="text-sm font-medium"
-                    :class="selectedCount > 12 ? 'text-(--color-red)' : 'text-(--color-blue)'">
-                    {{ selectedCount }}/12 selected
+                <span class="text-sm font-medium text-(--color-blue)">
+                    {{ selectedCount }} selected
                 </span>
                 <button @click="toggleAll"
                     class="text-xs font-medium text-(--color-blue) hover:text-(--color-blue)/70 transition-colors"
@@ -23,16 +22,6 @@
                     {{ allSelected ? 'Deselect All' : 'Select All' }}
                 </button>
             </div>
-        </div>
-
-        <!-- Warning when at limit -->
-        <div v-if="selectedCount >= 12"
-            class="p-3 rounded-xl bg-(--color-yellow)/10 border border-(--color-yellow)/20 text-(--color-yellow) text-sm flex items-center gap-2">
-            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <span>Maximum 12 items per invoice. Unselect some items to add more.</span>
         </div>
 
         <!-- No Items -->
@@ -46,15 +35,14 @@
             </div>
             <p class="text-sm font-medium text-(--color-text-primary) mt-4">No outstanding bills</p>
             <p class="text-xs text-(--color-text-secondary) mt-1">
-                This customer has no unpaid or partially paid {{ isGodown ? 'storage, lot, or delivery' : 'transport' }}
-                bills
+                This {{ partyTypeLabel(party).toLowerCase() }} has no unpaid or partially paid bills
             </p>
             <button @click="emit('back')"
                 class="mt-4 text-sm text-(--color-blue) hover:underline inline-flex items-center gap-1">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
-                Go back to customer selection
+                Go back to party selection
             </button>
         </div>
 
@@ -62,11 +50,9 @@
         <div v-else class="space-y-4 max-h-125 overflow-y-auto pr-1">
             <div v-for="(group, groupName) in groupedItems" :key="groupName"
                 class="rounded-xl border border-(--color-border) bg-(--color-surface) overflow-hidden">
-                <!-- Group Header -->
                 <div
                     class="flex items-center justify-between p-4 bg-(--color-muted-bg)/20 border-b border-(--color-border)">
                     <div class="flex items-center gap-3">
-                        <!-- Group checkbox - convenience to select/deselect all -->
                         <input type="checkbox" :checked="group.allSelected"
                             @change="toggleGroup(groupName as string, $event)"
                             class="w-4 h-4 rounded border-(--color-border) text-(--color-blue) focus:ring-2 focus:ring-(--color-blue)/20 focus:ring-offset-0 transition-all duration-200" />
@@ -82,20 +68,15 @@
                     </span>
                 </div>
 
-                <!-- Individual Items -->
                 <div class="divide-y divide-(--color-border)">
                     <div v-for="item in group.items" :key="`${item.source_type}_${item.id}`"
                         class="flex items-start gap-3 p-4 hover:bg-(--color-muted-bg)/20 transition-colors cursor-pointer group/item"
-                        :class="{ 'opacity-50 cursor-not-allowed': !item.selected && selectedCount >= 12 }"
                         @click="handleItemClick(item, $event)">
-                        <!-- Individual checkbox - clicking this ONLY toggles the checkbox -->
                         <div @click.stop>
                             <input type="checkbox" :checked="item.selected" @change="toggleItem(item)"
-                                :disabled="!item.selected && selectedCount >= 12"
-                                class="mt-1 w-4 h-4 rounded border-(--color-border) text-(--color-blue) focus:ring-2 focus:ring-(--color-blue)/20 focus:ring-offset-0 transition-all duration-200 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed" />
+                                class="mt-1 w-4 h-4 rounded border-(--color-border) text-(--color-blue) focus:ring-2 focus:ring-(--color-blue)/20 focus:ring-offset-0 transition-all duration-200 shrink-0" />
                         </div>
 
-                        <!-- Item Details - clicking this also toggles the item -->
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-3">
                                 <span class="text-sm font-medium text-(--color-text-primary)">{{ item.item }}</span>
@@ -119,12 +100,11 @@
                                 </span>
                                 <span>
                                     Due: <span class="font-medium text-(--color-red)">৳ {{ formatAmount(item.amount)
-                                    }}</span>
+                                        }}</span>
                                 </span>
                             </div>
                         </div>
 
-                        <!-- Amount -->
                         <div class="text-right shrink-0">
                             <p class="text-sm font-semibold text-(--color-red)">৳ {{ formatAmount(item.amount) }}</p>
                         </div>
@@ -138,18 +118,13 @@
             class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl border border-(--color-border) bg-(--color-muted-bg)/20">
             <div>
                 <p class="text-sm font-medium text-(--color-text-primary)">
-                    {{ selectedCount }} of 12 items selected
+                    {{ selectedCount }} items selected
                 </p>
                 <div class="flex flex-wrap items-center gap-4 text-sm mt-1">
                     <span>Total Due: <span class="font-semibold text-(--color-red)">৳ {{ formatAmount(selectedTotal)
-                    }}</span></span>
+                            }}</span></span>
                     <span>Already Paid: <span class="font-semibold text-(--color-green)">৳ {{
                         formatAmount(selectedPaid) }}</span></span>
-                </div>
-                <div class="w-full mt-2 h-1.5 rounded-full bg-(--color-muted-bg) overflow-hidden">
-                    <div class="h-full rounded-full transition-all duration-300"
-                        :class="selectedCount > 12 ? 'bg-(--color-red)' : 'bg-(--color-blue)'"
-                        :style="{ width: `${Math.min((selectedCount / 12) * 100, 100)}%` }"></div>
                 </div>
             </div>
             <div class="flex items-center gap-3 w-full sm:w-auto">
@@ -157,7 +132,7 @@
                     class="flex-1 sm:flex-none px-5 py-2.5 text-sm font-medium rounded-xl border border-(--color-border) hover:bg-(--color-muted-bg) transition-all duration-200">
                     Back
                 </button>
-                <button @click="handleNext" :disabled="selectedCount === 0 || selectedCount > 12"
+                <button @click="handleNext" :disabled="selectedCount === 0"
                     class="flex-1 sm:flex-none px-6 py-2.5 bg-(--color-blue) text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center gap-2">
                     Review Invoice
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -172,13 +147,14 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useInvoiceStore } from '@/stores/invoices'
-import { useCustomersStore } from '@/stores/customers'
-import type { AvailableItem, InvoiceType } from '@/types/invoice'
+import type { AvailableItem, InvoiceParty } from '@/types/invoice'
+import { partyTypeLabel } from '@/types/invoice'
 import { push } from 'notivue'
 
 const props = defineProps<{
-    type: InvoiceType
-    customerId: number | null
+    party: InvoiceParty
+    partyId: number | null
+    partyName: string
     selectedItems: AvailableItem[]
 }>()
 
@@ -188,44 +164,16 @@ const emit = defineEmits<{
     'back': []
 }>()
 
-const MAX_ITEMS = 12
 const invoiceStore = useInvoiceStore()
-const customersStore = useCustomersStore()
-
-// Local copy of available items with selection state
 const availableItems = ref<AvailableItem[]>([])
 
-const isGodown = computed(() => props.type === 'godown')
-
-const customerName = computed(() => {
-    if (!props.customerId) return 'Unknown'
-    const customer = customersStore.getCustomerById(props.customerId)
-    return customer?.company_name || customer?.contact_person || `Customer #${props.customerId}`
-})
-
-const selectedCount = computed(() => {
-    return availableItems.value.filter(item => item.selected).length
-})
-
-const selectedTotal = computed(() => {
-    return availableItems.value
-        .filter(item => item.selected)
-        .reduce((sum, item) => sum + item.amount, 0)
-})
-
-const selectedPaid = computed(() => {
-    return availableItems.value
-        .filter(item => item.selected)
-        .reduce((sum, item) => sum + item.paid_amount, 0)
-})
-
-const allSelected = computed(() => {
-    return availableItems.value.length > 0 && availableItems.value.every(item => item.selected)
-})
+const selectedCount = computed(() => availableItems.value.filter(i => i.selected).length)
+const selectedTotal = computed(() => availableItems.value.filter(i => i.selected).reduce((s, i) => s + i.amount, 0))
+const selectedPaid = computed(() => availableItems.value.filter(i => i.selected).reduce((s, i) => s + i.paid_amount, 0))
+const allSelected = computed(() => availableItems.value.length > 0 && availableItems.value.every(i => i.selected))
 
 const groupedItems = computed(() => {
     const groups: Record<string, { items: AvailableItem[], allSelected: boolean, selectedCount: number }> = {}
-
     for (const item of availableItems.value) {
         let group = groups[item.source_type]
         if (!group) {
@@ -234,15 +182,13 @@ const groupedItems = computed(() => {
         }
         group.items.push(item)
     }
-
     for (const key of Object.keys(groups)) {
-        const group = groups[key]
-        if (group) {
-            group.allSelected = group.items.every(item => item.selected)
-            group.selectedCount = group.items.filter(item => item.selected).length
+        const g = groups[key]
+        if (g) {
+            g.allSelected = g.items.every(i => i.selected)
+            g.selectedCount = g.items.filter(i => i.selected).length
         }
     }
-
     return groups
 })
 
@@ -252,13 +198,16 @@ const groupLabel = (key: string): string => {
         lot_bill: 'Lot Unload Bills',
         delivery_bill: 'Delivery Bills',
         transport_bill: 'Transport Bills',
+        additional_charge: 'Additional Charges',
+        broker_vehicle_bill: 'Broker Vehicle Bills',
+        godown_store_bill: 'Godown Store Bills',
+        majhi_lot_bill: 'Majhi Lot Bills',
+        majhi_loading_bill: 'Majhi Loading Bills',
     }
     return labels[key] || key
 }
 
-const formatAmount = (value: number): string => {
-    return value.toFixed(2)
-}
+const formatAmount = (v: number): string => v.toFixed(2)
 
 const getStatusClass = (item: AvailableItem): string => {
     if (item.status === 'paid') return 'bg-(--color-green)/10 text-(--color-green)'
@@ -272,88 +221,28 @@ const getStatusLabel = (item: AvailableItem): string => {
     return 'Unpaid'
 }
 
-// ============================================================
-// FIX: Handle both row click AND checkbox click with proper type checking
-// ============================================================
 const handleItemClick = (item: AvailableItem, event: MouseEvent) => {
-    // Get the target element
     const target = event.target as HTMLElement
-
-    // Check if the click was on a checkbox input
-    if (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'checkbox') {
-        // Checkbox click - let the @change handler handle it
-        return
-    }
-    // Row click - toggle the item
+    if (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'checkbox') return
     toggleItem(item)
 }
 
-// Toggle individual item
 const toggleItem = (item: AvailableItem) => {
-    // If trying to select and already at max, prevent it
-    if (!item.selected && selectedCount.value >= MAX_ITEMS) {
-        push.warning(`Maximum ${MAX_ITEMS} items allowed per invoice`)
-        return
-    }
-
-    // Toggle ONLY this item
     item.selected = !item.selected
-
-    // Emit the updated items list to parent
     emit('update:selectedItems', availableItems.value)
 }
 
-// Toggle all items in a group
 const toggleGroup = (groupName: string, event: Event) => {
     const checked = (event.target as HTMLInputElement).checked
     const group = groupedItems.value[groupName]
     if (!group) return
-
-    const unselectedItems = group.items.filter(item => !item.selected)
-    const itemsToSelect = checked ? unselectedItems.length : 0
-    const currentSelected = selectedCount.value
-
-    if (checked && currentSelected + itemsToSelect > MAX_ITEMS) {
-        const availableSlots = MAX_ITEMS - currentSelected
-        let selected = 0
-        for (const item of group.items) {
-            if (selected < availableSlots && !item.selected) {
-                item.selected = true
-                selected++
-            }
-        }
-        if (selected < itemsToSelect) {
-            push.warning(`Only ${selected} of ${itemsToSelect} items selected (max ${MAX_ITEMS})`)
-        }
-    } else {
-        for (const item of group.items) {
-            item.selected = checked
-        }
-    }
-
+    for (const item of group.items) item.selected = checked
     emit('update:selectedItems', availableItems.value)
 }
 
-// Toggle all items
 const toggleAll = () => {
     const newState = !allSelected.value
-
-    if (newState && availableItems.value.length > MAX_ITEMS) {
-        let count = 0
-        for (const item of availableItems.value) {
-            if (count < MAX_ITEMS) {
-                item.selected = true
-                count++
-            } else {
-                item.selected = false
-            }
-        }
-        push.warning(`Selected ${count} of ${availableItems.value.length} items (max ${MAX_ITEMS})`)
-    } else {
-        for (const item of availableItems.value) {
-            item.selected = newState
-        }
-    }
+    for (const item of availableItems.value) item.selected = newState
     emit('update:selectedItems', availableItems.value)
 }
 
@@ -362,36 +251,23 @@ const handleNext = () => {
         push.error('Please select at least one item')
         return
     }
-    if (selectedCount.value > MAX_ITEMS) {
-        push.error(`Maximum ${MAX_ITEMS} items allowed`)
-        return
-    }
     emit('next')
 }
 
-// Load available items when customer changes
-watch(() => props.customerId, (customerId) => {
-    if (customerId) {
-        availableItems.value = invoiceStore.getAvailableItemsForCustomer(customerId, props.type)
-        for (const item of availableItems.value) {
-            item.selected = false
-        }
+watch(() => [props.party, props.partyId], () => {
+    if (props.partyId) {
+        availableItems.value = invoiceStore.getAvailableItemsForParty(props.party, props.partyId)
+        for (const item of availableItems.value) item.selected = false
     } else {
         availableItems.value = []
     }
 }, { immediate: true })
 
-// Sync with parent selectedItems
 watch(() => props.selectedItems, (newItems) => {
     if (newItems.length > 0 && availableItems.value.length > 0) {
-        for (const localItem of availableItems.value) {
-            const match = newItems.find(item =>
-                item.source_type === localItem.source_type &&
-                item.id === localItem.id
-            )
-            if (match) {
-                localItem.selected = match.selected
-            }
+        for (const local of availableItems.value) {
+            const match = newItems.find(i => i.source_type === local.source_type && i.id === local.id)
+            if (match) local.selected = match.selected
         }
     }
 }, { deep: true })

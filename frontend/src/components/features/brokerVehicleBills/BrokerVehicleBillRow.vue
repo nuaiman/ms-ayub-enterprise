@@ -2,11 +2,14 @@
 <template>
     <div class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) transition-all duration-200 hover:bg-(--color-muted-bg)/30 cursor-pointer"
         @click="handleView">
-        <!-- Vehicle - 3 columns -->
+        <!-- Transport # - 3 columns -->
         <div class="col-span-3 min-w-0">
             <div class="font-medium text-(--color-text-primary) truncate text-sm">
-                {{ bill.vehicle_number }}
+                #{{ bill.transport_id }}
             </div>
+            <span class="text-xs text-(--color-text-secondary) truncate block">
+                {{ bill.vehicle_number }}
+            </span>
         </div>
 
         <!-- Broker - 3 columns -->
@@ -16,10 +19,10 @@
             </span>
         </div>
 
-        <!-- Transport - 1 column -->
+        <!-- Joma Total - 1 column -->
         <div class="col-span-1">
-            <span class="text-sm text-(--color-text-secondary)">
-                #{{ bill.transport_id }}
+            <span class="text-xs text-(--color-text-secondary) truncate block">
+                {{ formatCurrency(bill.joma_cost) }}
             </span>
         </div>
 
@@ -42,7 +45,7 @@
             </span>
         </div>
 
-        <!-- Actions - 1 column, right aligned -->
+        <!-- Actions - 1 column -->
         <div class="col-span-1 flex items-center justify-end relative" @click.stop>
             <button @click="toggleMenu"
                 class="w-7 h-7 flex items-center justify-center border border-(--color-border) rounded-md hover:bg-(--color-muted-bg) transition-all duration-200">

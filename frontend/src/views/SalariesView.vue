@@ -2,8 +2,6 @@
 <template>
     <AppLayout>
         <div class="space-y-6">
-
-
             <!-- Stats -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div class="rounded-xl p-4 bg-(--color-surface) border border-(--color-border)">
@@ -22,7 +20,7 @@
                 <div class="rounded-xl p-4 bg-(--color-surface) border border-(--color-border)">
                     <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Cancelled</p>
                     <p class="text-2xl font-bold text-(--color-red) mt-1">{{ salariesStore.statusCounts.cancelled || 0
-                    }}</p>
+                        }}</p>
                 </div>
             </div>
 
@@ -35,28 +33,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useAuthStore } from '@/stores/auth'
+import { onMounted } from 'vue'
 import { useSalariesStore } from '@/stores/salaries'
 import AppLayout from '@/components/layouts/AppLayout.vue'
 import SalaryList from '@/components/features/salaries/SalaryList.vue'
-import SalaryForm from '@/components/features/salaries/SalaryForm.vue'
-import BaseDialog from '@/components/ui/BaseDialog.vue'
 
-const auth = useAuthStore()
 const salariesStore = useSalariesStore()
-
-const showCreateDialog = ref(false)
-
-const canManageSalaries = computed(() => {
-    const role = auth.user?.role
-    return role === 'admin' || role === 'manager'
-})
-
-const handleSalaryCreated = async () => {
-    showCreateDialog.value = false
-    await salariesStore.fetchSalaries()
-}
 
 onMounted(async () => {
     await salariesStore.fetchSalaries()

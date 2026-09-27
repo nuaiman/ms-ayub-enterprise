@@ -177,7 +177,7 @@ const isOpen = ref(false)
 const lotDisplayName = computed(() => lotsStore.getLotDisplayName(props.lot))
 
 const customerName = computed(() => {
-    if (!props.lot.customer_id) return 'â€”'
+    if (!props.lot.customer_id) return '৳'
     return customersStore.getCustomerName(props.lot.customer_id)
 })
 
@@ -188,7 +188,7 @@ const customerPhone = computed(() => {
 })
 
 const majhiName = computed(() => {
-    if (!props.lot.majhi_id) return 'â€”'
+    if (!props.lot.majhi_id) return '৳'
     return majhisStore.getMajhiName(props.lot.majhi_id)
 })
 

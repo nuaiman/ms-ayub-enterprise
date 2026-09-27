@@ -65,12 +65,12 @@
                 <!-- Header Row -->
                 <div
                     class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wider bg-(--color-muted-bg)/30 rounded-t-lg">
-                    <!-- Vehicle - 3 columns -->
+                    <!-- Transport - 3 columns -->
                     <div class="col-span-3 cursor-pointer hover:text-(--color-text-primary) transition-colors"
-                        @click="toggleSort('vehicle_number')">
+                        @click="toggleSort('transport_id')">
                         <span class="flex items-center gap-1">
-                            Vehicle
-                            <svg v-if="sortField === 'vehicle_number'" class="w-3 h-3"
+                            Transport
+                            <svg v-if="sortField === 'transport_id'" class="w-3 h-3"
                                 :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
                                 viewBox="0 0 24 24">
                                 <path d="M7 10l5 5 5-5z" />
@@ -91,17 +91,9 @@
                         </span>
                     </div>
 
-                    <!-- Transport - 1 column -->
-                    <div class="col-span-1 cursor-pointer hover:text-(--color-text-primary) transition-colors"
-                        @click="toggleSort('transport_id')">
-                        <span class="flex items-center gap-1">
-                            Trp.
-                            <svg v-if="sortField === 'transport_id'" class="w-3 h-3"
-                                :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
-                                viewBox="0 0 24 24">
-                                <path d="M7 10l5 5 5-5z" />
-                            </svg>
-                        </span>
+                    <!-- Joma - 1 column -->
+                    <div class="col-span-1">
+                        Joma
                     </div>
 
                     <!-- Amount - 3 columns -->
@@ -163,7 +155,7 @@
                         <p class="text-xs text-(--color-text-secondary)">
                             {{ searchQuery
                                 ? 'Try adjusting your search'
-                                : 'Vehicles with joma_cost or vehicle_cost > 0 will appear here'
+                                : 'Transports with joma_cost or vehicle_cost > 0 will appear here'
                             }}
                         </p>
                     </div>
@@ -207,7 +199,8 @@
                     </div>
                     <div>
                         <h2 class="text-lg font-bold text-(--color-text-primary)">Record Payment</h2>
-                        <p class="text-xs text-(--color-text-secondary)">For {{ selectedBill?.vehicle_number }}</p>
+                        <p class="text-xs text-(--color-text-secondary)">For Transport #{{ selectedBill?.transport_id }}
+                        </p>
                     </div>
                 </div>
 
@@ -288,7 +281,8 @@
                     </div>
                     <div>
                         <h2 class="text-lg font-bold text-(--color-text-primary)">Cancel Bill</h2>
-                        <p class="text-xs text-(--color-text-secondary)">This will set joma_cost and vehicle_cost to 0
+                        <p class="text-xs text-(--color-text-secondary)">
+                            This will set joma_cost and vehicle_cost to 0 on this vehicle
                         </p>
                     </div>
                 </div>
@@ -298,7 +292,7 @@
                             selectedBill?.vehicle_number }}</span>"?
                 </p>
                 <p class="text-xs text-(--color-text-secondary) mt-2">
-                    This will set both joma_cost and vehicle_cost to 0.
+                    This will set both joma_cost and vehicle_cost to 0 on the vehicle.
                 </p>
             </div>
 
@@ -399,9 +393,9 @@ const toggleSort = (field: BrokerVehicleBillSortField) => {
 }
 
 const handleCopyToClipboard = async () => {
-    const headers = 'Vehicle\tBroker\tTransport\tAmount\tPaid\tStatus'
+    const headers = 'Transport\tVehicle\tBroker\tJoma\tVehicle Cost\tAmount\tPaid\tStatus'
     const rows = filteredBills.value.map((b: BrokerVehicleBill) => {
-        return `${b.vehicle_number}\t${b.broker_name}\t#${b.transport_id}\t${b.bill_amount.toFixed(2)}\t${b.paid_amount.toFixed(2)}\t${b.status}`
+        return `#${b.transport_id}\t${b.vehicle_number}\t${b.broker_name}\t${b.joma_cost.toFixed(2)}\t${b.vehicle_cost.toFixed(2)}\t${b.bill_amount.toFixed(2)}\t${b.paid_amount.toFixed(2)}\t${b.status}`
     })
     await clipboardStore.copyToClipboard(headers + '\n' + rows.join('\n'))
 }
@@ -460,7 +454,7 @@ const confirmPayment = async () => {
     const paymentDate = formatDateForBackend(paymentForm.value.payment_date)
 
     const result = await store.markBillAsPaid(
-        selectedBill.value.vehicle_id,
+        selectedBill.value.id,
         {
             amount: paymentForm.value.amount,
             payment_date: paymentDate,
@@ -478,7 +472,7 @@ const confirmPayment = async () => {
 const confirmCancel = async () => {
     if (!selectedBill.value) return
 
-    const result = await store.cancelBill(selectedBill.value.vehicle_id)
+    const result = await store.cancelBill(selectedBill.value.id)
     if (result) {
         push.success('Bill cancelled successfully')
         cancelDialogOpen.value = false

@@ -2,11 +2,14 @@
 <template>
     <div class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) transition-all duration-200 hover:bg-(--color-muted-bg)/30 cursor-pointer"
         @click="handleView">
-        <!-- Vehicle Number - 4 columns -->
-        <div class="col-span-4 min-w-0">
+        <!-- Vehicle Number - 3 columns -->
+        <div class="col-span-3 min-w-0">
             <div class="font-medium text-(--color-text-primary) truncate text-sm">
                 {{ vehicle.vehicle_number }}
             </div>
+            <span v-if="vehicle.demarage_cost > 0" class="text-xs text-(--color-yellow) truncate block mt-0.5">
+                Demarage: {{ formatCurrency(vehicle.demarage_cost) }}
+            </span>
         </div>
 
         <!-- Transport - 2 columns -->
@@ -16,24 +19,24 @@
             </span>
         </div>
 
-        <!-- Broker - 2 columns -->
-        <div class="col-span-2 min-w-0">
-            <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ getBrokerName(vehicle.broker_id) }}
-            </span>
-        </div>
-
-        <!-- Driver - 3 columns -->
+        <!-- Broker - 3 columns -->
         <div class="col-span-3 min-w-0">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ vehicle.driver_name || '—' }}
-            </span>
-            <span v-if="vehicle.driver_phone" class="text-xs text-(--color-text-secondary) truncate block">
-                {{ vehicle.driver_phone }}
+                {{ brokerName }}
             </span>
         </div>
 
-        <!-- Actions - 1 column, right aligned -->
+        <!-- Costs - 3 columns -->
+        <div class="col-span-3">
+            <span class="text-sm font-semibold text-(--color-text-primary)">
+                {{ formatCurrency(vehicle.joma_cost) }}
+            </span>
+            <span class="text-xs text-(--color-text-secondary) block">
+                + {{ formatCurrency(vehicle.vehicle_cost) }} veh.
+            </span>
+        </div>
+
+        <!-- Actions - 1 column -->
         <div class="col-span-1 flex items-center justify-end relative" @click.stop>
             <button @click="toggleMenu"
                 class="w-7 h-7 flex items-center justify-center border border-(--color-border) rounded-md hover:bg-(--color-muted-bg) transition-all duration-200">
@@ -44,7 +47,6 @@
                 </svg>
             </button>
 
-            <!-- Dropdown -->
             <Transition enter-active-class="transition ease-out duration-200"
                 enter-from-class="opacity-0 scale-95 translate-y-1" enter-to-class="opacity-100 scale-100 translate-y-0"
                 leave-active-class="transition ease-in duration-150"
@@ -52,7 +54,6 @@
                 leave-to-class="opacity-0 scale-95 translate-y-1">
                 <div v-if="isOpen"
                     class="absolute right-0 top-9 w-48 bg-(--color-surface) border border-(--color-border) rounded-xl shadow-lg overflow-hidden z-50 py-1">
-                    <!-- View -->
                     <button @click="handleView"
                         class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-text-secondary) hover:bg-(--color-muted-bg) transition-colors">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -64,7 +65,6 @@
                         View Details
                     </button>
 
-                    <!-- Edit -->
                     <button @click="handleEdit"
                         class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-text-secondary) hover:bg-(--color-muted-bg) transition-colors">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -74,7 +74,6 @@
                         Edit
                     </button>
 
-                    <!-- Delete -->
                     <button @click="handleDelete"
                         class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-red) hover:bg-(--color-muted-bg) transition-colors border-t border-(--color-border) mt-1 pt-1">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -86,16 +85,16 @@
                 </div>
             </Transition>
 
-            <!-- Backdrop -->
             <div v-if="isOpen" class="fixed inset-0 z-40" @click="closeMenu"></div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { Vehicle } from '@/types/vehicle'
 import { useBrokersStore } from '@/stores/brokers'
+import { formatCurrency } from '@/utils/currency'
 
 const props = defineProps<{
     vehicle: Vehicle
@@ -111,31 +110,14 @@ const emit = defineEmits<{
 const brokersStore = useBrokersStore()
 const isOpen = ref(false)
 
-const getBrokerName = (id: number | null): string => {
-    if (!id) return '—'
-    return brokersStore.getBrokerName(id)
-}
+const brokerName = computed(() => {
+    if (!props.vehicle.broker_id) return '৳'
+    return brokersStore.getBrokerName(props.vehicle.broker_id)
+})
 
-const toggleMenu = () => {
-    isOpen.value = !isOpen.value
-}
-
-const closeMenu = () => {
-    isOpen.value = false
-}
-
-const handleView = () => {
-    closeMenu()
-    emit('view', props.vehicle)
-}
-
-const handleEdit = () => {
-    closeMenu()
-    emit('edit', props.vehicle)
-}
-
-const handleDelete = () => {
-    closeMenu()
-    emit('delete', props.vehicle)
-}
+const toggleMenu = () => { isOpen.value = !isOpen.value }
+const closeMenu = () => { isOpen.value = false }
+const handleView = () => { closeMenu(); emit('view', props.vehicle) }
+const handleEdit = () => { closeMenu(); emit('edit', props.vehicle) }
+const handleDelete = () => { closeMenu(); emit('delete', props.vehicle) }
 </script>

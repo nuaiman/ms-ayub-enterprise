@@ -61,7 +61,7 @@
                         </h4>
                         <span v-if="item.store_id"
                             class="text-xs text-(--color-green) bg-(--color-green)/10 px-2 py-0.5 rounded-full">
-                            âœ“ Store Selected
+                            ৳œ“ Store Selected
                         </span>
                     </div>
 

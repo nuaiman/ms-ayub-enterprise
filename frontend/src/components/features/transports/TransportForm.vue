@@ -9,10 +9,90 @@
 
             <TransportFields v-model:customer-id="form.customer_id" v-model:from-location="form.from_location"
                 v-model:to-location="form.to_location" v-model:vehicle-quantity="form.vehicle_quantity"
-                v-model:delivery-type="form.delivery_type" v-model:transport-date="form.transport_date"
+                v-model:transport-type="form.transport_type" v-model:transport-date="form.transport_date"
                 v-model:office-commission-amount="form.office_commission_amount" v-model:notes="form.notes"
-                :customer-options="customerOptions" :disabled="submitting || !!justCreatedId" :required="true"
-                :standalone="false" />
+                :customer-options="customerOptions" :disabled="submitting || !!justCreatedId" :required="true" />
+        </div>
+
+        <!-- Customer Billing -->
+        <div v-if="!justCreatedId" class="border-t border-(--color-border) pt-6">
+            <h3 class="text-sm font-semibold text-(--color-text-secondary) uppercase tracking-wider mb-4">
+                Customer Billing
+            </h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
+                        Charge Unit <span class="text-(--color-red)">*</span>
+                    </label>
+                    <select v-model="form.customer_charge_unit" :disabled="submitting"
+                        class="w-full px-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed">
+                        <option value="vehicle">Vehicle</option>
+                        <option value="weight">Weight</option>
+                        <option value="quantity">Quantity</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
+                        Total Unit <span class="text-(--color-red)">*</span>
+                    </label>
+                    <input v-model.number="form.customer_total_unit" type="number" step="0.01" min="0"
+                        placeholder="0.00" :disabled="submitting"
+                        class="w-full px-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed" />
+                </div>
+
+                <div>
+                    <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
+                        Charge Per Unit <span class="text-(--color-red)">*</span>
+                    </label>
+                    <div class="relative">
+                        <span
+                            class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-(--color-text-secondary)">৳</span>
+                        <input v-model.number="form.customer_charge_per_unit" type="number" step="0.01" min="0"
+                            placeholder="0.00" :disabled="submitting"
+                            class="w-full pl-7 pr-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live total charge preview -->
+            <div class="mt-4 p-4 rounded-lg bg-(--color-muted-bg)/30 border border-(--color-border)">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium text-(--color-text-primary)">Customer Total Charge</span>
+                    <span class="text-lg font-bold text-(--color-blue)">
+                        {{ formatCurrency(customerTotalCharge) }}
+                    </span>
+                </div>
+                <p class="text-xs text-(--color-text-secondary) mt-1">
+                    {{ formatCurrency(form.customer_charge_per_unit) }} ৳— {{ form.customer_total_unit }}
+                </p>
+            </div>
+        </div>
+
+        <!-- Customer payment summary (edit mode) -->
+        <div v-if="!justCreatedId && isEditMode && transport" class="border-t border-(--color-border) pt-6">
+            <h3 class="text-sm font-semibold text-(--color-text-secondary) uppercase tracking-wider mb-4">
+                Customer Payment
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="p-4 rounded-lg bg-(--color-muted-bg)/30 border border-(--color-border)">
+                    <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Total Paid</p>
+                    <p class="text-lg font-bold text-(--color-green)">
+                        {{ formatCurrency(transport.customer_total_paid) }}
+                    </p>
+                </div>
+                <div class="p-4 rounded-lg bg-(--color-muted-bg)/30 border border-(--color-border)">
+                    <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Outstanding</p>
+                    <p class="text-lg font-bold"
+                        :class="customerOutstanding > 0 ? 'text-(--color-red)' : 'text-(--color-green)'">
+                        {{ formatCurrency(customerOutstanding) }}
+                    </p>
+                </div>
+            </div>
+            <p class="text-xs text-(--color-text-secondary) mt-2">
+                Record customer payments from the Customer Transport Bills page.
+            </p>
         </div>
 
         <!-- Vehicles Section (hidden when retrying image) -->
@@ -23,14 +103,12 @@
                 </h3>
                 <div class="flex items-center gap-3">
                     <span class="text-xs text-(--color-text-secondary) bg-(--color-muted-bg) px-2.5 py-1 rounded-full">
-                        {{ vehicleForms.length }} vehicle(s)
-                    </span>
-                    <span class="text-xs font-semibold text-(--color-blue)">
-                        Total Charge: {{ formatCurrency(totalCustomerCharge) }}
+                        {{ totalVehicleCount }} / {{ form.vehicle_quantity }} vehicle(s)
                     </span>
                 </div>
             </div>
 
+            <!-- Existing vehicles (edit mode) -->
             <div v-if="isEditMode && existingVehicles.length > 0" class="mb-4">
                 <h4 class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider mb-2">
                     Existing Vehicles
@@ -39,18 +117,21 @@
                     <div v-for="vehicle in existingVehicles" :key="vehicle.id"
                         class="flex items-center justify-between p-3 rounded-lg bg-(--color-muted-bg)/20 border border-(--color-border)">
                         <div class="flex items-center gap-3">
-                            <span class="text-sm font-medium text-(--color-text-primary)">{{ vehicle.vehicle_number
-                            }}</span>
-                            <span class="text-xs text-(--color-text-secondary)">Broker: {{
-                                getBrokerName(vehicle.broker_id) }}</span>
-                            <span class="text-xs text-(--color-text-secondary)">Driver: {{ vehicle.driver_name || 'â€”'
-                            }}</span>
+                            <span class="text-sm font-medium text-(--color-text-primary)">
+                                {{ vehicle.vehicle_number }}
+                            </span>
+                            <span class="text-xs text-(--color-text-secondary)">
+                                Broker: {{ getBrokerName(vehicle.broker_id) }}
+                            </span>
                         </div>
                         <div class="flex items-center gap-3">
-                            <span class="text-sm font-semibold text-(--color-blue)">
-                                {{ formatCurrency(vehicle.customer_charge) }}
+                            <span class="text-xs text-(--color-text-secondary)">
+                                Joma: {{ formatCurrency(vehicle.joma_cost) }}
                             </span>
-                            <button type="button" @click="removeVehicle(vehicle.id)"
+                            <span class="text-xs text-(--color-text-secondary)">
+                                Vehicle: {{ formatCurrency(vehicle.vehicle_cost) }}
+                            </span>
+                            <button type="button" @click="removeExistingVehicle(vehicle.id)"
                                 class="text-xs text-(--color-red) hover:bg-(--color-red)/10 px-2 py-1 rounded transition-colors">
                                 Remove
                             </button>
@@ -59,78 +140,62 @@
                 </div>
             </div>
 
-            <div v-if="vehicleForms.length > 0" class="space-y-4">
+            <!-- New vehicle inline sub-forms -->
+            <div v-if="form.vehicles.length > 0" class="space-y-4">
                 <div class="flex items-center justify-between">
                     <h4 class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">
                         {{ isEditMode ? 'Add New Vehicles' : 'Vehicle Details' }}
                     </h4>
                     <span class="text-xs text-(--color-text-secondary)">
-                        {{ vehicleForms.length }} vehicle(s) required
+                        {{ form.vehicles.length }} to add
                     </span>
                 </div>
 
-                <div class="space-y-4 max-h-96 overflow-y-auto pr-1">
-                    <div v-for="(vehicle, index) in vehicleForms" :key="index"
-                        class="p-4 rounded-lg border border-(--color-border) bg-(--color-muted-bg)/10 hover:border-(--color-blue)/30 transition-all duration-200">
+                <div class="space-y-4">
+                    <div v-for="(vehicle, index) in form.vehicles" :key="index"
+                        class="relative p-4 rounded-lg border border-(--color-border) bg-(--color-muted-bg)/10">
+                        <button type="button" @click="removeNewVehicle(index)"
+                            class="absolute top-2 right-2 p-1 rounded-lg text-(--color-red) hover:bg-(--color-red)/10 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
 
-                        <div class="flex items-center justify-between mb-3">
-                            <h4 class="text-sm font-medium text-(--color-text-primary) flex items-center gap-2">
-                                <span
-                                    class="w-6 h-6 rounded-full bg-(--color-blue)/10 text-(--color-blue) flex items-center justify-center text-xs font-bold">
-                                    {{ index + 1 }}
-                                </span>
-                                Vehicle #{{ index + 1 }}
-                            </h4>
-                        </div>
+                        <h4 class="text-sm font-medium text-(--color-text-primary) flex items-center gap-2 mb-3">
+                            <span
+                                class="w-6 h-6 rounded-full bg-(--color-blue)/10 text-(--color-blue) flex items-center justify-center text-xs font-bold">
+                                {{ index + 1 }}
+                            </span>
+                            Vehicle #{{ index + 1 }}
+                        </h4>
 
-                        <VehicleFields v-model:transport-id="vehicle.transport_id"
-                            v-model:vehicle-number="vehicle.vehicle_number" v-model:broker-id="vehicle.broker_id"
-                            v-model:driver-name="vehicle.driver_name" v-model:driver-phone="vehicle.driver_phone"
-                            v-model:joma-cost="vehicle.joma_cost" v-model:vehicle-cost="vehicle.vehicle_cost"
-                            v-model:customer-charge="vehicle.customer_charge" v-model:other-cost="vehicle.other_cost"
-                            v-model:labour-cost="vehicle.labour_cost" v-model:demarage-amount="vehicle.demarage_amount"
-                            v-model:demarage-reason="vehicle.demarage_reason" :broker-options="brokerOptions"
-                            :disabled="submitting" :required="true" :standalone="false" />
-
-                        <div v-if="hasVehicleCosts(index)"
-                            class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 p-2 rounded-lg bg-(--color-muted-bg)/20 border border-(--color-border)">
-                            <div>
-                                <p class="text-xs text-(--color-text-secondary)">Profit/Loss</p>
-                                <p class="text-sm font-semibold"
-                                    :class="vehicleProfit(index) >= 0 ? 'text-(--color-green)' : 'text-(--color-red)'">
-                                    {{ formatCurrency(vehicleProfit(index)) }}
-                                </p>
-                            </div>
-                            <div>
-                                <p class="text-xs text-(--color-text-secondary)">Broker Due</p>
-                                <p class="text-sm font-semibold text-(--color-blue)">
-                                    {{ formatCurrency(vehicleBrokerDue(index)) }}
-                                </p>
-                            </div>
-                        </div>
+                        <VehicleFields v-model:vehicle-number="vehicle.vehicle_number"
+                            v-model:broker-id="vehicle.broker_id" v-model:joma-cost="vehicle.joma_cost"
+                            v-model:vehicle-cost="vehicle.vehicle_cost" v-model:other-cost="vehicle.other_cost"
+                            v-model:labour-cost="vehicle.labour_cost" v-model:demarage-cost="vehicle.demarage_cost"
+                            v-model:notes="vehicle.notes" :broker-options="brokerOptions" :disabled="submitting"
+                            :required="false" />
                     </div>
                 </div>
             </div>
 
-            <div v-if="vehicleForms.length === 0"
-                class="text-center py-4 text-sm text-(--color-text-secondary) border border-dashed border-(--color-border) rounded-lg">
-                No vehicles to add. Please set Vehicle Quantity to at least 1.
+            <div v-else
+                class="text-center py-6 text-sm text-(--color-text-secondary) border border-dashed border-(--color-border) rounded-lg">
+                No new vehicles to add.
             </div>
 
-            <div v-if="totalVehicles > 0"
-                class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-lg bg-(--color-muted-bg)/30 border border-(--color-border)">
-                <div>
-                    <p class="text-xs text-(--color-text-secondary)">Total Vehicles</p>
-                    <p class="text-lg font-bold text-(--color-text-primary)">{{ totalVehicles }}</p>
-                </div>
-                <div>
-                    <p class="text-xs text-(--color-text-secondary)">Total Customer Charge</p>
-                    <p class="text-lg font-bold text-(--color-blue)">{{ formatCurrency(totalCustomerCharge) }}</p>
-                </div>
-                <div>
-                    <p class="text-xs text-(--color-text-secondary)">Total Broker Due</p>
-                    <p class="text-lg font-bold text-(--color-text-primary)">{{ formatCurrency(totalBrokerDue) }}</p>
-                </div>
+            <div class="mt-4">
+                <button type="button" @click="addNewVehicle" :disabled="!canAddMoreVehicles"
+                    class="w-full py-3 text-sm font-medium rounded-lg border-2 border-dashed border-(--color-border) text-(--color-text-secondary) hover:border-(--color-blue) hover:text-(--color-blue) hover:bg-(--color-blue)/5 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14" />
+                    </svg>
+                    Add Vehicle
+                </button>
+                <p v-if="!canAddMoreVehicles" class="text-xs text-(--color-text-secondary) mt-2 text-center">
+                    Vehicle quantity limit reached
+                </p>
             </div>
         </div>
 
@@ -145,7 +210,7 @@
                         class="relative w-24 h-24 rounded-lg overflow-hidden border border-(--color-border)">
                         <img :src="imagePreview" alt="Preview" class="w-full h-full object-cover" />
                         <button type="button" @click="removeImage"
-                            class="absolute top-1 right-1 w-5 h-5 bg-(--color-red) text-white rounded-full flex items-center justify-center text-xs hover:opacity-90 transition-opacity">Ã—</button>
+                            class="absolute top-1 right-1 w-5 h-5 bg-(--color-red) text-white rounded-full flex items-center justify-center text-xs hover:opacity-90 transition-opacity">৳—</button>
                     </div>
                     <div v-else
                         class="w-24 h-24 rounded-lg border-2 border-dashed border-(--color-border) flex items-center justify-center bg-(--color-muted-bg)">
@@ -213,7 +278,9 @@
                     </svg>
                     {{ justCreatedId ? 'Retrying image...' : (isEditMode ? 'Saving...' : 'Creating...') }}
                 </span>
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-(--color-text-secondary)">৳</span>
+                <span v-else>
+                    {{ justCreatedId ? 'Retry Image Upload' : isEditMode ? 'Save Changes' : 'Create Transport' }}
+                </span>
             </button>
         </div>
     </form>
@@ -221,11 +288,11 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import type { Transport, DeliveryType } from '@/types/transport'
+import type { Transport, CustomerChargeUnit } from '@/types/transport'
 import { useTransportsStore } from '@/stores/transports'
 import { useCustomersStore } from '@/stores/customers'
-import { useVehiclesStore } from '@/stores/vehicles'
 import { useBrokersStore } from '@/stores/brokers'
+import { useVehiclesStore } from '@/stores/vehicles'
 import { uploadImage, deleteImage, getImageUrl } from '@/utils/image'
 import { formatDateForBackend } from '@/utils/date'
 import { formatCurrency } from '@/utils/currency'
@@ -234,18 +301,14 @@ import TransportFields from './TransportFields.vue'
 import VehicleFields from '@/components/features/vehicles/VehicleFields.vue'
 
 interface VehicleRow {
-    transport_id: number | null
     vehicle_number: string
     broker_id: number | null
-    driver_name: string
-    driver_phone: string
     joma_cost: number
     vehicle_cost: number
-    customer_charge: number
     other_cost: number
     labour_cost: number
-    demarage_amount: number
-    demarage_reason: string
+    demarage_cost: number
+    notes: string
 }
 
 const props = defineProps<{
@@ -261,8 +324,8 @@ const emit = defineEmits<{
 
 const transportsStore = useTransportsStore()
 const customersStore = useCustomersStore()
-const vehiclesStore = useVehiclesStore()
 const brokersStore = useBrokersStore()
+const vehiclesStore = useVehiclesStore()
 
 const submitting = ref(false)
 const isEditMode = computed(() => props.mode === 'edit' || !!props.transport)
@@ -272,7 +335,7 @@ const brokerOptions = computed(() => brokersStore.brokers)
 
 const justCreatedId = ref<number | null>(null)
 
-// Image state + helpers
+// Image state
 const imageFile = ref<File | null>(null)
 const imagePreview = ref<string | null>(null)
 const uploading = ref(false)
@@ -299,7 +362,6 @@ const handleFileSelect = (event: Event) => {
         uploadError.value = 'Please select an image file'
         return
     }
-
     if (file.size > 5 * 1024 * 1024) {
         uploadError.value = 'Image size should be less than 5MB'
         return
@@ -326,73 +388,6 @@ const removeImage = () => {
     if (fileInput) fileInput.value = ''
 }
 
-const existingVehicles = computed(() => {
-    if (!props.transport) return []
-    return vehiclesStore.getVehiclesByTransportId(props.transport.id)
-})
-
-const vehicleForms = computed(() => {
-    const quantity = form.value.vehicle_quantity || 0
-    const currentForms = form.value.vehicles.length
-
-    if (currentForms < quantity) {
-        const toAdd = quantity - currentForms
-        for (let i = 0; i < toAdd; i++) {
-            form.value.vehicles.push(createEmptyVehicle())
-        }
-    } else if (currentForms > quantity) {
-        form.value.vehicles = form.value.vehicles.slice(0, quantity)
-    }
-
-    return form.value.vehicles
-})
-
-const totalVehicles = computed(() => existingVehicles.value.length + form.value.vehicles.length)
-
-const totalCustomerCharge = computed(() => {
-    let total = 0
-    for (const v of existingVehicles.value) total += v.customer_charge || 0
-    for (const v of form.value.vehicles) total += v.customer_charge || 0
-    return total
-})
-
-const totalBrokerDue = computed(() => {
-    let total = 0
-    for (const v of existingVehicles.value) total += (v.joma_cost || 0) + (v.vehicle_cost || 0)
-    for (const v of form.value.vehicles) total += (v.joma_cost || 0) + (v.vehicle_cost || 0)
-    return total
-})
-
-const vehicleTotalCost = (index: number): number => {
-    const v = form.value.vehicles[index]
-    if (!v) return 0
-    return v.joma_cost + v.vehicle_cost + v.other_cost + v.labour_cost + v.demarage_amount
-}
-
-const vehicleProfit = (index: number): number => {
-    const v = form.value.vehicles[index]
-    if (!v) return 0
-    return v.customer_charge - vehicleTotalCost(index)
-}
-
-const vehicleBrokerDue = (index: number): number => {
-    const v = form.value.vehicles[index]
-    if (!v) return 0
-    return v.joma_cost + v.vehicle_cost
-}
-
-const hasVehicleCosts = (index: number): boolean => {
-    const v = form.value.vehicles[index]
-    if (!v) return false
-    return v.joma_cost > 0 || v.vehicle_cost > 0 || v.other_cost > 0 ||
-        v.labour_cost > 0 || v.demarage_amount > 0 || v.customer_charge > 0
-}
-
-const getBrokerName = (id: number | null): string => {
-    if (!id) return 'â€”'
-    return brokersStore.getBrokerName(id)
-}
-
 const today = new Date().toISOString().slice(0, 10)
 
 const form = ref({
@@ -400,55 +395,98 @@ const form = ref({
     from_location: '',
     to_location: '',
     vehicle_quantity: 1,
-    delivery_type: null as DeliveryType | null,
+    transport_type: null as 'local' | 'district' | null,
     transport_date: today,
     office_commission_amount: 0,
+    customer_charge_unit: 'vehicle' as CustomerChargeUnit,
+    customer_total_unit: 0,
+    customer_charge_per_unit: 0,
     notes: '',
     vehicles: [] as VehicleRow[],
 })
 
 const createEmptyVehicle = (): VehicleRow => ({
-    transport_id: null,
     vehicle_number: '',
     broker_id: null,
-    driver_name: '',
-    driver_phone: '',
     joma_cost: 0,
     vehicle_cost: 0,
-    customer_charge: 0,
     other_cost: 0,
     labour_cost: 0,
-    demarage_amount: 0,
-    demarage_reason: '',
+    demarage_cost: 0,
+    notes: '',
+})
+
+const existingVehicles = computed(() => {
+    if (!props.transport) return []
+    return vehiclesStore.getVehiclesByTransportId(props.transport.id)
+})
+
+const totalVehicleCount = computed(() => existingVehicles.value.length + form.value.vehicles.length)
+
+const canAddMoreVehicles = computed(() => {
+    return totalVehicleCount.value < form.value.vehicle_quantity
+})
+
+const customerTotalCharge = computed(() => {
+    return (form.value.customer_charge_per_unit || 0) * (form.value.customer_total_unit || 0)
+})
+
+const customerOutstanding = computed(() => {
+    if (!props.transport) return 0
+    return Math.max(0, (props.transport.customer_total_charge || 0) - (props.transport.customer_total_paid || 0))
 })
 
 const canSubmit = computed(() => {
     if (!form.value.from_location.trim()) return false
-    if (isEditMode.value) return true
-    const hasValidVehicle = form.value.vehicles.some(v => v.vehicle_number.trim() !== '')
-    if (!hasValidVehicle) return false
+    const allHaveNumbers = form.value.vehicles.every(v => v.vehicle_number.trim() !== '')
+    if (!allHaveNumbers) return false
+    const allHaveBrokers = form.value.vehicles.every(v => v.broker_id !== null)
+    if (!allHaveBrokers) return false
     return true
 })
 
+const addNewVehicle = () => {
+    if (!canAddMoreVehicles.value) {
+        push.warning('Vehicle quantity limit reached')
+        return
+    }
+    form.value.vehicles.push(createEmptyVehicle())
+}
+
+const removeNewVehicle = (index: number) => {
+    form.value.vehicles.splice(index, 1)
+}
+
+const removeExistingVehicle = async (vehicleId: number) => {
+    if (!confirm('Are you sure you want to remove this vehicle from the transport?')) return
+    const success = await vehiclesStore.deleteVehicle(vehicleId)
+    if (success) {
+        push.success('Vehicle removed from transport')
+        await vehiclesStore.fetchVehicles()
+    }
+}
+
+const getBrokerName = (id: number): string => brokersStore.getBrokerName(id)
+
 const initializeForm = () => {
     if (props.transport) {
-        const date = props.transport.transport_date ? new Date(props.transport.transport_date).toISOString().slice(0, 10) : today
+        const date = props.transport.transport_date
+            ? new Date(props.transport.transport_date).toISOString().slice(0, 10)
+            : today
 
         form.value = {
             customer_id: props.transport.customer_id || null,
             from_location: props.transport.from_location || '',
             to_location: props.transport.to_location || '',
             vehicle_quantity: props.transport.vehicle_quantity || 1,
-            delivery_type: props.transport.delivery_type || null,
+            transport_type: props.transport.transport_type || null,
             transport_date: date,
             office_commission_amount: props.transport.office_commission_amount || 0,
+            customer_charge_unit: props.transport.customer_charge_unit || 'vehicle',
+            customer_total_unit: props.transport.customer_total_unit || 0,
+            customer_charge_per_unit: props.transport.customer_charge_per_unit || 0,
             notes: props.transport.notes || '',
             vehicles: [],
-        }
-
-        const quantity = form.value.vehicle_quantity || 1
-        for (let i = 0; i < quantity; i++) {
-            form.value.vehicles.push(createEmptyVehicle())
         }
 
         justCreatedId.value = null
@@ -462,9 +500,12 @@ const initializeForm = () => {
             from_location: '',
             to_location: '',
             vehicle_quantity: 1,
-            delivery_type: null,
+            transport_type: null,
             transport_date: today,
             office_commission_amount: 0,
+            customer_charge_unit: 'vehicle',
+            customer_total_unit: 0,
+            customer_charge_per_unit: 0,
             notes: '',
             vehicles: [createEmptyVehicle()],
         }
@@ -479,17 +520,8 @@ const resetForm = () => {
     initializeForm()
 }
 
-const removeVehicle = async (vehicleId: number) => {
-    if (!confirm('Are you sure you want to remove this vehicle from the transport?')) return
-    const success = await vehiclesStore.deleteVehicle(vehicleId)
-    if (success) {
-        push.success('Vehicle removed from transport')
-        await vehiclesStore.fetchVehicles()
-    }
-}
-
 const submit = async () => {
-    // RETRY IMAGE PATH
+    // Retry image path
     if (justCreatedId.value !== null) {
         if (!imageFile.value) {
             resetForm()
@@ -516,22 +548,32 @@ const submit = async () => {
         return
     }
 
-    // NORMAL VALIDATION
+    // Validate
     if (!form.value.from_location.trim()) {
         push.error('From location is required')
         return
     }
-    if (form.value.vehicle_quantity < 1) {
-        push.error('Vehicle quantity must be at least 1')
+    if (!form.value.customer_id) {
+        push.error('Customer is required')
         return
     }
     if (!form.value.transport_date) {
         push.error('Transport date is required')
         return
     }
-    const invalidVehicles = form.value.vehicles.filter(v => !v.vehicle_number.trim())
-    if (invalidVehicles.length > 0) {
-        push.error(`Please enter vehicle numbers for all ${form.value.vehicles.length} vehicles`)
+    if (form.value.vehicle_quantity < 0) {
+        push.error('Vehicle quantity cannot be negative')
+        return
+    }
+
+    const invalidNewVehicles = form.value.vehicles.filter(v => !v.vehicle_number.trim())
+    if (invalidNewVehicles.length > 0) {
+        push.error(`Please enter vehicle numbers for all ${form.value.vehicles.length} new vehicles`)
+        return
+    }
+    const missingBrokers = form.value.vehicles.filter(v => v.broker_id === null)
+    if (missingBrokers.length > 0) {
+        push.error(`Please select a broker for all ${form.value.vehicles.length} new vehicles`)
         return
     }
 
@@ -547,9 +589,12 @@ const submit = async () => {
                 from_location: form.value.from_location.trim(),
                 to_location: form.value.to_location?.trim() || null,
                 vehicle_quantity: form.value.vehicle_quantity,
-                delivery_type: form.value.delivery_type,
+                transport_type: form.value.transport_type,
                 transport_date: transportDate,
                 office_commission_amount: form.value.office_commission_amount,
+                customer_charge_unit: form.value.customer_charge_unit,
+                customer_total_unit: form.value.customer_total_unit,
+                customer_charge_per_unit: form.value.customer_charge_per_unit,
                 notes: form.value.notes.trim() || null,
             })
 
@@ -566,9 +611,12 @@ const submit = async () => {
                 from_location: form.value.from_location.trim(),
                 to_location: form.value.to_location?.trim() || null,
                 vehicle_quantity: form.value.vehicle_quantity,
-                delivery_type: form.value.delivery_type,
+                transport_type: form.value.transport_type,
                 transport_date: transportDate,
                 office_commission_amount: form.value.office_commission_amount,
+                customer_charge_unit: form.value.customer_charge_unit,
+                customer_total_unit: form.value.customer_total_unit,
+                customer_charge_per_unit: form.value.customer_charge_per_unit,
                 notes: form.value.notes.trim() || null,
             })
 
@@ -581,12 +629,12 @@ const submit = async () => {
             push.success('Transport created successfully!')
         }
 
-        // Create vehicles
+        // Create new vehicles
         let createdCount = 0
         let failedCount = 0
 
         for (const vehicle of form.value.vehicles) {
-            if (!vehicle.vehicle_number.trim()) {
+            if (!vehicle.vehicle_number.trim() || vehicle.broker_id === null) {
                 failedCount++
                 continue
             }
@@ -595,15 +643,12 @@ const submit = async () => {
                 transport_id: transportId,
                 vehicle_number: vehicle.vehicle_number.trim(),
                 broker_id: vehicle.broker_id,
-                driver_name: vehicle.driver_name?.trim() || null,
-                driver_phone: vehicle.driver_phone?.trim() || null,
                 joma_cost: vehicle.joma_cost,
                 vehicle_cost: vehicle.vehicle_cost,
-                customer_charge: vehicle.customer_charge,
                 other_cost: vehicle.other_cost,
                 labour_cost: vehicle.labour_cost,
-                demarage_amount: vehicle.demarage_amount,
-                demarage_reason: vehicle.demarage_reason?.trim() || null,
+                demarage_cost: vehicle.demarage_cost,
+                notes: vehicle.notes?.trim() || null,
             })
 
             if (result) createdCount++
@@ -616,7 +661,7 @@ const submit = async () => {
             push.warning(`${createdCount} vehicle(s) added, ${failedCount} failed`)
         }
 
-        // IMAGE HANDLING
+        // Image handling
         if (imageFile.value) {
             uploading.value = true
             uploadProgress.value = 0
@@ -645,7 +690,6 @@ const submit = async () => {
         }
 
         resetForm()
-
         await Promise.all([transportsStore.fetchTransports(), vehiclesStore.fetchVehicles()])
     } catch (error) {
         console.error('Error:', error)
@@ -657,10 +701,10 @@ const submit = async () => {
 
 onMounted(async () => {
     await Promise.all([
-        transportsStore.fetchTransports(),
         customersStore.fetchCustomers(),
         brokersStore.fetchBrokers(),
-        vehiclesStore.fetchVehicles()
+        transportsStore.fetchTransports(),
+        vehiclesStore.fetchVehicles(),
     ])
 })
 </script>

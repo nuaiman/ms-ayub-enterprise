@@ -112,6 +112,12 @@ const router = createRouter({
             meta: { requiresAuth: true }
         },
         {
+            path: '/customer-additional-bills',
+            name: 'customer-additional-bills',
+            component: () => import('@/views/CustomerAdditionalBillsView.vue'),
+            meta: { requiresAuth: true }
+        },
+        {
             path: '/majhi-lot-bills',
             name: 'majhi-lot-bills',
             component: () => import('@/views/MajhiLotBillsView.vue'),

@@ -33,7 +33,7 @@
         <!-- Receiver - 2 columns -->
         <div class="col-span-2 min-w-0 pr-3">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ delivery.receiver_name || 'â€”' }}
+                {{ delivery.receiver_name || '৳' }}
             </span>
             <span v-if="delivery.receiver_phone" class="text-xs text-(--color-text-secondary)/70 truncate block mt-0.5">
                 {{ delivery.receiver_phone }}
@@ -43,14 +43,14 @@
         <!-- From - 2 columns -->
         <div class="col-span-2 min-w-0 pr-3">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ delivery.from_location || 'â€”' }}
+                {{ delivery.from_location || '৳' }}
             </span>
         </div>
 
         <!-- To - 2 columns -->
         <div class="col-span-2 min-w-0 pr-3">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ delivery.to_location || 'â€”' }}
+                {{ delivery.to_location || '৳' }}
             </span>
         </div>
 
@@ -151,7 +151,7 @@ const deliveryItemsStore = useDeliveryItemsStore()
 const isOpen = ref(false)
 
 const customerName = computed(() => {
-    if (!props.delivery.customer_id) return 'â€”'
+    if (!props.delivery.customer_id) return '৳'
     return customersStore.getCustomerName(props.delivery.customer_id)
 })
 

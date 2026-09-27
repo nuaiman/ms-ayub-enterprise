@@ -27,55 +27,48 @@
         </div>
 
         <!-- Right Actions - User Menu -->
-        <div ref="dropdownRef" class="flex items-center gap-1.5 ml-auto shrink-0">
-            <div class="relative">
-                <button @click="toggleDropdown"
-                    class="w-8 h-8 rounded-lg bg-(--color-blue)/15 text-(--color-blue) border border-(--color-blue)/15 flex items-center justify-center text-xs font-bold shrink-0 hover:bg-(--color-blue)/20 transition-colors">
-                    {{ userInitials }}
-                </button>
+        <div ref="dropdownRef" class="flex items-center gap-1.5 ml-auto shrink-0 relative">
+            <button @click="toggleDropdown"
+                class="w-8 h-8 rounded-lg bg-(--color-blue)/15 text-(--color-blue) border border-(--color-blue)/15 flex items-center justify-center text-xs font-bold shrink-0 hover:bg-(--color-blue)/20 transition-colors">
+                {{ userInitials }}
+            </button>
 
-                <!-- Dropdown -->
-                <div v-if="dropdownOpen"
-                    class="absolute right-0 top-10 w-56 bg-(--color-surface) border border-(--color-border) rounded-xl shadow-lg overflow-hidden z-50">
-                    <!-- User Info -->
-                    <div class="px-4 py-3 border-b border-(--color-border)/40">
-                        <div class="flex items-center gap-3">
-                            <div
-                                class="w-9 h-9 rounded-lg bg-(--color-blue)/15 text-(--color-blue) border border-(--color-blue)/15 flex items-center justify-center text-sm font-bold shrink-0">
-                                {{ userInitials }}
+            <div v-if="dropdownOpen"
+                class="absolute right-0 top-10 w-56 bg-(--color-surface) border border-(--color-border) rounded-xl shadow-lg overflow-hidden z-50">
+                <div class="px-4 py-3 border-b border-(--color-border)/40">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-9 h-9 rounded-lg bg-(--color-blue)/15 text-(--color-blue) border border-(--color-blue)/15 flex items-center justify-center text-sm font-bold shrink-0">
+                            {{ userInitials }}
+                        </div>
+                        <div class="min-w-0">
+                            <div class="text-sm font-semibold text-(--color-text-primary) truncate">
+                                {{ auth.user?.name }}
                             </div>
-                            <div class="min-w-0">
-                                <div class="text-sm font-semibold text-(--color-text-primary) truncate">
-                                    {{ auth.user?.name }}
-                                </div>
-                                <div class="text-xs text-(--color-text-secondary) truncate">
-                                    @{{ auth.user?.username }}
-                                </div>
-                                <span
-                                    class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium capitalize mt-0.5"
-                                    :class="getRoleBadgeClass(auth.user?.role || '')">
-                                    {{ auth.user?.role }}
-                                </span>
+                            <div class="text-xs text-(--color-text-secondary) truncate">
+                                @{{ auth.user?.username }}
                             </div>
+                            <span
+                                class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium capitalize mt-0.5"
+                                :class="getRoleBadgeClass(auth.user?.role || '')">
+                                {{ auth.user?.role }}
+                            </span>
                         </div>
                     </div>
-
-                    <!-- Menu Items -->
-                    <UserMenuItems @change-password="handleChangePassword"
-                        @reset-all-passwords="handleResetAllPasswords" @download-backup="handleDownloadBackup"
-                        @logout="handleLogout" />
                 </div>
+
+                <UserMenuItems @change-password="handleChangePassword" @reset-all-passwords="handleResetAllPasswords"
+                    @download-backup="handleDownloadBackup" @logout="handleLogout" />
             </div>
         </div>
     </header>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { Menu, ChevronRight } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
-import { useClickOutside } from '@/composables/useClickOutside'
 import UserMenuItems from './UserMenuItems.vue'
 
 const emit = defineEmits<{
@@ -91,22 +84,6 @@ const auth = useAuthStore()
 
 const dropdownRef = ref<HTMLElement | null>(null)
 const dropdownOpen = ref(false)
-
-useClickOutside(dropdownRef, () => {
-    dropdownOpen.value = false
-})
-
-const handleResize = () => {
-    dropdownOpen.value = false
-}
-
-onMounted(() => {
-    window.addEventListener('resize', handleResize)
-})
-
-onUnmounted(() => {
-    window.removeEventListener('resize', handleResize)
-})
 
 const userInitials = computed(() => {
     if (!auth.user?.name) return '?'
@@ -175,6 +152,7 @@ const pageTitle = computed(() => {
         '/majhi-loading-bills': 'Majhi Loading Bills',
         '/broker-vehicle-bills': 'Broker Vehicle Bills',
         '/customer-transport-bills': 'Customer Transport Bills',
+        '/customer-additional-bills': 'Customer Additional Bills',
         '/invoices': 'Invoices',
         '/users': 'Users',
         '/expenses': 'Expenses',
@@ -193,15 +171,9 @@ interface Breadcrumb {
 }
 
 const breadcrumbs = computed<Breadcrumb[]>(() => {
-    if (route.path === '/dashboard') {
-        return [{ label: 'Dashboard' }]
-    }
-    if (route.path === '/customers') {
-        return [{ label: 'Customers' }]
-    }
-    if (route.path === '/support') {
-        return [{ label: 'Support' }]
-    }
+    if (route.path === '/dashboard') return [{ label: 'Dashboard' }]
+    if (route.path === '/customers') return [{ label: 'Customers' }]
+    if (route.path === '/support') return [{ label: 'Support' }]
 
     const menuGroups = [
         { id: 'warehouse', label: 'Warehouse', items: [] },
@@ -212,11 +184,9 @@ const breadcrumbs = computed<Breadcrumb[]>(() => {
 
     const items: Breadcrumb[] = []
     const activeGroup = menuGroups.find(group =>
-        group.items.some((item: any) => route.path.startsWith(item.path))
+        group.items.some((item: { path: string }) => route.path.startsWith(item.path))
     )
-    if (activeGroup) {
-        items.push({ label: activeGroup.label })
-    }
+    if (activeGroup) items.push({ label: activeGroup.label })
     items.push({ label: pageTitle.value })
     return items
 })

@@ -15,7 +15,7 @@
 
             <div class="flex-1 min-w-0">
                 <h2 class="text-2xl font-bold text-(--color-text-primary)">
-                    Transport #{{ bill.transport_id }}
+                    Transport #{{ bill.id }}
                 </h2>
 
                 <div class="flex items-center gap-2 flex-wrap mt-1">
@@ -28,7 +28,7 @@
                     <span class="text-sm text-(--color-text-secondary)">
                         {{ bill.from_location }}
                         <span v-if="bill.to_location">
-                            → {{ bill.to_location }}
+                            ৳ {{ bill.to_location }}
                         </span>
                     </span>
 
@@ -52,7 +52,7 @@
         <!-- Meta -->
         <div class="flex flex-wrap items-center gap-4 pb-4 border-b border-(--color-border)">
             <span class="text-xs text-(--color-text-secondary)">
-                Transport ID: {{ bill.transport_id }}
+                Transport ID: {{ bill.id }}
             </span>
 
             <span class="w-px h-4 bg-(--color-border)"></span>
@@ -77,9 +77,13 @@
         <!-- Financial Summary -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="p-4 rounded-lg bg-(--color-muted-bg)/30 border border-(--color-border)">
-                <p class="text-xs text-(--color-text-secondary)">Total Vehicles</p>
-                <p class="text-lg font-bold text-(--color-text-primary)">
-                    {{ bill.total_vehicles }}
+                <p class="text-xs text-(--color-text-secondary)">Charge Unit</p>
+                <p class="text-lg font-bold text-(--color-text-primary) capitalize">
+                    {{ bill.customer_charge_unit }}
+                </p>
+                <p class="text-xs text-(--color-text-secondary) mt-1">
+                    {{ formatCurrency(bill.customer_charge_per_unit) }} per unit ৳‚৳· {{ bill.customer_total_unit }}
+                    total
                 </p>
             </div>
 
@@ -88,6 +92,9 @@
                 <p class="text-lg font-bold text-(--color-blue)">
                     {{ formatCurrency(bill.bill_amount) }}
                 </p>
+                <p class="text-xs text-(--color-text-secondary) mt-1">
+                    {{ bill.vehicle_quantity }} vehicle(s)
+                </p>
             </div>
 
             <div class="p-4 rounded-lg bg-(--color-muted-bg)/30 border border-(--color-border)">
@@ -95,6 +102,9 @@
                 <p class="text-lg font-bold"
                     :class="bill.status === 'paid' ? 'text-(--color-green)' : 'text-(--color-red)'">
                     {{ formatCurrency(bill.paid_amount) }}
+                </p>
+                <p class="text-xs text-(--color-text-secondary) mt-1">
+                    {{ bill.payment_date ? `Paid through ${formatDate(bill.payment_date)}` : 'Not paid yet' }}
                 </p>
             </div>
         </div>
@@ -116,10 +126,9 @@
                 <div
                     class="grid grid-cols-12 gap-2 py-2 px-3 rounded-lg bg-(--color-muted-bg)/50 border border-(--color-border) text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">
                     <div class="col-span-4">Vehicle</div>
-                    <div class="col-span-3">Broker</div>
-                    <div class="col-span-2">Joma Cost</div>
-                    <div class="col-span-2">Vehicle Cost</div>
-                    <div class="col-span-1 text-right">Charge</div>
+                    <div class="col-span-4">Broker</div>
+                    <div class="col-span-2 text-right">Joma</div>
+                    <div class="col-span-2 text-right">Vehicle Cost</div>
                 </div>
 
                 <!-- Rows -->
@@ -129,20 +138,16 @@
                         {{ vehicle.vehicle_number }}
                     </div>
 
-                    <div class="col-span-3 text-(--color-text-secondary) truncate">
-                        {{ vehicle.broker_name || '—' }}
+                    <div class="col-span-4 text-(--color-text-secondary) truncate">
+                        {{ vehicle.broker_name || '৳' }}
                     </div>
 
-                    <div class="col-span-2 text-(--color-text-secondary)">
+                    <div class="col-span-2 text-right text-(--color-text-secondary)">
                         {{ formatCurrency(vehicle.joma_cost) }}
                     </div>
 
-                    <div class="col-span-2 text-(--color-text-secondary)">
+                    <div class="col-span-2 text-right text-(--color-text-secondary)">
                         {{ formatCurrency(vehicle.vehicle_cost) }}
-                    </div>
-
-                    <div class="col-span-1 text-right font-semibold text-(--color-blue)">
-                        {{ formatCurrency(vehicle.customer_charge) }}
                     </div>
                 </div>
 
@@ -150,7 +155,7 @@
                 <div
                     class="grid grid-cols-12 gap-2 py-2 px-3 rounded-lg bg-(--color-blue)/5 border border-(--color-blue)/20 text-sm font-semibold">
                     <div class="col-span-9 text-right text-(--color-text-secondary)">
-                        Total
+                        Total Bill
                     </div>
 
                     <div class="col-span-3 text-right text-(--color-blue)">
@@ -223,7 +228,7 @@ const getStatusLabel = (status: string): string => {
 }
 
 const formatDate = (dateStr: string | null): string => {
-    if (!dateStr) return '—'
+    if (!dateStr) return '৳'
     return new Date(dateStr).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
