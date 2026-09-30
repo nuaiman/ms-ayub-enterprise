@@ -16,10 +16,6 @@
             <div class="flex-1 min-w-0">
                 <h2 class="text-2xl font-bold text-(--color-text-primary)">{{ bill.customer_name }}</h2>
                 <div class="flex items-center gap-2 flex-wrap mt-1">
-                    <span class="text-sm text-(--color-text-secondary) capitalize">{{ bill.entity_type }}</span>
-                    <span class="w-1 h-1 rounded-full bg-(--color-text-secondary)"></span>
-                    <span class="text-sm text-(--color-text-secondary)">{{ bill.entity_label }}</span>
-                    <span class="w-1 h-1 rounded-full bg-(--color-text-secondary)"></span>
                     <span class="text-sm font-semibold text-(--color-blue)">{{ formatCurrency(bill.amount) }}</span>
                     <span class="w-1 h-1 rounded-full bg-(--color-text-secondary)"></span>
                     <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border"
@@ -35,8 +31,6 @@
         <div class="flex flex-wrap items-center gap-4 pb-4 border-b border-(--color-border)">
             <span class="text-xs text-(--color-text-secondary)">Bill ID: {{ bill.id }}</span>
             <span class="w-px h-4 bg-(--color-border)"></span>
-            <span class="text-xs text-(--color-text-secondary)">Entity ID: {{ bill.entity_id }}</span>
-            <span class="w-px h-4 bg-(--color-border)"></span>
             <span class="text-xs text-(--color-text-secondary)">Created: {{ formatDate(bill.created_at) }}</span>
             <span class="w-px h-4 bg-(--color-border)"></span>
             <span class="text-xs text-(--color-text-secondary)">Updated: {{ formatDate(bill.updated_at) }}</span>
@@ -48,12 +42,6 @@
                 <div>
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Customer</p>
                     <p class="text-sm text-(--color-text-primary)">{{ bill.customer_name }}</p>
-                </div>
-
-                <div>
-                    <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Entity</p>
-                    <p class="text-sm text-(--color-text-primary) capitalize">{{ bill.entity_type }}</p>
-                    <p class="text-xs text-(--color-text-secondary)">{{ bill.entity_label }}</p>
                 </div>
 
                 <div>

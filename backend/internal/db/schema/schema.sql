@@ -471,10 +471,6 @@ CREATE TABLE IF NOT EXISTS customer_additional_charges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     customer_id INTEGER NOT NULL,
-    entity_type TEXT NOT NULL CHECK (
-        entity_type IN ('lot', 'store', 'delivery', 'transport', 'damage', 'godown')
-    ),
-    entity_id INTEGER NOT NULL,
     amount REAL NOT NULL CHECK (amount >= 0),
     description TEXT NOT NULL,
     customer_total_paid REAL NOT NULL DEFAULT 0 CHECK (customer_total_paid >= 0),
@@ -488,7 +484,6 @@ CREATE TABLE IF NOT EXISTS customer_additional_charges (
 
 CREATE INDEX IF NOT EXISTS idx_customer_additional_charges_user_id ON customer_additional_charges(user_id);
 CREATE INDEX IF NOT EXISTS idx_customer_additional_charges_customer_id ON customer_additional_charges(customer_id);
-CREATE INDEX IF NOT EXISTS idx_customer_additional_charges_entity ON customer_additional_charges(entity_type, entity_id);
 CREATE INDEX IF NOT EXISTS idx_customer_additional_charges_created_at ON customer_additional_charges(created_at);
 
 -- =====================================================

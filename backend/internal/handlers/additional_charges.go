@@ -15,23 +15,12 @@ import (
 // CUSTOMER ADDITIONAL CHARGE MANAGEMENT
 // =============================================================================
 
-var validAdditionalChargeEntityTypes = map[string]bool{
-	"lot":       true,
-	"store":     true,
-	"delivery":  true,
-	"transport": true,
-	"damage":    true,
-	"godown":    true,
-}
-
 // CreateAdditionalChargeHandler - POST /api/customer-additional-charges
 func (h *Handler) CreateAdditionalChargeHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[ADDITIONAL_CHARGES] CreateAdditionalChargeHandler called - Method: %s, Path: %s", r.Method, r.URL.Path)
 
 	type request struct {
 		CustomerID  int64   `json:"customer_id"`
-		EntityType  string  `json:"entity_type"`
-		EntityID    int64   `json:"entity_id"`
 		Amount      float64 `json:"amount"`
 		Description string  `json:"description"`
 	}
@@ -46,18 +35,6 @@ func (h *Handler) CreateAdditionalChargeHandler(w http.ResponseWriter, r *http.R
 
 	if req.CustomerID == 0 {
 		utils.ErrorJson(w, http.StatusBadRequest, "customer_id is required")
-		return
-	}
-	if req.EntityType == "" {
-		utils.ErrorJson(w, http.StatusBadRequest, "entity_type is required")
-		return
-	}
-	if !validAdditionalChargeEntityTypes[req.EntityType] {
-		utils.ErrorJson(w, http.StatusBadRequest, "entity_type must be one of: lot, store, delivery, transport, damage, godown")
-		return
-	}
-	if req.EntityID == 0 {
-		utils.ErrorJson(w, http.StatusBadRequest, "entity_id is required")
 		return
 	}
 	if req.Amount < 0 {
@@ -90,8 +67,6 @@ func (h *Handler) CreateAdditionalChargeHandler(w http.ResponseWriter, r *http.R
 	charge := &models.AdditionalCharge{
 		UserID:            userID,
 		CustomerID:        req.CustomerID,
-		EntityType:        req.EntityType,
-		EntityID:          req.EntityID,
 		Amount:            req.Amount,
 		Description:       req.Description,
 		CustomerTotalPaid: 0,
@@ -154,33 +129,19 @@ func (h *Handler) GetAllAdditionalChargesHandler(w http.ResponseWriter, r *http.
 	log.Printf("[ADDITIONAL_CHARGES] GetAllAdditionalChargesHandler called - Method: %s, Path: %s", r.Method, r.URL.Path)
 
 	customerID := r.URL.Query().Get("customer_id")
-	entityType := r.URL.Query().Get("entity_type")
-	entityID := r.URL.Query().Get("entity_id")
 	search := r.URL.Query().Get("search")
 
 	var charges []models.AdditionalCharge
 	var err error
 
-	switch {
-	case entityType != "" && entityID != "":
-		id, parseErr := strconv.ParseInt(entityID, 10, 64)
-		if parseErr != nil {
-			utils.ErrorJson(w, http.StatusBadRequest, "invalid entity_id")
-			return
-		}
-		if !validAdditionalChargeEntityTypes[entityType] {
-			utils.ErrorJson(w, http.StatusBadRequest, "entity_type must be one of: lot, store, delivery, transport, damage, godown")
-			return
-		}
-		charges, err = h.app.Models.AdditionalCharge.GetByEntity(r.Context(), entityType, id)
-	case customerID != "":
+	if customerID != "" {
 		id, parseErr := strconv.ParseInt(customerID, 10, 64)
 		if parseErr != nil {
 			utils.ErrorJson(w, http.StatusBadRequest, "invalid customer_id")
 			return
 		}
 		charges, err = h.app.Models.AdditionalCharge.GetByCustomerID(r.Context(), id)
-	default:
+	} else {
 		charges, err = h.app.Models.AdditionalCharge.GetAll(r.Context())
 	}
 

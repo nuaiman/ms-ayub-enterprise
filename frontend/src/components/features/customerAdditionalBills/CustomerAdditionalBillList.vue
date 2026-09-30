@@ -69,7 +69,7 @@
                 <!-- Header Row -->
                 <div
                     class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wider bg-(--color-muted-bg)/30 rounded-t-lg">
-                    <div class="col-span-3 cursor-pointer hover:text-(--color-text-primary) transition-colors"
+                    <div class="col-span-4 cursor-pointer hover:text-(--color-text-primary) transition-colors"
                         @click="toggleSort('customer_name')">
                         <span class="flex items-center gap-1">
                             Customer
@@ -80,18 +80,7 @@
                             </svg>
                         </span>
                     </div>
-                    <div class="col-span-3 cursor-pointer hover:text-(--color-text-primary) transition-colors"
-                        @click="toggleSort('entity_type')">
-                        <span class="flex items-center gap-1">
-                            Entity
-                            <svg v-if="sortField === 'entity_type'" class="w-3 h-3"
-                                :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
-                                viewBox="0 0 24 24">
-                                <path d="M7 10l5 5 5-5z" />
-                            </svg>
-                        </span>
-                    </div>
-                    <div class="col-span-2 cursor-pointer hover:text-(--color-text-primary) transition-colors"
+                    <div class="col-span-4 cursor-pointer hover:text-(--color-text-primary) transition-colors"
                         @click="toggleSort('description')">
                         <span class="flex items-center gap-1">
                             Description
@@ -153,7 +142,7 @@
                         <p class="text-xs text-(--color-text-secondary)">
                             {{ searchQuery
                                 ? 'Try adjusting your search'
-                                : 'Additional charges created from customer rows will appear here'
+                                : 'Create a new additional charge to get started'
                             }}
                         </p>
                     </div>
@@ -347,12 +336,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useCustomerAdditionalBillsStore } from '@/stores/customerAdditionalBills'
 import { useCustomersStore } from '@/stores/customers'
-import { useLotsStore } from '@/stores/lots'
-import { useStoresStore } from '@/stores/stores'
-import { useDeliveriesStore } from '@/stores/deliveries'
-import { useTransportsStore } from '@/stores/transports'
-import { useDamagesStore } from '@/stores/damages'
-import { useGodownsStore } from '@/stores/godowns'
 import { useClipboardStore } from '@/stores/clipboard'
 import type { CustomerAdditionalBill, CustomerAdditionalBillSortField } from '@/types/customerAdditionalBill'
 import type { Customer } from '@/types/customer'
@@ -366,12 +349,6 @@ import { push } from 'notivue'
 
 const store = useCustomerAdditionalBillsStore()
 const customersStore = useCustomersStore()
-const lotsStore = useLotsStore()
-const storesStore = useStoresStore()
-const deliveriesStore = useDeliveriesStore()
-const transportsStore = useTransportsStore()
-const damagesStore = useDamagesStore()
-const godownsStore = useGodownsStore()
 const clipboardStore = useClipboardStore()
 
 const loading = ref(true)
@@ -416,12 +393,6 @@ const fetchData = async () => {
     try {
         await Promise.all([
             customersStore.fetchCustomers(),
-            lotsStore.fetchLots(),
-            storesStore.fetchStores(),
-            deliveriesStore.fetchDeliveries(),
-            transportsStore.fetchTransports(),
-            damagesStore.fetchDamages(),
-            godownsStore.fetchGodowns(),
             store.fetchCharges(),
         ])
     } finally {
@@ -446,9 +417,9 @@ const toggleSort = (field: CustomerAdditionalBillSortField) => {
 }
 
 const handleCopyToClipboard = async () => {
-    const headers = 'Customer\tEntity\tEntity Ref\tDescription\tAmount\tPaid\tStatus'
+    const headers = 'Customer\tDescription\tAmount\tPaid\tStatus'
     const rows = filteredBills.value.map(b => {
-        return `${b.customer_name}\t${b.entity_type}\t${b.entity_label}\t${b.description}\t${b.amount.toFixed(2)}\t${b.paid_amount.toFixed(2)}\t${b.status}`
+        return `${b.customer_name}\t${b.description}\t${b.amount.toFixed(2)}\t${b.paid_amount.toFixed(2)}\t${b.status}`
     })
     await clipboardStore.copyToClipboard(headers + '\n' + rows.join('\n'))
 }

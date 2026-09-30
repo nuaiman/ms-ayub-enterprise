@@ -10,8 +10,6 @@ type AdditionalCharge struct {
 	ID                       int64      `json:"id"`
 	UserID                   int64      `json:"user_id"`
 	CustomerID               int64      `json:"customer_id"`
-	EntityType               string     `json:"entity_type"`
-	EntityID                 int64      `json:"entity_id"`
 	Amount                   float64    `json:"amount"`
 	Description              string     `json:"description"`
 	CustomerTotalPaid        float64    `json:"customer_total_paid"`
@@ -31,17 +29,15 @@ type AdditionalChargeModel struct {
 func (m *AdditionalChargeModel) Insert(ctx context.Context, charge *AdditionalCharge) (int64, error) {
 	query := `
 		INSERT INTO customer_additional_charges (
-			user_id, customer_id, entity_type, entity_id,
+			user_id, customer_id,
 			amount, description,
 			customer_total_paid, customer_total_paid_through
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?)
 	`
 
 	res, err := m.DB.ExecContext(ctx, query,
 		charge.UserID,
 		charge.CustomerID,
-		charge.EntityType,
-		charge.EntityID,
 		charge.Amount,
 		charge.Description,
 		charge.CustomerTotalPaid,
@@ -59,7 +55,7 @@ func (m *AdditionalChargeModel) Insert(ctx context.Context, charge *AdditionalCh
 // =============================================================================
 
 const additionalChargeSelectCols = `
-	id, user_id, customer_id, entity_type, entity_id,
+	id, user_id, customer_id,
 	amount, description,
 	customer_total_paid, customer_total_paid_through,
 	created_at, updated_at
@@ -94,26 +90,6 @@ func (m *AdditionalChargeModel) GetAll(ctx context.Context) ([]AdditionalCharge,
 func (m *AdditionalChargeModel) GetByCustomerID(ctx context.Context, customerID int64) ([]AdditionalCharge, error) {
 	query := `SELECT ` + additionalChargeSelectCols + ` FROM customer_additional_charges WHERE customer_id = ? ORDER BY created_at DESC`
 	rows, err := m.DB.QueryContext(ctx, query, customerID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	charges := []AdditionalCharge{}
-	for rows.Next() {
-		charge, err := m.scanAdditionalChargeRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		charges = append(charges, *charge)
-	}
-
-	return charges, rows.Err()
-}
-
-func (m *AdditionalChargeModel) GetByEntity(ctx context.Context, entityType string, entityID int64) ([]AdditionalCharge, error) {
-	query := `SELECT ` + additionalChargeSelectCols + ` FROM customer_additional_charges WHERE entity_type = ? AND entity_id = ? ORDER BY created_at DESC`
-	rows, err := m.DB.QueryContext(ctx, query, entityType, entityID)
 	if err != nil {
 		return nil, err
 	}
@@ -199,8 +175,6 @@ func (m *AdditionalChargeModel) scanAdditionalCharge(row *sql.Row) (*AdditionalC
 		&charge.ID,
 		&charge.UserID,
 		&charge.CustomerID,
-		&charge.EntityType,
-		&charge.EntityID,
 		&charge.Amount,
 		&charge.Description,
 		&charge.CustomerTotalPaid,
@@ -223,8 +197,6 @@ func (m *AdditionalChargeModel) scanAdditionalChargeRow(rows *sql.Rows) (*Additi
 		&charge.ID,
 		&charge.UserID,
 		&charge.CustomerID,
-		&charge.EntityType,
-		&charge.EntityID,
 		&charge.Amount,
 		&charge.Description,
 		&charge.CustomerTotalPaid,

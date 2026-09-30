@@ -14,23 +14,11 @@ import { push } from 'notivue'
 import { useGlobalLoader } from 'vue-global-loader'
 import type { AxiosError } from 'axios'
 import { useCustomersStore } from './customers'
-import { useLotsStore } from './lots'
-import { useStoresStore } from './stores'
-import { useDeliveriesStore } from './deliveries'
-import { useTransportsStore } from './transports'
-import { useDamagesStore } from './damages'
-import { useGodownsStore } from './godowns'
 
 export const useCustomerAdditionalBillsStore = defineStore('customerAdditionalBills', () => {
     const { displayLoader, destroyLoader } = useGlobalLoader()
 
     const customersStore = useCustomersStore()
-    const lotsStore = useLotsStore()
-    const storesStore = useStoresStore()
-    const deliveriesStore = useDeliveriesStore()
-    const transportsStore = useTransportsStore()
-    const damagesStore = useDamagesStore()
-    const godownsStore = useGodownsStore()
 
     // ============= STATE =============
     const charges = ref<AdditionalCharge[]>([])
@@ -38,43 +26,6 @@ export const useCustomerAdditionalBillsStore = defineStore('customerAdditionalBi
     const statusFilter = ref<'unpaid' | 'paid' | ''>('')
     const sortField = ref<CustomerAdditionalBillSortField>('created_at')
     const sortDirection = ref<SortDirection>('desc')
-
-    // ============= HELPERS =============
-
-    const entityLabel = (entityType: string, entityId: number): string => {
-        switch (entityType) {
-            case 'lot': {
-                const lot = lotsStore.getLotById(entityId)
-                return lot ? lotsStore.getLotDisplayName(lot) : `Lot #${entityId}`
-            }
-            case 'store': {
-                const store = storesStore.getStoreById(entityId)
-                return store ? storesStore.getStoreDisplayName(store) : `Store #${entityId}`
-            }
-            case 'delivery': {
-                const delivery = deliveriesStore.getDeliveryById(entityId)
-                return delivery
-                    ? `Delivery #${delivery.id}${delivery.from_location ? ` - ${delivery.from_location}` : ''}`
-                    : `Delivery #${entityId}`
-            }
-            case 'transport': {
-                const transport = transportsStore.getTransportById(entityId)
-                return transport
-                    ? `Transport #${transport.id}${transport.from_location ? ` - ${transport.from_location}` : ''}`
-                    : `Transport #${entityId}`
-            }
-            case 'damage': {
-                const damage = damagesStore.getDamageById(entityId)
-                return damage ? `Damage #${damage.id} - ${damage.reason}` : `Damage #${entityId}`
-            }
-            case 'godown': {
-                const godown = godownsStore.getGodownById(entityId)
-                return godown ? godown.name : `Godown #${entityId}`
-            }
-            default:
-                return `#${entityId}`
-        }
-    }
 
     // ============= COMPUTED =============
 
@@ -89,9 +40,6 @@ export const useCustomerAdditionalBillsStore = defineStore('customerAdditionalBi
                 id: charge.id,
                 customer_id: charge.customer_id,
                 customer_name: customerName,
-                entity_type: charge.entity_type,
-                entity_id: charge.entity_id,
-                entity_label: entityLabel(charge.entity_type, charge.entity_id),
                 amount: charge.amount,
                 description: charge.description,
                 paid_amount: paid,
@@ -112,8 +60,6 @@ export const useCustomerAdditionalBillsStore = defineStore('customerAdditionalBi
             result = result.filter(bill =>
                 bill.customer_name.toLowerCase().includes(q) ||
                 bill.description.toLowerCase().includes(q) ||
-                bill.entity_label.toLowerCase().includes(q) ||
-                bill.entity_type.toLowerCase().includes(q) ||
                 bill.status.toLowerCase().includes(q)
             )
         }
@@ -127,9 +73,6 @@ export const useCustomerAdditionalBillsStore = defineStore('customerAdditionalBi
             switch (sortField.value) {
                 case 'customer_name':
                     comparison = a.customer_name.localeCompare(b.customer_name)
-                    break
-                case 'entity_type':
-                    comparison = a.entity_type.localeCompare(b.entity_type)
                     break
                 case 'amount':
                     comparison = a.amount - b.amount
@@ -185,8 +128,6 @@ export const useCustomerAdditionalBillsStore = defineStore('customerAdditionalBi
 
     const createCharge = async (payload: {
         customer_id: number
-        entity_type: AdditionalCharge['entity_type']
-        entity_id: number
         amount: number
         description: string
     }): Promise<AdditionalCharge | null> => {

@@ -146,7 +146,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
                 source_type: 'additional_charge',
                 item: 'Additional Charge',
                 date: bill.created_at ? new Date(bill.created_at).toLocaleDateString() : '',
-                description: `${bill.description} (${bill.entity_type} #${bill.entity_id})`,
+                description: bill.description,
                 quantity: 1,
                 rate: bill.amount || 0,
                 amount: bill.outstanding,

@@ -2,25 +2,15 @@
 <template>
     <div class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) transition-all duration-200 hover:bg-(--color-muted-bg)/30 cursor-pointer"
         @click="handleView">
-        <!-- Customer - 3 columns -->
-        <div class="col-span-3 min-w-0">
+        <!-- Customer - 4 columns -->
+        <div class="col-span-4 min-w-0">
             <div class="font-medium text-(--color-text-primary) truncate text-sm">
                 {{ bill.customer_name }}
             </div>
         </div>
 
-        <!-- Entity - 3 columns -->
-        <div class="col-span-3 min-w-0">
-            <span class="text-sm text-(--color-text-secondary) truncate block capitalize">
-                {{ bill.entity_type }}
-            </span>
-            <span class="text-xs text-(--color-text-secondary)/70 truncate block mt-0.5">
-                {{ bill.entity_label }}
-            </span>
-        </div>
-
-        <!-- Description - 2 columns -->
-        <div class="col-span-2 min-w-0">
+        <!-- Description - 4 columns -->
+        <div class="col-span-4 min-w-0">
             <span class="text-sm text-(--color-text-secondary) truncate block">
                 {{ bill.description }}
             </span>

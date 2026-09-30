@@ -1,19 +1,9 @@
 // src/types/customerAdditionalBill.ts
 
-export type AdditionalChargeEntityType =
-    | 'lot'
-    | 'store'
-    | 'delivery'
-    | 'transport'
-    | 'damage'
-    | 'godown'
-
 export interface AdditionalCharge {
     id: number
     user_id: number
     customer_id: number
-    entity_type: AdditionalChargeEntityType
-    entity_id: number
     amount: number
     description: string
     customer_total_paid: number
@@ -24,8 +14,6 @@ export interface AdditionalCharge {
 
 export interface CreateAdditionalChargePayload {
     customer_id: number
-    entity_type: AdditionalChargeEntityType
-    entity_id: number
     amount: number
     description: string
 }
@@ -45,9 +33,6 @@ export interface CustomerAdditionalBill {
     id: number
     customer_id: number
     customer_name: string
-    entity_type: AdditionalChargeEntityType
-    entity_id: number
-    entity_label: string
     amount: number
     description: string
     paid_amount: number
@@ -60,7 +45,6 @@ export interface CustomerAdditionalBill {
 
 export type CustomerAdditionalBillSortField =
     | 'customer_name'
-    | 'entity_type'
     | 'amount'
     | 'description'
     | 'status'
