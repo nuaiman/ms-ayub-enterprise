@@ -21,7 +21,7 @@ func main() {
 	// SEED (OPTIONAL)
 	// Comment this line out to skip seeding.
 	// =============================================
-	db.SeedDB(dbPool, "internal/db/seed/seed.sql")
+	// db.SeedDB(dbPool, "internal/db/seed/seed.sql")
 
 	a := app.Application{
 		Config: cfg,
