@@ -1,98 +1,93 @@
 // src/types/invoice.ts
 
-export type InvoiceParty = 'customer' | 'broker' | 'godown' | 'majhi'
+export type EntityType = 'customer' | 'majhi' | 'godown' | 'broker'
 
-export type InvoiceType =
-    | 'customer'
-    | 'broker_vehicle'
-    | 'godown_store'
+export type DiscountType = 'flat' | 'percent'
+
+export type UnbilledBillType =
+    | 'customer_store'
+    | 'customer_delivery'
+    | 'customer_additional'
     | 'majhi'
+    | 'godown'
 
-export type InvoiceStatus = 'draft' | 'finalized' | 'printed' | 'cancelled'
-
-export interface InvoiceItem {
-    id: string
-    source_type:
-    | 'storage_bill'
-    | 'lot_bill'
-    | 'delivery_bill'
-    | 'transport_bill'
-    | 'additional_charge'
-    | 'broker_vehicle_bill'
-    | 'godown_store_bill'
-    | 'majhi_lot_bill'
-    | 'majhi_loading_bill'
-    source_id: number
-    item: string
-    date: string
-    description: string
-    quantity: number
-    rate: number
-    amount: number          // Outstanding amount
-    total_amount: number    // Full bill amount
-    paid_amount: number     // Amount already paid
-}
-
-export interface Invoice {
-    id: string
-    number: string
-    party_type: InvoiceParty
-    party_id: number
-    party_name: string
-    type: InvoiceType
-    date: string
-    items: InvoiceItem[]
-    total: number
-    received: number
-    notes: string
-    status: InvoiceStatus
+export interface Discount {
+    id: number
+    invoice_id: number
+    type: DiscountType
+    value: number
+    computed_amount: number
+    reason: string | null
     created_at: string
     updated_at: string
 }
 
-export interface AvailableItem {
+export interface InvoiceItem {
     id: number
-    source_type: InvoiceItem['source_type']
-    item: string
-    date: string
-    description: string
-    quantity: number
-    rate: number
+    invoice_id: number
+    bill_type: UnbilledBillType
+    bill_id: number
     amount: number
-    total_amount: number
-    paid_amount: number
-    status: 'unpaid' | 'partial' | 'paid'
-    selected: boolean
+    created_at: string
 }
 
-export const generateInvoiceNumber = (party: InvoiceParty, sequence: number): string => {
-    const year = new Date().getFullYear()
-    const prefixes: Record<InvoiceParty, string> = {
-        customer: 'CUS',
-        broker: 'BRK',
-        godown: 'GDN',
-        majhi: 'MJH',
-    }
-    const seq = String(sequence).padStart(4, '0')
-    return `${prefixes[party]}-${year}-${seq}`
+export interface Invoice {
+    id: number
+    user_id: number
+    entity_type: EntityType
+    entity_id: number
+    subtotal: number
+    discount_amount: number
+    total: number
+    notes: string | null
+    created_at: string
+    updated_at: string
 }
 
-export const partyTypeLabel = (party: InvoiceParty): string => {
-    const map: Record<InvoiceParty, string> = {
-        customer: 'Customer',
-        broker: 'Broker',
-        godown: 'Godown',
-        majhi: 'Majhi',
-    }
-    return map[party]
+export interface InvoiceDetail extends Invoice {
+    items: InvoiceItem[]
+    discounts: Discount[]
 }
 
-export const invoiceTitle = (party: InvoiceParty): string => {
-    const map: Record<InvoiceParty, string> = {
-        customer: 'Customer Bill',
-        broker: 'Broker Vehicle Bill',
-        godown: 'Godown Store Bill',
-        majhi: 'Majhi Bill',
-    }
-    return map[party]
+export interface UnbilledBill {
+    bill_type: UnbilledBillType
+    bill_id: number
+    label: string
+    total: number
+    paid: number
+    remaining: number
+    date: string
 }
+
+export interface DiscountInput {
+    type: DiscountType
+    value: number
+    reason?: string | null
+}
+
+export interface BillRef {
+    bill_type: UnbilledBillType
+    bill_id: number
+}
+
+export interface CreateInvoicePayload {
+    entity_type: EntityType
+    entity_id: number
+    bills: BillRef[]
+    discounts?: DiscountInput[]
+    notes?: string | null
+}
+
+export interface UpdateInvoicePayload {
+    discounts?: DiscountInput[]
+    notes?: string | null
+}
+
+export type InvoiceSortField =
+    | 'entity_id'
+    | 'subtotal'
+    | 'discount_amount'
+    | 'total'
+    | 'created_at'
+
+export type SortDirection = 'asc' | 'desc'

@@ -8,8 +8,8 @@ import (
 
 type Damage struct {
 	ID           int64     `json:"id"`
-	StoreID      int64     `json:"store_id"`
 	UserID       int64     `json:"user_id"`
+	StoreID      int64     `json:"store_id"`
 	Quantity     float64   `json:"quantity"`
 	QuantityUnit string    `json:"quantity_unit"`
 	Weight       float64   `json:"weight"`
@@ -27,30 +27,38 @@ type DamageModel struct {
 	DB *sql.DB
 }
 
+const damageSelectCols = `
+	id, user_id, store_id,
+	quantity, quantity_unit, weight, weight_unit,
+	damage_date, reason, amount, notes, image_url,
+	created_at, updated_at
+`
+
 // =============================================================================
 // CREATE
 // =============================================================================
 
-func (m *DamageModel) Insert(ctx context.Context, damage *Damage) (int64, error) {
+func (m *DamageModel) Insert(ctx context.Context, d *Damage) (int64, error) {
 	query := `
 		INSERT INTO damages (
-			store_id, user_id, quantity, quantity_unit, weight, weight_unit,
+			user_id, store_id,
+			quantity, quantity_unit, weight, weight_unit,
 			damage_date, reason, amount, notes, image_url
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	res, err := m.DB.ExecContext(ctx, query,
-		damage.StoreID,
-		damage.UserID,
-		damage.Quantity,
-		damage.QuantityUnit,
-		damage.Weight,
-		damage.WeightUnit,
-		damage.DamageDate,
-		damage.Reason,
-		damage.Amount,
-		damage.Notes,
-		damage.ImageURL,
+		d.UserID,
+		d.StoreID,
+		d.Quantity,
+		d.QuantityUnit,
+		d.Weight,
+		d.WeightUnit,
+		d.DamageDate,
+		d.Reason,
+		d.Amount,
+		d.Notes,
+		d.ImageURL,
 	)
 	if err != nil {
 		return 0, err
@@ -64,132 +72,34 @@ func (m *DamageModel) Insert(ctx context.Context, damage *Damage) (int64, error)
 // =============================================================================
 
 func (m *DamageModel) GetByID(ctx context.Context, id int64) (*Damage, error) {
-	query := `
-		SELECT id, store_id, user_id, quantity, quantity_unit, weight, weight_unit,
-		       damage_date, reason, amount, notes, image_url, created_at, updated_at
-		FROM damages
-		WHERE id = ?
-	`
-
+	query := `SELECT ` + damageSelectCols + ` FROM damages WHERE id = ?`
 	row := m.DB.QueryRowContext(ctx, query, id)
-	return m.scanDamage(row)
-}
-
-func (m *DamageModel) GetByStoreID(ctx context.Context, storeID int64) ([]Damage, error) {
-	query := `
-		SELECT id, store_id, user_id, quantity, quantity_unit, weight, weight_unit,
-		       damage_date, reason, amount, notes, image_url, created_at, updated_at
-		FROM damages
-		WHERE store_id = ?
-		ORDER BY damage_date DESC
-	`
-
-	rows, err := m.DB.QueryContext(ctx, query, storeID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	damages := []Damage{}
-	for rows.Next() {
-		damage, err := m.scanDamageRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		damages = append(damages, *damage)
-	}
-
-	return damages, rows.Err()
-}
-
-func (m *DamageModel) GetByUserID(ctx context.Context, userID int64) ([]Damage, error) {
-	query := `
-		SELECT id, store_id, user_id, quantity, quantity_unit, weight, weight_unit,
-		       damage_date, reason, amount, notes, image_url, created_at, updated_at
-		FROM damages
-		WHERE user_id = ?
-		ORDER BY damage_date DESC
-	`
-
-	rows, err := m.DB.QueryContext(ctx, query, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	damages := []Damage{}
-	for rows.Next() {
-		damage, err := m.scanDamageRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		damages = append(damages, *damage)
-	}
-
-	return damages, rows.Err()
+	return m.scan(row)
 }
 
 func (m *DamageModel) GetAll(ctx context.Context) ([]Damage, error) {
-	query := `
-		SELECT id, store_id, user_id, quantity, quantity_unit, weight, weight_unit,
-		       damage_date, reason, amount, notes, image_url, created_at, updated_at
-		FROM damages
-		ORDER BY damage_date DESC
-	`
-
-	rows, err := m.DB.QueryContext(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	damages := []Damage{}
-	for rows.Next() {
-		damage, err := m.scanDamageRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		damages = append(damages, *damage)
-	}
-
-	return damages, rows.Err()
+	query := `SELECT ` + damageSelectCols + ` FROM damages ORDER BY damage_date DESC, id DESC`
+	return m.query(ctx, query)
 }
 
-func (m *DamageModel) GetByDateRange(ctx context.Context, startDate, endDate time.Time) ([]Damage, error) {
-	query := `
-		SELECT id, store_id, user_id, quantity, quantity_unit, weight, weight_unit,
-		       damage_date, reason, amount, notes, image_url, created_at, updated_at
-		FROM damages
-		WHERE damage_date >= ? AND damage_date <= ?
-		ORDER BY damage_date DESC
-	`
+func (m *DamageModel) GetByStoreID(ctx context.Context, storeID int64) ([]Damage, error) {
+	query := `SELECT ` + damageSelectCols + ` FROM damages WHERE store_id = ? ORDER BY damage_date DESC, id DESC`
+	return m.query(ctx, query, storeID)
+}
 
-	rows, err := m.DB.QueryContext(ctx, query, startDate, endDate)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	damages := []Damage{}
-	for rows.Next() {
-		damage, err := m.scanDamageRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		damages = append(damages, *damage)
-	}
-
-	return damages, rows.Err()
+func (m *DamageModel) GetByUserID(ctx context.Context, userID int64) ([]Damage, error) {
+	query := `SELECT ` + damageSelectCols + ` FROM damages WHERE user_id = ? ORDER BY damage_date DESC, id DESC`
+	return m.query(ctx, query, userID)
 }
 
 // =============================================================================
 // UPDATE
 // =============================================================================
 
-func (m *DamageModel) Update(ctx context.Context, damage *Damage) error {
+func (m *DamageModel) Update(ctx context.Context, d *Damage) error {
 	query := `
 		UPDATE damages
-		SET 
+		SET
 			quantity = ?,
 			quantity_unit = ?,
 			weight = ?,
@@ -198,20 +108,21 @@ func (m *DamageModel) Update(ctx context.Context, damage *Damage) error {
 			reason = ?,
 			amount = ?,
 			notes = ?,
+			image_url = ?,
 			updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
 	`
-
 	_, err := m.DB.ExecContext(ctx, query,
-		damage.Quantity,
-		damage.QuantityUnit,
-		damage.Weight,
-		damage.WeightUnit,
-		damage.DamageDate,
-		damage.Reason,
-		damage.Amount,
-		damage.Notes,
-		damage.ID,
+		d.Quantity,
+		d.QuantityUnit,
+		d.Weight,
+		d.WeightUnit,
+		d.DamageDate,
+		d.Reason,
+		d.Amount,
+		d.Notes,
+		d.ImageURL,
+		d.ID,
 	)
 	return err
 }
@@ -222,7 +133,6 @@ func (m *DamageModel) UpdateImage(ctx context.Context, id int64, imageURL *strin
 		SET image_url = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
 	`
-
 	_, err := m.DB.ExecContext(ctx, query, imageURL, id)
 	return err
 }
@@ -243,57 +153,50 @@ func (m *DamageModel) Delete(ctx context.Context, id int64) error {
 
 func (m *DamageModel) Exists(ctx context.Context, id int64) (bool, error) {
 	query := `SELECT EXISTS(SELECT 1 FROM damages WHERE id = ?)`
-
 	var exists bool
 	err := m.DB.QueryRowContext(ctx, query, id).Scan(&exists)
 	return exists, err
 }
 
-func (m *DamageModel) GetTotalDamagesByStore(ctx context.Context, storeID int64) (float64, error) {
-	query := `SELECT COALESCE(SUM(amount), 0) FROM damages WHERE store_id = ?`
-
-	var total float64
-	err := m.DB.QueryRowContext(ctx, query, storeID).Scan(&total)
-	return total, err
-}
-
-func (m *DamageModel) GetTotalQuantityByStore(ctx context.Context, storeID int64) (float64, error) {
-	query := `SELECT COALESCE(SUM(quantity), 0) FROM damages WHERE store_id = ?`
-
-	var total float64
-	err := m.DB.QueryRowContext(ctx, query, storeID).Scan(&total)
-	return total, err
-}
-
-func (m *DamageModel) GetTotalWeightByStore(ctx context.Context, storeID int64) (float64, error) {
-	query := `SELECT COALESCE(SUM(weight), 0) FROM damages WHERE store_id = ?`
-
-	var total float64
-	err := m.DB.QueryRowContext(ctx, query, storeID).Scan(&total)
-	return total, err
-}
-
 // =============================================================================
-// SCANNERS
+// SCANNERS / HELPERS
 // =============================================================================
 
-func (m *DamageModel) scanDamage(row *sql.Row) (*Damage, error) {
-	damage := &Damage{}
+func (m *DamageModel) query(ctx context.Context, query string, args ...any) ([]Damage, error) {
+	rows, err := m.DB.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	damages := []Damage{}
+	for rows.Next() {
+		d, err := m.scanRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		damages = append(damages, *d)
+	}
+	return damages, rows.Err()
+}
+
+func (m *DamageModel) scan(row *sql.Row) (*Damage, error) {
+	d := &Damage{}
 	err := row.Scan(
-		&damage.ID,
-		&damage.StoreID,
-		&damage.UserID,
-		&damage.Quantity,
-		&damage.QuantityUnit,
-		&damage.Weight,
-		&damage.WeightUnit,
-		&damage.DamageDate,
-		&damage.Reason,
-		&damage.Amount,
-		&damage.Notes,
-		&damage.ImageURL,
-		&damage.CreatedAt,
-		&damage.UpdatedAt,
+		&d.ID,
+		&d.UserID,
+		&d.StoreID,
+		&d.Quantity,
+		&d.QuantityUnit,
+		&d.Weight,
+		&d.WeightUnit,
+		&d.DamageDate,
+		&d.Reason,
+		&d.Amount,
+		&d.Notes,
+		&d.ImageURL,
+		&d.CreatedAt,
+		&d.UpdatedAt,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -301,26 +204,26 @@ func (m *DamageModel) scanDamage(row *sql.Row) (*Damage, error) {
 		}
 		return nil, err
 	}
-	return damage, nil
+	return d, nil
 }
 
-func (m *DamageModel) scanDamageRow(rows *sql.Rows) (*Damage, error) {
-	damage := &Damage{}
+func (m *DamageModel) scanRow(rows *sql.Rows) (*Damage, error) {
+	d := &Damage{}
 	err := rows.Scan(
-		&damage.ID,
-		&damage.StoreID,
-		&damage.UserID,
-		&damage.Quantity,
-		&damage.QuantityUnit,
-		&damage.Weight,
-		&damage.WeightUnit,
-		&damage.DamageDate,
-		&damage.Reason,
-		&damage.Amount,
-		&damage.Notes,
-		&damage.ImageURL,
-		&damage.CreatedAt,
-		&damage.UpdatedAt,
+		&d.ID,
+		&d.UserID,
+		&d.StoreID,
+		&d.Quantity,
+		&d.QuantityUnit,
+		&d.Weight,
+		&d.WeightUnit,
+		&d.DamageDate,
+		&d.Reason,
+		&d.Amount,
+		&d.Notes,
+		&d.ImageURL,
+		&d.CreatedAt,
+		&d.UpdatedAt,
 	)
-	return damage, err
+	return d, err
 }

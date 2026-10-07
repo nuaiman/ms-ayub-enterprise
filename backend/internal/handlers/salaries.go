@@ -112,7 +112,7 @@ func (h *Handler) CreateSalaryHandler(w http.ResponseWriter, r *http.Request) {
 	// Audit log
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      userID,
 		Action:      "create",
 		Description: "Created salary for employee #" + strconv.FormatInt(req.EmployeeID, 10) + " for " + req.MonthYear,
@@ -327,7 +327,7 @@ func (h *Handler) UpdateSalaryHandler(w http.ResponseWriter, r *http.Request) {
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      userID,
 		Action:      "update",
 		Description: "Updated salary #" + strconv.FormatInt(id, 10),
@@ -426,7 +426,7 @@ func (h *Handler) MarkSalaryAsPaidHandler(w http.ResponseWriter, r *http.Request
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      userID,
 		Action:      "update",
 		Description: "Marked salary #" + strconv.FormatInt(id, 10) + " as paid",
@@ -490,7 +490,7 @@ func (h *Handler) CancelSalaryHandler(w http.ResponseWriter, r *http.Request) {
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      userID,
 		Action:      "update",
 		Description: "Cancelled salary #" + strconv.FormatInt(id, 10),
@@ -554,7 +554,7 @@ func (h *Handler) DeleteSalaryHandler(w http.ResponseWriter, r *http.Request) {
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      userID,
 		Action:      "delete",
 		Description: "Deleted salary #" + strconv.FormatInt(id, 10),
@@ -606,7 +606,7 @@ func (h *Handler) GetSalariesByEmployeeHandler(w http.ResponseWriter, r *http.Re
 
 // GetSalariesByMonthHandler - GET /api/salaries/month/{month}
 func (h *Handler) GetSalariesByMonthHandler(w http.ResponseWriter, r *http.Request) {
-	monthYear := r.PathValue("month")
+	monthYear := utils.GetURLParam(r, "month")
 
 	log.Printf("[SALARIES] GetSalariesByMonthHandler called - Month: %s", monthYear)
 

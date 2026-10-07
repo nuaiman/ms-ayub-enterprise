@@ -8,10 +8,6 @@
                 <span class="text-sm text-(--color-text-secondary) bg-(--color-muted-bg) px-2 py-0.5 rounded-md">
                     {{ filteredDamages.length }}
                 </span>
-                <span v-if="damagesStore.totalDamageAmount > 0"
-                    class="text-sm text-(--color-red) bg-(--color-red)/10 px-2 py-0.5 rounded-md">
-                    {{ formatCurrency(damagesStore.totalDamageAmount) }}
-                </span>
             </div>
 
             <div class="flex items-center gap-2 flex-wrap">
@@ -33,10 +29,7 @@
                     </button>
                 </div>
 
-                <!-- Month Filter -->
-                <MonthFilter v-model="monthFilter" :items="availableMonths" />
-
-                <!-- Copy Button -->
+                <!-- Copy -->
                 <button @click="handleCopyToClipboard"
                     class="h-9 w-9 flex items-center justify-center border border-(--color-border) rounded-lg text-(--color-text-secondary) hover:bg-(--color-muted-bg) transition-colors relative shrink-0"
                     title="Copy table to clipboard">
@@ -52,7 +45,7 @@
                 </button>
 
                 <!-- Create -->
-                <button v-if="canManageDamages" @click="createDialogOpen = true"
+                <button v-if="canManage" @click="createDialogOpen = true"
                     class="h-9 px-4 flex items-center gap-2 bg-(--color-blue) text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-all duration-200 active:scale-95 whitespace-nowrap shrink-0">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14" />
@@ -68,10 +61,10 @@
                 <!-- Header Row -->
                 <div
                     class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wider bg-(--color-muted-bg)/30 rounded-t-lg">
-                    <div class="col-span-3 cursor-pointer hover:text-(--color-text-primary) transition-colors"
+                    <div class="col-span-4 cursor-pointer hover:text-(--color-text-primary) transition-colors"
                         @click="toggleSort('store_id')">
                         <span class="flex items-center gap-1">
-                            Store / Lot
+                            Store
                             <svg v-if="sortField === 'store_id'" class="w-3 h-3"
                                 :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
                                 viewBox="0 0 24 24">
@@ -79,10 +72,19 @@
                             </svg>
                         </span>
                     </div>
-                    <div class="col-span-2">Customer</div>
-                    <div class="col-span-2">Reason</div>
-                    <div class="col-span-1">Qty</div>
+                    <div class="col-span-3">Reason</div>
                     <div class="col-span-2 cursor-pointer hover:text-(--color-text-primary) transition-colors"
+                        @click="toggleSort('quantity')">
+                        <span class="flex items-center gap-1">
+                            Quantity / Weight
+                            <svg v-if="sortField === 'quantity'" class="w-3 h-3"
+                                :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
+                                viewBox="0 0 24 24">
+                                <path d="M7 10l5 5 5-5z" />
+                            </svg>
+                        </span>
+                    </div>
+                    <div class="col-span-1 cursor-pointer hover:text-(--color-text-primary) transition-colors"
                         @click="toggleSort('amount')">
                         <span class="flex items-center gap-1">
                             Amount
@@ -104,7 +106,7 @@
                             </svg>
                         </span>
                     </div>
-                    <div class="col-span-1 flex items-center justify-end">Actions</div>
+                    <div class="col-span-1 text-right">Actions</div>
                 </div>
 
                 <!-- Loading -->
@@ -132,7 +134,7 @@
                         </div>
                         <p class="text-sm font-medium text-(--color-text-primary)">No damages found</p>
                         <p class="text-xs text-(--color-text-secondary)">{{ searchQuery ? 'Try adjusting your search' :
-                            'Create a new damage record to get started' }}</p>
+                            'Record a damage to get started' }}</p>
                     </div>
                 </div>
 
@@ -148,18 +150,17 @@
         <!-- Footer -->
         <div v-if="!loading && filteredDamages.length > 0"
             class="flex items-center justify-between py-3 px-1 border-t border-(--color-border) shrink-0 mt-auto">
-            <p class="text-xs text-(--color-text-secondary)">Showing {{ filteredDamages.length }} of {{
-                damagesStore.damages.length }} damages</p>
+            <p class="text-xs text-(--color-text-secondary)">Showing {{ filteredDamages.length }} of {{ totalDamages }}
+                damages</p>
             <p class="text-xs text-(--color-text-secondary)">Total: {{ formatCurrency(damagesStore.totalDamageAmount) }}
             </p>
         </div>
 
-        <!-- Dialogs -->
         <!-- Create Dialog -->
         <BaseDialog v-model="createDialogOpen" max-width="3xl">
             <div class="mb-6">
-                <h2 class="text-xl font-bold text-(--color-text-primary)">Create Damage Record</h2>
-                <p class="text-sm text-(--color-text-secondary) mt-1">Record a new damage entry</p>
+                <h2 class="text-xl font-bold text-(--color-text-primary)">Record Damage</h2>
+                <p class="text-sm text-(--color-text-secondary) mt-1">Record a new damage against a store</p>
             </div>
             <DamageForm mode="create" @damage-created="handleDamageCreated" @cancel="createDialogOpen = false" />
         </BaseDialog>
@@ -173,7 +174,7 @@
         <!-- Edit Dialog -->
         <BaseDialog v-model="editDialogOpen" max-width="3xl">
             <div class="mb-6">
-                <h2 class="text-xl font-bold text-(--color-text-primary)">Edit Damage Record</h2>
+                <h2 class="text-xl font-bold text-(--color-text-primary)">Edit Damage</h2>
                 <p class="text-sm text-(--color-text-secondary) mt-1">Update damage information</p>
             </div>
             <DamageForm v-if="selectedDamage" mode="edit" :damage="selectedDamage" @damage-updated="handleDamageUpdated"
@@ -191,14 +192,13 @@
                     </svg>
                 </div>
                 <div>
-                    <h2 class="text-lg font-bold text-(--color-text-primary)">Delete Damage Record</h2>
+                    <h2 class="text-lg font-bold text-(--color-text-primary)">Delete Damage</h2>
                     <p class="text-xs text-(--color-text-secondary)">This action cannot be undone</p>
                 </div>
             </div>
             <p class="text-sm text-(--color-text-secondary) mt-4">
-                Are you sure you want to delete this damage record for "<span
-                    class="font-medium text-(--color-text-primary)">{{ getStoreDisplayName(selectedDamage?.store_id)
-                    }}</span>"?
+                Are you sure you want to delete damage #<span class="font-medium text-(--color-text-primary)">{{
+                    selectedDamage?.id }}</span>?
             </p>
             <template #actions>
                 <button @click="deleteDialogOpen = false"
@@ -211,35 +211,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useDamagesStore } from '@/stores/damages'
 import { useStoresStore } from '@/stores/stores'
-import { useUsersStore } from '@/stores/users'
+import { useLotsStore } from '@/stores/lots'
 import { useAuthStore } from '@/stores/auth'
 import { useClipboardStore } from '@/stores/clipboard'
-import type { Damage, DamageSortField, SortDirection } from '@/types/damage'
-import type { Store } from '@/types/store'
+import type { Damage } from '@/types/damage'
 import DamageRow from './DamageRow.vue'
 import DamageForm from './DamageForm.vue'
 import DamageDetail from './DamageDetail.vue'
-import MonthFilter from '@/components/ui/MonthFilter.vue'
 import BaseDialog from '@/components/ui/BaseDialog.vue'
 import { formatCurrency } from '@/utils/currency'
-import { push } from 'notivue'
 
 const damagesStore = useDamagesStore()
 const storesStore = useStoresStore()
-const usersStore = useUsersStore()
+const lotsStore = useLotsStore()
 const auth = useAuthStore()
 const clipboardStore = useClipboardStore()
 
 const loading = ref(true)
-const searchQuery = ref('')
-const monthFilter = ref('')
-const sortField = ref<DamageSortField>('damage_date')
-const sortDirection = ref<SortDirection>('desc')
-
-// Dialogs
 const createDialogOpen = ref(false)
 const detailDialogOpen = ref(false)
 const editDialogOpen = ref(false)
@@ -247,84 +238,15 @@ const deleteDialogOpen = ref(false)
 
 const selectedDamage = ref<Damage | null>(null)
 
-const canManageDamages = computed(() => {
+const searchQuery = computed(() => damagesStore.searchQuery)
+const sortField = computed(() => damagesStore.sortField)
+const sortDirection = computed(() => damagesStore.sortDirection)
+const filteredDamages = computed(() => damagesStore.filteredDamages)
+const totalDamages = computed(() => damagesStore.totalDamages)
+
+const canManage = computed(() => {
     const role = auth.user?.role
     return role === 'admin' || role === 'manager'
-})
-
-// Get unique months from damages
-const availableMonths = computed(() => {
-    const months = new Set<string>()
-    damagesStore.damages.forEach(d => {
-        const date = new Date(d.damage_date)
-        const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-        months.add(month)
-    })
-    return Array.from(months).sort((a, b) => b.localeCompare(a))
-})
-
-const getStoreDisplayName = (storeId?: number): string => {
-    if (!storeId) return 'Unknown'
-    const store = storesStore.getStoreById(storeId)
-    if (!store) return `Store #${storeId}`
-    return storesStore.getStoreDisplayName(store)
-}
-
-const filteredDamages = computed(() => {
-    let result = [...damagesStore.damages]
-
-    // Search
-    if (searchQuery.value) {
-        const query = searchQuery.value.toLowerCase()
-        result = result.filter(d =>
-            d.reason.toLowerCase().includes(query) ||
-            (d.notes && d.notes.toLowerCase().includes(query)) ||
-            getStoreDisplayName(d.store_id).toLowerCase().includes(query) ||
-            String(d.quantity).includes(query) ||
-            String(d.weight).includes(query) ||
-            String(d.amount).includes(query) ||
-            usersStore.getUserName(d.user_id).toLowerCase().includes(query)
-        )
-    }
-
-    // Filter by month
-    if (monthFilter.value) {
-        result = result.filter(d => {
-            const date = new Date(d.damage_date)
-            const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-            return month === monthFilter.value
-        })
-    }
-
-    // Sort
-    result.sort((a, b) => {
-        let comparison = 0
-        switch (sortField.value) {
-            case 'store_id':
-                comparison = a.store_id - b.store_id
-                break
-            case 'quantity':
-                comparison = a.quantity - b.quantity
-                break
-            case 'weight':
-                comparison = a.weight - b.weight
-                break
-            case 'damage_date':
-                comparison = new Date(a.damage_date).getTime() - new Date(b.damage_date).getTime()
-                break
-            case 'amount':
-                comparison = a.amount - b.amount
-                break
-            case 'created_at':
-                comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-                break
-            default:
-                comparison = 0
-        }
-        return sortDirection.value === 'desc' ? -comparison : comparison
-    })
-
-    return result
 })
 
 const fetchDamages = async () => {
@@ -333,7 +255,7 @@ const fetchDamages = async () => {
         await Promise.all([
             damagesStore.fetchDamages(),
             storesStore.fetchStores(),
-            usersStore.fetchUsers()
+            lotsStore.fetchLots(),
         ])
     } finally {
         loading.value = false
@@ -342,32 +264,25 @@ const fetchDamages = async () => {
 
 const handleSearch = (e: Event) => {
     const target = e.target as HTMLInputElement
-    searchQuery.value = target.value
+    damagesStore.setSearchQuery(target.value)
 }
 
 const clearSearch = () => {
-    searchQuery.value = ''
+    damagesStore.clearSearch()
 }
 
-const toggleSort = (field: DamageSortField) => {
-    if (sortField.value === field) {
-        sortDirection.value = sortDirection.value === 'desc' ? 'asc' : 'desc'
-    } else {
-        sortField.value = field
-        sortDirection.value = 'desc'
-    }
+const toggleSort = (field: Parameters<typeof damagesStore.setSort>[0]) => {
+    damagesStore.setSort(field)
 }
 
 const handleCopyToClipboard = async () => {
-    const headers = 'Store\tReason\tQuantity\tWeight\tAmount\tDate'
-    const rows = filteredDamages.value.map(d => {
-        const storeName = getStoreDisplayName(d.store_id)
-        return `${storeName}\t${d.reason}\t${d.quantity} ${d.quantity_unit}\t${d.weight} ${d.weight_unit}\t${d.amount.toFixed(2)}\t${new Date(d.damage_date).toLocaleDateString()}`
-    })
+    const headers = 'Store ID\tReason\tQuantity\tWeight\tAmount\tDate'
+    const rows = filteredDamages.value.map(d =>
+        `${d.store_id}\t${d.reason}\t${d.quantity.toFixed(2)} ${d.quantity_unit}\t${d.weight.toFixed(2)} ${d.weight_unit}\t${d.amount.toFixed(2)}\t${new Date(d.damage_date).toLocaleDateString()}`
+    )
     await clipboardStore.copyToClipboard(headers + '\n' + rows.join('\n'))
 }
 
-// Dialog handlers
 const openDetailDialog = (damage: Damage) => {
     selectedDamage.value = damage
     detailDialogOpen.value = true
@@ -416,22 +331,5 @@ const handleDamageUpdated = async () => {
     await fetchDamages()
 }
 
-// Auto-select current month
-watch(() => damagesStore.damages, (newDamages) => {
-    if (newDamages.length > 0 && !monthFilter.value) {
-        const currentMonth = new Date().toISOString().slice(0, 7)
-        const hasCurrentMonth = newDamages.some(d => {
-            const date = new Date(d.damage_date)
-            const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-            return month === currentMonth
-        })
-        if (hasCurrentMonth) {
-            monthFilter.value = currentMonth
-        }
-    }
-}, { immediate: true })
-
-onMounted(() => {
-    fetchDamages()
-})
+onMounted(() => { fetchDamages() })
 </script>

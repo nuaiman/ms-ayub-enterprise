@@ -239,7 +239,7 @@ const handleLogin = async () => {
     const success = await auth.login(trimmedUsername, password.value)
 
     if (success) {
-      await router.push('/dashboard')
+      await router.push('/customers')
       return
     }
 

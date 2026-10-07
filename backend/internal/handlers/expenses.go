@@ -80,7 +80,7 @@ func (h *Handler) CreateExpenseHandler(w http.ResponseWriter, r *http.Request) {
 	// Audit log
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      userID,
 		Action:      "create",
 		Description: "Created expense: " + req.Title,
@@ -232,7 +232,7 @@ func (h *Handler) UpdateExpenseHandler(w http.ResponseWriter, r *http.Request) {
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      userID,
 		Action:      "update",
 		Description: "Updated expense #" + strconv.FormatInt(id, 10),
@@ -282,7 +282,7 @@ func (h *Handler) DeleteExpenseHandler(w http.ResponseWriter, r *http.Request) {
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      userID,
 		Action:      "delete",
 		Description: "Deleted expense: " + expense.Title,

@@ -123,8 +123,34 @@ func (m *SalaryModel) GetAll(ctx context.Context, filters map[string]string) ([]
 }
 
 func (m *SalaryModel) GetByEmployeeID(ctx context.Context, employeeID int64) ([]Salary, error) {
-	filters := map[string]string{"employee_id": string(rune(employeeID))}
-	return m.GetAll(ctx, filters)
+	query := `
+		SELECT 
+			id, user_id, employee_id, month_year, 
+			bonus, deductions,
+			status, payment_date, payment_method, 
+			reference_number, notes,
+			created_at, updated_at
+		FROM salaries
+		WHERE employee_id = ?
+		ORDER BY month_year DESC, created_at DESC
+	`
+
+	rows, err := m.DB.QueryContext(ctx, query, employeeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	salaries := []Salary{}
+	for rows.Next() {
+		salary, err := m.scanSalaryRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		salaries = append(salaries, *salary)
+	}
+
+	return salaries, rows.Err()
 }
 
 func (m *SalaryModel) GetByMonth(ctx context.Context, monthYear string) ([]Salary, error) {
@@ -151,37 +177,35 @@ func (m *SalaryModel) GetByEmployeeAndMonth(ctx context.Context, employeeID int6
 func (m *SalaryModel) EnsureCurrentMonthSalaries(ctx context.Context, userID int64) error {
 	currentMonth := time.Now().Format("2006-01")
 
+	tx, err := m.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	userModel := UserModel{DB: m.DB}
 	employees, err := userModel.GetActiveUsers(ctx)
 	if err != nil {
 		return err
 	}
 
+	stmt, err := tx.PrepareContext(ctx, `
+		INSERT OR IGNORE INTO salaries (
+			user_id, employee_id, month_year, bonus, deductions, status, notes
+		) VALUES (?, ?, ?, 0, 0, 'draft', NULL)
+	`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
 	for _, emp := range employees {
-		existing, err := m.GetByEmployeeAndMonth(ctx, emp.ID, currentMonth)
-		if err != nil && err != sql.ErrNoRows {
+		if _, err := stmt.ExecContext(ctx, userID, emp.ID, currentMonth); err != nil {
 			return err
-		}
-
-		if existing == nil {
-			salary := &Salary{
-				UserID:     userID,
-				EmployeeID: emp.ID,
-				MonthYear:  currentMonth,
-				Bonus:      0,
-				Deductions: 0,
-				Status:     "draft",
-				Notes:      nil,
-			}
-
-			_, err := m.Insert(ctx, salary)
-			if err != nil {
-				return err
-			}
 		}
 	}
 
-	return nil
+	return tx.Commit()
 }
 
 // =============================================================================

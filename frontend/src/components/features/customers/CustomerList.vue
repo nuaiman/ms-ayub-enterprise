@@ -1,7 +1,6 @@
 <!-- src/components/features/customers/CustomerList.vue -->
 <template>
     <div class="flex flex-col h-full min-h-[calc(100vh-200px)]">
-        <!-- Header -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 shrink-0">
             <div class="flex items-center gap-3">
                 <h2 class="text-lg font-semibold text-(--color-text-primary)">Customers</h2>
@@ -11,7 +10,6 @@
             </div>
 
             <div class="flex items-center gap-2 flex-wrap">
-                <!-- Search -->
                 <div class="relative flex-1 sm:flex-none w-full sm:w-auto">
                     <input :value="searchQuery" @input="handleSearch" type="text" placeholder="Search customers..."
                         class="w-full sm:w-56 pl-9 pr-8 py-2 rounded-lg text-sm bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent" />
@@ -29,7 +27,6 @@
                     </button>
                 </div>
 
-                <!-- Copy Button -->
                 <button @click="handleCopyToClipboard"
                     class="h-9 w-9 flex items-center justify-center border border-(--color-border) rounded-lg text-(--color-text-secondary) hover:bg-(--color-muted-bg) transition-colors relative shrink-0"
                     title="Copy table to clipboard">
@@ -44,7 +41,6 @@
                     </svg>
                 </button>
 
-                <!-- Create -->
                 <button v-if="canManageCustomers" @click="createDialogOpen = true"
                     class="h-9 px-4 flex items-center gap-2 bg-(--color-blue) text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-all duration-200 active:scale-95 whitespace-nowrap shrink-0">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -55,10 +51,8 @@
             </div>
         </div>
 
-        <!-- Table -->
         <div class="flex-1 min-h-0 overflow-auto">
             <div class="min-w-225">
-                <!-- Header Row -->
                 <div
                     class="grid grid-cols-12 items-center py-3 px-3 border-b border-(--color-border) text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wider bg-(--color-muted-bg)/30 rounded-t-lg">
                     <div class="col-span-3 cursor-pointer hover:text-(--color-text-primary) transition-colors"
@@ -108,7 +102,6 @@
                     <div class="col-span-1 text-right">Actions</div>
                 </div>
 
-                <!-- Loading -->
                 <div v-if="loading" class="flex items-center justify-center py-12">
                     <div class="text-center space-y-4">
                         <svg class="animate-spin w-10 h-10 text-(--color-blue) mx-auto" fill="none" viewBox="0 0 24 24">
@@ -120,7 +113,6 @@
                     </div>
                 </div>
 
-                <!-- Empty -->
                 <div v-else-if="filteredCustomers.length === 0" class="flex items-center justify-center py-12">
                     <div class="text-center space-y-3">
                         <div
@@ -137,23 +129,20 @@
                     </div>
                 </div>
 
-                <!-- Rows -->
                 <div v-else>
                     <CustomerRow v-for="customer in filteredCustomers" :key="customer.id" :customer="customer"
                         @view="openDetailDialog" @edit="handleEditCustomer" @delete="handleDeleteCustomer"
-                        @view-ledger="handleViewLedger" @add-charge="handleAddCharge" @updated="fetchCustomers" />
+                        @ledger="handleOpenLedger" @updated="fetchCustomers" />
                 </div>
             </div>
         </div>
 
-        <!-- Footer -->
         <div v-if="!loading && filteredCustomers.length > 0"
             class="flex items-center justify-between py-3 px-1 border-t border-(--color-border) shrink-0 mt-auto">
             <p class="text-xs text-(--color-text-secondary)">Showing {{ filteredCustomers.length }} of {{
                 customersStore.customers.length }} customers</p>
         </div>
 
-        <!-- Dialogs -->
         <!-- Create Dialog -->
         <BaseDialog v-model="createDialogOpen" max-width="3xl">
             <div class="mb-6">
@@ -166,13 +155,7 @@
         <!-- Detail Dialog -->
         <BaseDialog v-model="detailDialogOpen" max-width="3xl">
             <CustomerDetail v-if="selectedCustomer" :customer="selectedCustomer" @close="closeDetailDialog"
-                @edit="handleEditCustomerFromDetail" @view-ledger="handleViewLedgerFromDetail"
-                @updated="fetchCustomers" />
-        </BaseDialog>
-
-        <!-- Ledger Dialog -->
-        <BaseDialog v-model="ledgerDialogOpen" max-width="3xl">
-            <CustomerLedger v-if="ledgerCustomerId" :customer-id="ledgerCustomerId" @close="ledgerDialogOpen = false" />
+                @edit="handleEditCustomerFromDetail" @ledger="handleOpenLedgerFromDetail" @updated="fetchCustomers" />
         </BaseDialog>
 
         <!-- Edit Dialog -->
@@ -183,6 +166,11 @@
             </div>
             <CustomerForm v-if="selectedCustomer" mode="edit" :customer="selectedCustomer"
                 @customer-updated="handleCustomerUpdated" @cancel="editDialogOpen = false" />
+        </BaseDialog>
+
+        <!-- Ledger Dialog -->
+        <BaseDialog v-model="ledgerDialogOpen" max-width="3xl">
+            <CustomerLedger v-if="selectedCustomer" :customer-id="selectedCustomer.id" @close="closeLedgerDialog" />
         </BaseDialog>
 
         <!-- Delete Confirmation Dialog -->
@@ -211,19 +199,8 @@
                     class="px-4 py-2 text-sm font-semibold bg-(--color-red) text-white rounded-lg hover:opacity-90 transition-colors">Delete</button>
             </template>
         </BaseDialog>
-
-        <!-- Add Charge Dialog -->
-        <BaseDialog v-model="chargeDialogOpen" max-width="3xl">
-            <div class="mb-6">
-                <h2 class="text-xl font-bold text-(--color-text-primary)">Add Additional Charge</h2>
-                <p class="text-sm text-(--color-text-secondary) mt-1">Create a new charge for this customer</p>
-            </div>
-            <AdditionalChargeForm v-if="chargeCustomerId" :locked-customer-id="chargeCustomerId"
-                @charge-created="handleChargeCreated" @cancel="chargeDialogOpen = false" />
-        </BaseDialog>
     </div>
 </template>
-
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
@@ -232,18 +209,21 @@ import { useAuthStore } from '@/stores/auth'
 import { useClipboardStore } from '@/stores/clipboard'
 import { useLotsStore } from '@/stores/lots'
 import { useStoresStore } from '@/stores/stores'
-import { useDeliveriesStore } from '@/stores/deliveries'
-import { useDeliveryItemsStore } from '@/stores/deliveryItems'
-import { useDamagesStore } from '@/stores/damages'
-import { useTransportsStore } from '@/stores/transports'
-import { useVehiclesStore } from '@/stores/vehicles'
 import { useGodownsStore } from '@/stores/godowns'
+import { useMajhisStore } from '@/stores/majhis'
+import { useDeliveriesStore } from '@/stores/deliveries'
+import { useDamagesStore } from '@/stores/damages'
+import { useCustomerStoreBillsStore } from '@/stores/customerStoreBills'
+import { useCustomerDeliveryBillsStore } from '@/stores/customerDeliveryBills'
+import { useCustomerAdditionalBillsStore } from '@/stores/customerAdditionalBills'
+import { useInvoicesStore } from '@/stores/invoices'
+import { useLotTransfersStore } from '@/stores/lotTransfers'
+import { useUsersStore } from '@/stores/users'
 import type { Customer, CustomerSortField, SortDirection } from '@/types/customer'
 import CustomerRow from './CustomerRow.vue'
 import CustomerForm from './CustomerForm.vue'
 import CustomerDetail from './CustomerDetail.vue'
 import CustomerLedger from './CustomerLedger.vue'
-import AdditionalChargeForm from '@/components/features/customerAdditionalBills/AdditionalChargeForm.vue'
 import BaseDialog from '@/components/ui/BaseDialog.vue'
 
 const customersStore = useCustomersStore()
@@ -251,12 +231,16 @@ const auth = useAuthStore()
 const clipboardStore = useClipboardStore()
 const lotsStore = useLotsStore()
 const storesStore = useStoresStore()
-const deliveriesStore = useDeliveriesStore()
-const deliveryItemsStore = useDeliveryItemsStore()
-const damagesStore = useDamagesStore()
-const transportsStore = useTransportsStore()
-const vehiclesStore = useVehiclesStore()
 const godownsStore = useGodownsStore()
+const majhisStore = useMajhisStore()
+const deliveriesStore = useDeliveriesStore()
+const damagesStore = useDamagesStore()
+const customerStoreBillsStore = useCustomerStoreBillsStore()
+const customerDeliveryBillsStore = useCustomerDeliveryBillsStore()
+const customerAdditionalBillsStore = useCustomerAdditionalBillsStore()
+const invoicesStore = useInvoicesStore()
+const lotTransfersStore = useLotTransfersStore()
+const usersStore = useUsersStore()
 
 const loading = ref(true)
 const searchQuery = ref('')
@@ -265,14 +249,11 @@ const sortDirection = ref<SortDirection>('asc')
 
 const createDialogOpen = ref(false)
 const detailDialogOpen = ref(false)
-const ledgerDialogOpen = ref(false)
 const editDialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
-const chargeDialogOpen = ref(false)
+const ledgerDialogOpen = ref(false)
 
 const selectedCustomer = ref<Customer | null>(null)
-const ledgerCustomerId = ref<number | null>(null)
-const chargeCustomerId = ref<number | null>(null)
 
 const canManageCustomers = computed(() => {
     const role = auth.user?.role
@@ -332,17 +313,7 @@ const getCustomerDisplayName = (customer: Customer | null): string => {
 const fetchCustomers = async () => {
     loading.value = true
     try {
-        await Promise.all([
-            customersStore.fetchCustomers(),
-            lotsStore.fetchLots(),
-            storesStore.fetchStores(),
-            deliveriesStore.fetchDeliveries(),
-            deliveryItemsStore.fetchDeliveryItems(),
-            damagesStore.fetchDamages(),
-            transportsStore.fetchTransports(),
-            vehiclesStore.fetchVehicles(),
-            godownsStore.fetchGodowns(),
-        ])
+        await customersStore.fetchCustomers()
     } finally {
         loading.value = false
     }
@@ -397,19 +368,6 @@ const handleEditCustomerFromDetail = (customer: Customer) => {
     }, 300)
 }
 
-const handleViewLedger = (customer: Customer) => {
-    ledgerCustomerId.value = customer.id
-    ledgerDialogOpen.value = true
-}
-
-const handleViewLedgerFromDetail = (customer: Customer) => {
-    detailDialogOpen.value = false
-    setTimeout(() => {
-        ledgerCustomerId.value = customer.id
-        ledgerDialogOpen.value = true
-    }, 300)
-}
-
 const handleDeleteCustomer = (customer: Customer) => {
     selectedCustomer.value = customer
     deleteDialogOpen.value = true
@@ -435,15 +393,46 @@ const handleCustomerUpdated = async () => {
     await fetchCustomers()
 }
 
-const handleAddCharge = (customer: Customer) => {
-    chargeCustomerId.value = customer.id
-    chargeDialogOpen.value = true
+// ===================== LEDGER =====================
+
+const loadLedgerStores = async () => {
+    await Promise.all([
+        lotsStore.fetchLots(),
+        storesStore.fetchStores(),
+        godownsStore.fetchGodowns(),
+        majhisStore.fetchMajhis(),
+        deliveriesStore.fetchDeliveries(),
+        damagesStore.fetchDamages(),
+        customerStoreBillsStore.fetchCustomerStoreBills(),
+        customerDeliveryBillsStore.fetchCustomerDeliveryBills(),
+        customerAdditionalBillsStore.fetchCustomerAdditionalBills(),
+        invoicesStore.fetchInvoices(),
+        lotTransfersStore.fetchAllTransfers(),
+        usersStore.fetchUsers(),
+    ])
+
+    // Ledger also needs each delivery's items.
+    await Promise.all(
+        deliveriesStore.deliveries.map(d => deliveriesStore.loadItemsFor(d.id))
+    )
 }
 
-const handleChargeCreated = async () => {
-    chargeDialogOpen.value = false
-    chargeCustomerId.value = null
-    await fetchCustomers()
+const handleOpenLedger = async (customer: Customer) => {
+    selectedCustomer.value = customer
+    await loadLedgerStores()
+    ledgerDialogOpen.value = true
+}
+
+const handleOpenLedgerFromDetail = (customer: Customer) => {
+    detailDialogOpen.value = false
+    setTimeout(() => {
+        handleOpenLedger(customer)
+    }, 300)
+}
+
+const closeLedgerDialog = () => {
+    ledgerDialogOpen.value = false
+    setTimeout(() => { selectedCustomer.value = null }, 300)
 }
 
 onMounted(() => {

@@ -1,29 +1,54 @@
 // src/types/customerDeliveryBill.ts
 
+export type CustomerDeliveryBillType = 'weight' | 'quantity'
+
 export interface CustomerDeliveryBill {
     id: number
+    user_id: number
+    customer_id: number
     delivery_item_id: number
-    delivery_id: number
-    delivery_date: string
-    customer_id: number | null
-    customer_name: string
-    item_name: string
-    lot_id: number
-    store_id: number
-    customer_charge_type: 'weight' | 'quantity'
-    loading_rate: number
-    quantity: number
-    quantity_unit: string
-    weight: number
-    weight_unit: string
-    bill_amount: number
-    paid_amount: number  // From customer_paid_unload_amount
-    status: 'unpaid' | 'paid' | 'cancelled'
-    payment_date: string | null
-    notes: string | null
+    bill_type: CustomerDeliveryBillType
+    rate: number
+    weight_at_billing: number
+    quantity_at_billing: number
+    weight_unit_at_billing: string | null
+    quantity_unit_at_billing: string | null
+    total_amount: number
+    total_paid: number
+    total_paid_through: string | null
+    remaining: number
     created_at: string
     updated_at: string
 }
 
-export type CustomerDeliveryBillSortField = 'customer_name' | 'item_name' | 'bill_amount' | 'status' | 'delivery_date' | 'created_at'
+export interface CreateCustomerDeliveryBillPayload {
+    customer_id: number
+    delivery_item_id: number
+    bill_type: CustomerDeliveryBillType
+    rate: number
+}
+
+export interface UpdateCustomerDeliveryBillPayload {
+    bill_type?: CustomerDeliveryBillType
+    rate?: number
+    weight_at_billing?: number
+    quantity_at_billing?: number
+}
+
+export interface CreateBillPaymentPayload {
+    amount: number
+    payment_date?: string
+    payment_method?: 'cash' | 'bank_transfer' | 'check' | 'mobile_banking'
+    reference_number?: string | null
+    notes?: string | null
+}
+
+export type CustomerDeliveryBillSortField =
+    | 'customer_id'
+    | 'delivery_item_id'
+    | 'bill_type'
+    | 'rate'
+    | 'total_paid'
+    | 'created_at'
+
 export type SortDirection = 'asc' | 'desc'

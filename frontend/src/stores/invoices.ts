@@ -1,401 +1,267 @@
 // src/stores/invoices.ts
 
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import api from '@/utils/axios'
 import type {
     Invoice,
-    InvoiceParty,
-    AvailableItem,
+    InvoiceDetail,
+    UnbilledBill,
+    CreateInvoicePayload,
+    UpdateInvoicePayload,
+    EntityType,
+    InvoiceSortField,
+    SortDirection,
 } from '@/types/invoice'
-import { generateInvoiceNumber } from '@/types/invoice'
-import { useCustomerStorageBillsStore } from './customerStorageBills'
-import { useCustomerLotBillsStore } from './customerLotBills'
-import { useCustomerDeliveryBillsStore } from './customerDeliveryBills'
-import { useCustomerTransportBillsStore } from './customerTransportBills'
-import { useCustomerAdditionalBillsStore } from './customerAdditionalBills'
-import { useBrokerVehicleBillsStore } from './brokerVehicleBills'
-import { useGodownStoreBillsStore } from './godownStoreBills'
-import { useMajhiLotBillsStore } from './majhiLotBills'
-import { useMajhiLoadingBillsStore } from './majhiLoadingBills'
+import type { ApiResponse } from '@/types/api'
 import { push } from 'notivue'
+import { useGlobalLoader } from 'vue-global-loader'
+import type { AxiosError } from 'axios'
 
-const STORAGE_KEY = 'invoices_data_v2'
+export const useInvoicesStore = defineStore('invoices', () => {
+    const { displayLoader, destroyLoader } = useGlobalLoader()
 
-export const useInvoiceStore = defineStore('invoice', () => {
+    // ============= STATE =============
     const invoices = ref<Invoice[]>([])
-    const currentInvoice = ref<Invoice | null>(null)
+    const searchQuery = ref('')
+    const sortField = ref<InvoiceSortField>('created_at')
+    const sortDirection = ref<SortDirection>('desc')
 
-    const loadFromLocalStorage = () => {
-        try {
-            const data = localStorage.getItem(STORAGE_KEY)
-            if (data) {
-                invoices.value = JSON.parse(data)
+    // ============= COMPUTED =============
+    const filteredInvoices = computed(() => {
+        let result = [...invoices.value]
+
+        if (searchQuery.value) {
+            const query = searchQuery.value.toLowerCase()
+            result = result.filter(
+                (i) =>
+                    i.entity_type.toLowerCase().includes(query) ||
+                    String(i.entity_id).includes(query) ||
+                    String(i.total).includes(query) ||
+                    String(i.subtotal).includes(query) ||
+                    (i.notes && i.notes.toLowerCase().includes(query))
+            )
+        }
+
+        result.sort((a, b) => {
+            let comparison = 0
+            switch (sortField.value) {
+                case 'entity_id':
+                    comparison = a.entity_id - b.entity_id
+                    break
+                case 'subtotal':
+                    comparison = a.subtotal - b.subtotal
+                    break
+                case 'discount_amount':
+                    comparison = a.discount_amount - b.discount_amount
+                    break
+                case 'total':
+                    comparison = a.total - b.total
+                    break
+                case 'created_at':
+                    comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                    break
+                default:
+                    comparison = 0
             }
-        } catch (error) {
-            console.error('Failed to load invoices:', error)
-        }
-    }
+            return sortDirection.value === 'desc' ? -comparison : comparison
+        })
 
-    const saveToLocalStorage = () => {
+        return result
+    })
+
+    const totalInvoices = computed(() => invoices.value.length)
+    const totalSubtotal = computed(() => invoices.value.reduce((sum, i) => sum + i.subtotal, 0))
+    const totalDiscount = computed(() => invoices.value.reduce((sum, i) => sum + i.discount_amount, 0))
+    const totalAmount = computed(() => invoices.value.reduce((sum, i) => sum + i.total, 0))
+
+    // ============= FETCH =============
+    const fetchInvoices = async (params?: {
+        entity_type?: EntityType
+        entity_id?: number
+    }) => {
+        displayLoader()
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(invoices.value))
+            const res = await api.get<ApiResponse<Invoice[]>>('/invoices', { params })
+            if (!res.data.success) {
+                push.error(res.data.message)
+                return []
+            }
+            invoices.value = res.data.data
+            return invoices.value
         } catch (error) {
-            console.error('Failed to save invoices:', error)
+            const err = error as AxiosError<ApiResponse<null>>
+            push.error(err.response?.data?.message || 'Failed to fetch invoices')
+            return []
+        } finally {
+            destroyLoader()
         }
     }
 
-    // =========================================================================
-    // AVAILABLE ITEMS PER PARTY
-    // =========================================================================
+    const fetchInvoiceDetail = async (id: number): Promise<InvoiceDetail | null> => {
+        try {
+            const res = await api.get<ApiResponse<InvoiceDetail>>(`/invoices/${id}`)
+            if (!res.data.success) return null
+            return res.data.data
+        } catch (error) {
+            const err = error as AxiosError<ApiResponse<null>>
+            push.error(err.response?.data?.message || 'Failed to fetch invoice')
+            return null
+        }
+    }
 
-    const itemsForCustomer = (customerId: number): AvailableItem[] => {
-        const items: AvailableItem[] = []
-
-        const storageStore = useCustomerStorageBillsStore()
-        for (const bill of storageStore.customerBillData) {
-            if (bill.customer_id !== customerId || bill.outstanding <= 0) continue
-            const status = bill.total_paid > 0 ? 'partial' : 'unpaid'
-            items.push({
-                id: bill.lot_id,
-                source_type: 'storage_bill',
-                item: 'Storage Bill',
-                date: bill.billing_start ? new Date(bill.billing_start).toLocaleDateString() : '',
-                description: `${bill.item_name || `Lot #${bill.lot_id}`} - ${bill.months_billed} month(s)`,
-                quantity: 1,
-                rate: bill.monthly_bill || 0,
-                amount: bill.outstanding,
-                total_amount: bill.total_billed,
-                paid_amount: bill.total_paid,
-                status,
-                selected: false,
+    const fetchUnbilled = async (
+        entityType: EntityType,
+        entityID: number
+    ): Promise<UnbilledBill[]> => {
+        try {
+            const res = await api.get<ApiResponse<UnbilledBill[]>>('/invoices/unbilled', {
+                params: { entity_type: entityType, entity_id: entityID },
             })
-        }
-
-        const lotStore = useCustomerLotBillsStore()
-        for (const bill of lotStore.bills) {
-            if (bill.customer_id !== customerId) continue
-            const outstanding = bill.bill_amount - bill.paid_amount
-            if (outstanding <= 0) continue
-            const status = bill.paid_amount > 0 ? 'partial' : 'unpaid'
-            items.push({
-                id: bill.lot_id,
-                source_type: 'lot_bill',
-                item: 'Lot Unload Bill',
-                date: bill.created_at ? new Date(bill.created_at).toLocaleDateString() : '',
-                description: `${bill.item_name || `Lot #${bill.lot_id}`}`,
-                quantity: 1,
-                rate: bill.bill_amount || 0,
-                amount: outstanding,
-                total_amount: bill.bill_amount,
-                paid_amount: bill.paid_amount,
-                status,
-                selected: false,
-            })
-        }
-
-        const deliveryStore = useCustomerDeliveryBillsStore()
-        for (const bill of deliveryStore.bills) {
-            if (bill.customer_id !== customerId) continue
-            const outstanding = bill.bill_amount - bill.paid_amount
-            if (outstanding <= 0) continue
-            const status = bill.paid_amount > 0 ? 'partial' : 'unpaid'
-            items.push({
-                id: bill.delivery_item_id,
-                source_type: 'delivery_bill',
-                item: 'Delivery Bill',
-                date: bill.delivery_date ? new Date(bill.delivery_date).toLocaleDateString() : '',
-                description: `${bill.item_name || `Delivery #${bill.delivery_id}`}`,
-                quantity: 1,
-                rate: bill.bill_amount || 0,
-                amount: outstanding,
-                total_amount: bill.bill_amount,
-                paid_amount: bill.paid_amount,
-                status,
-                selected: false,
-            })
-        }
-
-        const transportStore = useCustomerTransportBillsStore()
-        for (const bill of transportStore.bills) {
-            if (bill.customer_id !== customerId) continue
-            const outstanding = bill.bill_amount - bill.paid_amount
-            if (outstanding <= 0) continue
-            const status = bill.paid_amount > 0 ? 'partial' : 'unpaid'
-            items.push({
-                id: bill.id,
-                source_type: 'transport_bill',
-                item: 'Transport Bill',
-                date: bill.created_at ? new Date(bill.created_at).toLocaleDateString() : '',
-                description: `${bill.from_location} → ${bill.to_location || 'N/A'} (${bill.total_vehicles} vehicles)`,
-                quantity: bill.total_vehicles || 1,
-                rate: bill.customer_charge_per_unit,
-                amount: outstanding,
-                total_amount: bill.bill_amount,
-                paid_amount: bill.paid_amount,
-                status,
-                selected: false,
-            })
-        }
-
-        const additionalStore = useCustomerAdditionalBillsStore()
-        for (const bill of additionalStore.bills) {
-            if (bill.customer_id !== customerId || bill.outstanding <= 0) continue
-            const status = bill.paid_amount > 0 ? 'partial' : 'unpaid'
-            items.push({
-                id: bill.id,
-                source_type: 'additional_charge',
-                item: 'Additional Charge',
-                date: bill.created_at ? new Date(bill.created_at).toLocaleDateString() : '',
-                description: bill.description,
-                quantity: 1,
-                rate: bill.amount || 0,
-                amount: bill.outstanding,
-                total_amount: bill.amount,
-                paid_amount: bill.paid_amount,
-                status,
-                selected: false,
-            })
-        }
-
-        return items
-    }
-
-    const itemsForBroker = (brokerId: number): AvailableItem[] => {
-        const items: AvailableItem[] = []
-        const store = useBrokerVehicleBillsStore()
-
-        for (const bill of store.bills) {
-            if (bill.broker_id !== brokerId) continue
-            if (bill.status === 'paid') continue
-            const outstanding = bill.bill_amount - bill.paid_amount
-            if (outstanding <= 0) continue
-
-            items.push({
-                id: bill.id,
-                source_type: 'broker_vehicle_bill',
-                item: 'Broker Vehicle Bill',
-                date: bill.created_at ? new Date(bill.created_at).toLocaleDateString() : '',
-                description: `Vehicle ${bill.vehicle_number} (Transport #${bill.transport_id})`,
-                quantity: 1,
-                rate: bill.bill_amount || 0,
-                amount: outstanding,
-                total_amount: bill.bill_amount,
-                paid_amount: bill.paid_amount,
-                status: bill.paid_amount > 0 ? 'partial' : 'unpaid',
-                selected: false,
-            })
-        }
-
-        return items
-    }
-
-    const itemsForGodown = (godownId: number): AvailableItem[] => {
-        const items: AvailableItem[] = []
-        const store = useGodownStoreBillsStore()
-
-        for (const bill of store.storeBillData) {
-            if (bill.godown_id !== godownId) continue
-            const outstanding = bill.outstanding || 0
-            if (outstanding <= 0) continue
-
-            items.push({
-                id: bill.id,
-                source_type: 'godown_store_bill',
-                item: 'Godown Store Bill',
-                date: bill.billing_start ? new Date(bill.billing_start).toLocaleDateString() : '',
-                description: `${bill.lot_name || `Lot #${bill.lot_id}`} @ ${bill.godown_name || `Godown #${bill.godown_id}`}`,
-                quantity: 1,
-                rate: bill.godown_cut || 0,
-                amount: outstanding,
-                total_amount: (bill.last_paid_amount || 0) + outstanding,
-                paid_amount: bill.last_paid_amount || 0,
-                status: (bill.last_paid_amount || 0) > 0 ? 'partial' : 'unpaid',
-                selected: false,
-            })
-        }
-
-        return items
-    }
-
-    const itemsForMajhi = (majhiId: number): AvailableItem[] => {
-        const items: AvailableItem[] = []
-
-        const lotStore = useMajhiLotBillsStore()
-        for (const bill of lotStore.bills) {
-            if (bill.majhi_id !== majhiId) continue
-            const outstanding = bill.bill_amount - bill.paid_amount
-            if (outstanding <= 0) continue
-            items.push({
-                id: bill.lot_id,
-                source_type: 'majhi_lot_bill',
-                item: 'Majhi Lot Bill',
-                date: bill.created_at ? new Date(bill.created_at).toLocaleDateString() : '',
-                description: `${bill.item_name || `Lot #${bill.lot_id}`} (${bill.majhi_bill_type})`,
-                quantity: 1,
-                rate: bill.majhi_cut || 0,
-                amount: outstanding,
-                total_amount: bill.bill_amount,
-                paid_amount: bill.paid_amount,
-                status: bill.paid_amount > 0 ? 'partial' : 'unpaid',
-                selected: false,
-            })
-        }
-
-        const loadingStore = useMajhiLoadingBillsStore()
-        for (const bill of loadingStore.bills) {
-            if (bill.majhi_id !== majhiId) continue
-            const outstanding = bill.bill_amount - bill.paid_amount
-            if (outstanding <= 0) continue
-            items.push({
-                id: bill.delivery_item_id,
-                source_type: 'majhi_loading_bill',
-                item: 'Majhi Loading Bill',
-                date: bill.delivery_date ? new Date(bill.delivery_date).toLocaleDateString() : '',
-                description: `${bill.item_name || `Delivery #${bill.delivery_id}`} (${bill.majhi_bill_type})`,
-                quantity: 1,
-                rate: bill.majhi_cut || 0,
-                amount: outstanding,
-                total_amount: bill.bill_amount,
-                paid_amount: bill.paid_amount,
-                status: bill.paid_amount > 0 ? 'partial' : 'unpaid',
-                selected: false,
-            })
-        }
-
-        return items
-    }
-
-    const getAvailableItemsForParty = (party: InvoiceParty, partyId: number): AvailableItem[] => {
-        switch (party) {
-            case 'customer': return itemsForCustomer(partyId)
-            case 'broker': return itemsForBroker(partyId)
-            case 'godown': return itemsForGodown(partyId)
-            case 'majhi': return itemsForMajhi(partyId)
-            default: return []
+            if (!res.data.success) return []
+            return res.data.data
+        } catch (error) {
+            const err = error as AxiosError<ApiResponse<null>>
+            push.error(err.response?.data?.message || 'Failed to fetch unbilled bills')
+            return []
         }
     }
 
-    // =========================================================================
-    // INVOICE CREATION
-    // =========================================================================
+    // ============= CREATE =============
+    const createInvoice = async (payload: CreateInvoicePayload): Promise<InvoiceDetail | null> => {
+        displayLoader()
+        try {
+            if (!payload.entity_type) {
+                push.error('Entity type is required')
+                return null
+            }
+            if (!payload.entity_id) {
+                push.error('Entity is required')
+                return null
+            }
+            if (!payload.bills || payload.bills.length === 0) {
+                push.error('Select at least one bill')
+                return null
+            }
 
-    const createInvoice = (
-        party: InvoiceParty,
-        partyId: number,
-        partyName: string,
-    ): Invoice => {
-        const type: Invoice['type'] = party === 'customer' ? 'customer'
-            : party === 'broker' ? 'broker_vehicle'
-                : party === 'godown' ? 'godown_store'
-                    : 'majhi'
+            const res = await api.post<ApiResponse<InvoiceDetail>>('/invoices', payload)
+            if (!res.data.success) {
+                push.error(res.data.message)
+                return null
+            }
 
-        const sequence = invoices.value.filter(inv => inv.party_type === party).length + 1
-        const number = generateInvoiceNumber(party, sequence)
-
-        const newInvoice: Invoice = {
-            id: `inv_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-            number,
-            party_type: party,
-            party_id: partyId,
-            party_name: partyName,
-            type,
-            date: new Date().toISOString().slice(0, 10),
-            items: [],
-            total: 0,
-            received: 0,
-            notes: '',
-            status: 'draft',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-        }
-
-        currentInvoice.value = newInvoice
-        return newInvoice
-    }
-
-    const buildInvoiceFromSelectedItems = (selectedItems: AvailableItem[]): Invoice => {
-        if (!currentInvoice.value) {
-            throw new Error('No current invoice')
-        }
-
-        const invoice = currentInvoice.value
-
-        invoice.items = selectedItems.map(item => ({
-            id: `item_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-            source_type: item.source_type,
-            source_id: item.id,
-            item: item.item,
-            date: item.date,
-            description: item.description,
-            quantity: item.quantity,
-            rate: item.rate,
-            amount: item.amount,
-            total_amount: item.total_amount,
-            paid_amount: item.paid_amount,
-        }))
-
-        invoice.total = invoice.items.reduce((sum, item) => sum + item.amount, 0)
-        invoice.received = invoice.items.reduce((sum, item) => sum + item.paid_amount, 0)
-        invoice.updated_at = new Date().toISOString()
-
-        saveToLocalStorage()
-        return invoice
-    }
-
-    const updateInvoiceField = <K extends keyof Invoice>(field: K, value: Invoice[K]) => {
-        if (currentInvoice.value) {
-            currentInvoice.value[field] = value
-            currentInvoice.value.updated_at = new Date().toISOString()
-            saveToLocalStorage()
+            invoices.value.unshift(res.data.data)
+            push.success(res.data.message || 'Invoice created')
+            return res.data.data
+        } catch (error) {
+            const err = error as AxiosError<ApiResponse<null>>
+            push.error(err.response?.data?.message || 'Failed to create invoice')
+            return null
+        } finally {
+            destroyLoader()
         }
     }
 
-    const saveCurrentInvoice = () => {
-        if (!currentInvoice.value) return
-        const existingIndex = invoices.value.findIndex(inv => inv.id === currentInvoice.value!.id)
-        if (existingIndex !== -1) {
-            invoices.value[existingIndex] = currentInvoice.value
-        } else {
-            invoices.value.push(currentInvoice.value)
+    // ============= UPDATE =============
+    const updateInvoice = async (
+        id: number,
+        payload: UpdateInvoicePayload
+    ): Promise<InvoiceDetail | null> => {
+        displayLoader()
+        try {
+            const res = await api.patch<ApiResponse<InvoiceDetail>>(`/invoices/${id}`, payload)
+            if (!res.data.success) {
+                push.error(res.data.message)
+                return null
+            }
+
+            const index = invoices.value.findIndex((i) => i.id === id)
+            if (index !== -1) invoices.value[index] = res.data.data
+
+            push.success(res.data.message || 'Invoice updated')
+            return res.data.data
+        } catch (error) {
+            const err = error as AxiosError<ApiResponse<null>>
+            push.error(err.response?.data?.message || 'Failed to update invoice')
+            return null
+        } finally {
+            destroyLoader()
         }
-        saveToLocalStorage()
-        push.success('Invoice saved successfully!')
     }
 
-    const getInvoiceById = (id: string): Invoice | undefined => {
-        return invoices.value.find(inv => inv.id === id)
-    }
-
-    const deleteInvoice = (id: string): boolean => {
-        const index = invoices.value.findIndex(inv => inv.id === id)
-        if (index !== -1) {
-            invoices.value.splice(index, 1)
-            saveToLocalStorage()
-            push.success('Invoice deleted successfully!')
+    // ============= DELETE =============
+    const deleteInvoice = async (id: number): Promise<boolean> => {
+        displayLoader()
+        try {
+            const res = await api.delete<ApiResponse<null>>(`/invoices/${id}`)
+            if (!res.data.success) {
+                push.error(res.data.message)
+                return false
+            }
+            invoices.value = invoices.value.filter((i) => i.id !== id)
+            push.success(res.data.message || 'Invoice deleted')
             return true
+        } catch (error) {
+            const err = error as AxiosError<ApiResponse<null>>
+            push.error(err.response?.data?.message || 'Failed to delete invoice')
+            return false
+        } finally {
+            destroyLoader()
         }
-        push.error('Invoice not found')
-        return false
     }
 
-    const clearCurrentInvoice = () => {
-        currentInvoice.value = null
+    // ============= SORT / SEARCH =============
+    const setSort = (field: InvoiceSortField) => {
+        if (sortField.value === field) {
+            sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
+        } else {
+            sortField.value = field
+            sortDirection.value = 'desc'
+        }
     }
 
-    loadFromLocalStorage()
+    const setSearchQuery = (query: string) => {
+        searchQuery.value = query
+    }
+
+    const clearSearch = () => {
+        searchQuery.value = ''
+    }
+
+    // ============= UTILITIES =============
+    const getInvoiceById = (id: number): Invoice | undefined =>
+        invoices.value.find((i) => i.id === id)
 
     return {
+        // State
         invoices,
-        currentInvoice,
-        getAvailableItemsForParty,
+        searchQuery,
+        sortField,
+        sortDirection,
+
+        // Computed
+        filteredInvoices,
+        totalInvoices,
+        totalSubtotal,
+        totalDiscount,
+        totalAmount,
+
+        // Fetch
+        fetchInvoices,
+        fetchInvoiceDetail,
+        fetchUnbilled,
+
+        // CRUD
         createInvoice,
-        buildInvoiceFromSelectedItems,
-        updateInvoiceField,
-        saveCurrentInvoice,
-        getInvoiceById,
+        updateInvoice,
         deleteInvoice,
-        clearCurrentInvoice,
-        saveToLocalStorage,
-        loadFromLocalStorage,
+
+        // Sort / Search
+        setSort,
+        setSearchQuery,
+        clearSearch,
+
+        // Utilities
+        getInvoiceById,
     }
 })

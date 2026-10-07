@@ -7,7 +7,6 @@ import type {
   Store,
   CreateStorePayload,
   UpdateStorePayload,
-  StoreBillType,
   StoreSortField,
   SortDirection,
 } from "@/types/store";
@@ -16,7 +15,6 @@ import { push } from "notivue";
 import { useGlobalLoader } from "vue-global-loader";
 import type { AxiosError } from "axios";
 import { useLotsStore } from "./lots";
-import { useGodownsStore } from "./godowns";
 
 export const useStoresStore = defineStore("stores", () => {
   const { displayLoader, destroyLoader } = useGlobalLoader();
@@ -32,15 +30,11 @@ export const useStoresStore = defineStore("stores", () => {
     if (searchQuery.value) {
       const query = searchQuery.value.toLowerCase();
       const lotsStore = useLotsStore();
-      const godownsStore = useGodownsStore();
       result = result.filter(
         (store) =>
           lotsStore.getLotName(store.lot_id).toLowerCase().includes(query) ||
-          godownsStore.getGodownName(store.godown_id).toLowerCase().includes(query) ||
-          store.store_bill_type.toLowerCase().includes(query) ||
           String(store.quantity).includes(query) ||
-          String(store.weight).includes(query) ||
-          (store.notes && store.notes.toLowerCase().includes(query))
+          String(store.weight).includes(query)
       );
     }
 
@@ -58,6 +52,9 @@ export const useStoresStore = defineStore("stores", () => {
           break;
         case "weight":
           comparison = a.weight - b.weight;
+          break;
+        case "start_date":
+          comparison = new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
           break;
         case "is_active":
           comparison = a.is_active === b.is_active ? 0 : a.is_active ? -1 : 1;
@@ -120,27 +117,6 @@ export const useStoresStore = defineStore("stores", () => {
     }
   };
 
-  const fetchStoresByGodown = async (godownId: number) => {
-    displayLoader();
-    try {
-      const res = await api.get<ApiResponse<Store[]>>("/stores", {
-        params: { godown_id: godownId },
-      });
-      if (!res.data.success) {
-        push.error(res.data.message);
-        return [];
-      }
-      stores.value = res.data.data;
-      return stores.value;
-    } catch (error) {
-      const err = error as AxiosError<ApiResponse<null>>;
-      push.error(err.response?.data?.message || "Failed to fetch godown stores");
-      return [];
-    } finally {
-      destroyLoader();
-    }
-  };
-
   const fetchActiveStores = async () => {
     displayLoader();
     try {
@@ -190,14 +166,16 @@ export const useStoresStore = defineStore("stores", () => {
         push.error("Lot is required");
         return null;
       }
-
       if (!payload.godown_id) {
         push.error("Godown is required");
         return null;
       }
-
-      if (payload.store_bill_type && payload.store_bill_type !== 'weight' && payload.store_bill_type !== 'quantity') {
-        push.error("store_bill_type must be 'weight' or 'quantity'");
+      if (payload.weight < 0) {
+        push.error("Weight cannot be negative");
+        return null;
+      }
+      if (payload.quantity < 0) {
+        push.error("Quantity cannot be negative");
         return null;
       }
 
@@ -236,29 +214,6 @@ export const useStoresStore = defineStore("stores", () => {
       const err = error as AxiosError<ApiResponse<null>>;
       push.error(err.response?.data?.message || "Failed to update store");
       return null;
-    } finally {
-      destroyLoader();
-    }
-  };
-
-  const toggleStoreActive = async (id: number): Promise<boolean> => {
-    displayLoader();
-    try {
-      const res = await api.patch<ApiResponse<Store>>(`/stores/${id}/toggle-active`);
-      if (!res.data.success) {
-        push.error(res.data.message);
-        return false;
-      }
-      const index = stores.value.findIndex((store) => store.id === id);
-      if (index !== -1) {
-        stores.value[index] = res.data.data;
-      }
-      push.success(res.data.message);
-      return true;
-    } catch (error) {
-      const err = error as AxiosError<ApiResponse<null>>;
-      push.error(err.response?.data?.message || "Failed to toggle store status");
-      return false;
     } finally {
       destroyLoader();
     }
@@ -303,10 +258,7 @@ export const useStoresStore = defineStore("stores", () => {
 
   const getStoreDisplayName = (store: Store): string => {
     const lotsStore = useLotsStore();
-    const godownsStore = useGodownsStore();
-    const lotName = lotsStore.getLotName(store.lot_id);
-    const godownName = godownsStore.getGodownName(store.godown_id);
-    return `${lotName} @ ${godownName}`;
+    return lotsStore.getLotName(store.lot_id);
   };
 
   const getStoreById = (id: number): Store | undefined => {
@@ -315,10 +267,6 @@ export const useStoresStore = defineStore("stores", () => {
 
   const getStoresByLotId = (lotId: number): Store[] => {
     return stores.value.filter((store) => store.lot_id === lotId);
-  };
-
-  const getStoresByGodownId = (godownId: number): Store[] => {
-    return stores.value.filter((store) => store.godown_id === godownId);
   };
 
   const getTotalQuantityByLot = (lotId: number): number => {
@@ -337,8 +285,23 @@ export const useStoresStore = defineStore("stores", () => {
     return store.quantity > 0 || store.weight > 0;
   };
 
-  const formatStoreBillType = (type: StoreBillType): string => {
-    return type.charAt(0).toUpperCase() + type.slice(1);
+  const refreshStoreBills = async (id: number): Promise<boolean> => {
+    displayLoader();
+    try {
+      const res = await api.post<ApiResponse<unknown>>(`/stores/${id}/refresh-bills`);
+      if (!res.data.success) {
+        push.error(res.data.message);
+        return false;
+      }
+      push.success(res.data.message || "Bills refreshed");
+      return true;
+    } catch (error) {
+      const err = error as AxiosError<ApiResponse<null>>;
+      push.error(err.response?.data?.message || "Failed to refresh bills");
+      return false;
+    } finally {
+      destroyLoader();
+    }
   };
 
   return {
@@ -354,13 +317,11 @@ export const useStoresStore = defineStore("stores", () => {
 
     fetchStores,
     fetchStoresByLot,
-    fetchStoresByGodown,
     fetchActiveStores,
     fetchStoresWithInventory,
 
     createStore,
     updateStore,
-    toggleStoreActive,
     deleteStore,
 
     setSort,
@@ -370,10 +331,10 @@ export const useStoresStore = defineStore("stores", () => {
     getStoreDisplayName,
     getStoreById,
     getStoresByLotId,
-    getStoresByGodownId,
     getTotalQuantityByLot,
     getTotalWeightByLot,
     hasInventory,
-    formatStoreBillType,
+
+    refreshStoreBills,
   };
 });

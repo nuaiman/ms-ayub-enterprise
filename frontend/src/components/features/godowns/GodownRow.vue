@@ -2,41 +2,24 @@
 <template>
     <div class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) transition-all duration-200 hover:bg-(--color-muted-bg)/30 cursor-pointer"
         @click="handleView">
-        <!-- Name - 3 columns -->
-        <div class="col-span-3 min-w-0">
+        <!-- Name - 4 columns -->
+        <div class="col-span-4 min-w-0">
             <div class="font-medium text-(--color-text-primary) truncate text-sm">
                 {{ godown.name }}
             </div>
         </div>
 
-        <!-- Phone - 2 columns -->
-        <div class="col-span-2 min-w-0">
+        <!-- Phone - 3 columns -->
+        <div class="col-span-3 min-w-0">
             <span class="text-sm text-(--color-text-secondary) truncate block">
                 {{ godown.phone || '—' }}
             </span>
         </div>
 
-        <!-- Notes - 3 columns -->
-        <div class="col-span-3 min-w-0">
+        <!-- Notes - 4 columns -->
+        <div class="col-span-4 min-w-0">
             <span class="text-sm text-(--color-text-secondary) truncate block">
                 {{ godown.notes || '—' }}
-            </span>
-        </div>
-
-        <!-- Status - 2 columns -->
-        <div class="col-span-2">
-            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border"
-                :class="godown.is_active ? 'border-(--color-green) text-(--color-green)' : 'border-(--color-red) text-(--color-red)'">
-                <span class="w-1.5 h-1.5 rounded-full"
-                    :class="godown.is_active ? 'bg-(--color-green)' : 'bg-(--color-red)'"></span>
-                {{ godown.is_active ? 'Active' : 'Inactive' }}
-            </span>
-        </div>
-
-        <!-- Monthly Rent - 1 column -->
-        <div class="col-span-1">
-            <span class="text-sm font-medium text-(--color-text-primary)">
-                {{ formatCurrency(godown.monthly_rent) }}
             </span>
         </div>
 
@@ -51,7 +34,6 @@
                 </svg>
             </button>
 
-            <!-- Dropdown -->
             <Transition enter-active-class="transition ease-out duration-200"
                 enter-from-class="opacity-0 scale-95 translate-y-1" enter-to-class="opacity-100 scale-100 translate-y-0"
                 leave-active-class="transition ease-in duration-150"
@@ -79,21 +61,6 @@
                         Edit
                     </button>
 
-                    <button @click="handleToggleActive"
-                        class="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-(--color-muted-bg) transition-colors"
-                        :class="godown.is_active ? 'text-(--color-yellow)' : 'text-(--color-green)'">
-                        <svg v-if="godown.is_active" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                        </svg>
-                        <svg v-else class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        {{ godown.is_active ? 'Deactivate' : 'Activate' }}
-                    </button>
-
                     <button @click="handleDelete"
                         class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-red) hover:bg-(--color-muted-bg) transition-colors border-t border-(--color-border) mt-1 pt-1">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -105,7 +72,6 @@
                 </div>
             </Transition>
 
-            <!-- Backdrop -->
             <div v-if="isOpen" class="fixed inset-0 z-40" @click="closeMenu"></div>
         </div>
     </div>
@@ -114,7 +80,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { Godown } from '@/types/godown'
-import { formatCurrency } from '@/utils/currency'
 
 const props = defineProps<{
     godown: Godown
@@ -124,37 +89,14 @@ const emit = defineEmits<{
     'view': [godown: Godown]
     'edit': [godown: Godown]
     'delete': [godown: Godown]
-    'toggle-active': [godown: Godown]
     'updated': []
 }>()
 
 const isOpen = ref(false)
 
-const toggleMenu = () => {
-    isOpen.value = !isOpen.value
-}
-
-const closeMenu = () => {
-    isOpen.value = false
-}
-
-const handleView = () => {
-    closeMenu()
-    emit('view', props.godown)
-}
-
-const handleEdit = () => {
-    closeMenu()
-    emit('edit', props.godown)
-}
-
-const handleToggleActive = () => {
-    closeMenu()
-    emit('toggle-active', props.godown)
-}
-
-const handleDelete = () => {
-    closeMenu()
-    emit('delete', props.godown)
-}
+const toggleMenu = () => { isOpen.value = !isOpen.value }
+const closeMenu = () => { isOpen.value = false }
+const handleView = () => { closeMenu(); emit('view', props.godown) }
+const handleEdit = () => { closeMenu(); emit('edit', props.godown) }
+const handleDelete = () => { closeMenu(); emit('delete', props.godown) }
 </script>

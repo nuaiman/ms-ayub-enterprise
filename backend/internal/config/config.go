@@ -23,9 +23,9 @@ type Config struct {
 
 	DBPath     string `env:"DB_PATH" env-default:"./data"`
 	DBName     string `env:"DB_NAME" env-default:"app.db"`
-	SchemaPath string `env:"SCHEMA_PATH" env-default:"internal/db/schema/schema.sql"` // FIXED
+	SchemaPath string `env:"SCHEMA_PATH" env-default:"internal/db/schema/schema.sql"`
 
-	BootstrapAdmin     bool   `env:"BOOTSTRAP_ADMIN" env-default:"true"`
+	BootstrapAdmin     bool   `env:"BOOTSTRAP_ADMIN" env-default:"false"`
 	BootstrapUsername  string `env:"BOOTSTRAP_ADMIN_USERNAME"`
 	BootstrapPassword  string `env:"BOOTSTRAP_ADMIN_PASSWORD"`
 	BootstrapAdminName string `env:"BOOTSTRAP_ADMIN_NAME"`
@@ -58,6 +58,18 @@ func (cfg *Config) validate() error {
 
 	if cfg.SchemaPath == "" {
 		return errors.New("SCHEMA_PATH is required")
+	}
+
+	if cfg.BootstrapAdmin {
+		if cfg.BootstrapUsername == "" {
+			return errors.New("BOOTSTRAP_ADMIN is true but BOOTSTRAP_ADMIN_USERNAME is empty")
+		}
+		if cfg.BootstrapPassword == "" {
+			return errors.New("BOOTSTRAP_ADMIN is true but BOOTSTRAP_ADMIN_PASSWORD is empty")
+		}
+		if cfg.BootstrapAdminName == "" {
+			return errors.New("BOOTSTRAP_ADMIN is true but BOOTSTRAP_ADMIN_NAME is empty")
+		}
 	}
 
 	return nil

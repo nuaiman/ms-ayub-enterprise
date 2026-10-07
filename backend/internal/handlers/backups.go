@@ -14,6 +14,11 @@ import (
 func (h *Handler) BackupHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[BACKUP] BackupHandler called - Method: %s, Path: %s", r.Method, r.URL.Path)
 
+	// Flush WAL so the .db file contains recent writes before zipping.
+	if _, err := h.app.DB.ExecContext(r.Context(), `PRAGMA wal_checkpoint(TRUNCATE);`); err != nil {
+		log.Printf("[BACKUP] WAL checkpoint failed (continuing): %v", err)
+	}
+
 	timestamp := time.Now().Format("2006-01-02_150405")
 	filename := fmt.Sprintf("backup_%s.zip", timestamp)
 
@@ -25,15 +30,12 @@ func (h *Handler) BackupHandler(w http.ResponseWriter, r *http.Request) {
 	zipWriter := zip.NewWriter(w)
 	defer zipWriter.Close()
 
-	// backup data directory
 	log.Printf("[BACKUP] Backing up data directory...")
 	if err := addDirectoryToZip(zipWriter, "./data", "data"); err != nil {
 		log.Printf("[BACKUP ERROR] Failed to backup data directory: %v", err)
-		// Cannot send JSON error - headers already set for zip download
 		return
 	}
 
-	// backup bucket directory
 	log.Printf("[BACKUP] Backing up bucket directory...")
 	if err := addDirectoryToZip(zipWriter, "./bucket", "bucket"); err != nil {
 		log.Printf("[BACKUP ERROR] Failed to backup bucket directory: %v", err)
@@ -44,7 +46,6 @@ func (h *Handler) BackupHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func addDirectoryToZip(zipWriter *zip.Writer, sourceDir string, zipRoot string) error {
-	// Check if directory exists
 	if _, err := os.Stat(sourceDir); os.IsNotExist(err) {
 		log.Printf("[BACKUP] Directory does not exist, skipping: %s", sourceDir)
 		return nil
@@ -53,7 +54,7 @@ func addDirectoryToZip(zipWriter *zip.Writer, sourceDir string, zipRoot string) 
 	return filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.Printf("[BACKUP] Error accessing %s: %v", path, err)
-			return nil // Skip problematic files
+			return nil
 		}
 
 		if info.IsDir() {
@@ -66,7 +67,6 @@ func addDirectoryToZip(zipWriter *zip.Writer, sourceDir string, zipRoot string) 
 			return nil
 		}
 
-		// Use forward slashes for zip compatibility
 		zipPath := filepath.ToSlash(filepath.Join(zipRoot, relativePath))
 
 		return addFileToZip(zipWriter, path, zipPath)

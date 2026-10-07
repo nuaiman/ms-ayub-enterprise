@@ -1,23 +1,15 @@
 // src/types/store.ts
 
-export type StoreBillType = 'weight' | 'quantity'
-
 export interface Store {
   id: number
+  user_id: number
   lot_id: number
   godown_id: number
-  store_bill_type: StoreBillType
-  godown_cut: number
-  quantity: number
-  quantity_unit: string
   weight: number
-  weight_unit: string
+  quantity: number
+  start_date: string
   is_active: boolean
-  billing_start: string
-  billing_end: string | null
-  last_paid_through: string | null
-  last_paid_amount: number
-  notes: string | null
+  image_url: string | null
   created_at: string
   updated_at: string
 }
@@ -25,32 +17,26 @@ export interface Store {
 export interface CreateStorePayload {
   lot_id: number
   godown_id: number
-  store_bill_type?: StoreBillType
-  godown_cut: number
-  quantity: number
-  quantity_unit?: string
   weight: number
-  weight_unit?: string
-  billing_start?: string
-  billing_end?: string | null
-  last_paid_through?: string | null
-  last_paid_amount?: number
-  notes?: string | null
+  quantity: number
+  start_date?: string
+  is_active?: boolean
 }
 
 export interface UpdateStorePayload {
-  store_bill_type?: StoreBillType
-  godown_cut?: number
-  quantity?: number
-  quantity_unit?: string
   weight?: number
-  weight_unit?: string
-  billing_start?: string
-  billing_end?: string | null
-  last_paid_through?: string | null
-  last_paid_amount?: number
-  notes?: string | null
+  quantity?: number
+  start_date?: string
+  is_active?: boolean
 }
 
-export type StoreSortField = 'lot_id' | 'godown_id' | 'quantity' | 'weight' | 'is_active' | 'created_at'
+export type StoreSortField =
+  | 'lot_id'
+  | 'godown_id'
+  | 'weight'
+  | 'quantity'
+  | 'start_date'
+  | 'is_active'
+  | 'created_at'
+
 export type SortDirection = 'asc' | 'desc'

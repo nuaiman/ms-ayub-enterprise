@@ -39,6 +39,10 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 		return protected(middlewares.Authorize(app, "admin", "manager")(h))
 	}
 
+	adminOnly := func(h http.HandlerFunc) http.HandlerFunc {
+		return protected(middlewares.Authorize(app, "admin")(h))
+	}
+
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/health", handler.HealthCheckHandler)
 
@@ -46,21 +50,18 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 		// USERS
 		// =====================================================
 		r.Route("/users", func(r chi.Router) {
-			// Public routes (no auth)
 			r.Post("/login", handler.LoginHandler)
 			r.Post("/refresh-session", handler.RefreshHandler)
 
-			// Protected routes (auth required)
 			r.Delete("/logout", protected(handler.LogoutHandler))
 			r.Get("/current-user", protected(handler.GetCurrentUserHandler))
 			r.Patch("/change-password", protected(handler.ChangePasswordHandler))
 
-			// Admin/Manager only routes (using higherManagementOnly)
 			r.Get("/", higherManagementOnly(handler.GetAllUsersHandler))
 			r.Post("/", higherManagementOnly(handler.CreateUserHandler))
 			r.Patch("/reset-all-passwords", higherManagementOnly(handler.ResetAllPasswordsHandler))
 			r.Get("/{id}", higherManagementOnly(handler.GetUserHandler))
-			r.Patch("/{id}/profile", higherManagementOnly(handler.UpdateUserProfileHandler))
+			r.Patch("/{id}/profile", protected(handler.UpdateUserProfileHandler))
 			r.Patch("/{id}/change-password", higherManagementOnly(handler.ChangeUserPasswordHandler))
 			r.Patch("/{id}/change-role", higherManagementOnly(handler.ChangeUserRoleHandler))
 			r.Patch("/{id}/toggle-active", higherManagementOnly(handler.ToggleUserActiveHandler))
@@ -114,22 +115,7 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 			r.Post("/", higherManagementOnly(handler.CreateGodownHandler))
 			r.Get("/{id}", higherManagementOnly(handler.GetGodownHandler))
 			r.Patch("/{id}", higherManagementOnly(handler.UpdateGodownHandler))
-			r.Patch("/{id}/toggle-active", higherManagementOnly(handler.ToggleGodownActiveHandler))
 			r.Delete("/{id}", higherManagementOnly(handler.DeleteGodownHandler))
-		})
-
-		// =====================================================
-		// RENTS
-		// =====================================================
-		r.Route("/rents", func(r chi.Router) {
-			r.Get("/", higherManagementOnly(handler.GetAllRentsHandler))
-			r.Get("/current-month", higherManagementOnly(handler.GetCurrentMonthRentsHandler))
-			r.Post("/", higherManagementOnly(handler.CreateRentHandler))
-			r.Get("/{id}", higherManagementOnly(handler.GetRentHandler))
-			r.Patch("/{id}", higherManagementOnly(handler.UpdateRentHandler))
-			r.Patch("/{id}/pay", higherManagementOnly(handler.MarkRentAsPaidHandler))
-			r.Patch("/{id}/cancel", higherManagementOnly(handler.CancelRentHandler))
-			r.Delete("/{id}", higherManagementOnly(handler.DeleteRentHandler))
 		})
 
 		// =====================================================
@@ -151,12 +137,10 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 			r.Post("/", higherManagementOnly(handler.CreateLotHandler))
 			r.Get("/{id}", higherManagementOnly(handler.GetLotHandler))
 			r.Patch("/{id}", higherManagementOnly(handler.UpdateLotHandler))
-			r.Patch("/{id}/toggle-active", higherManagementOnly(handler.ToggleLotActiveHandler))
 			r.Delete("/{id}", higherManagementOnly(handler.DeleteLotHandler))
 
-			r.Patch("/{id}/customer-payment", higherManagementOnly(handler.UpdateLotCustomerPaymentHandler))
-			r.Patch("/{id}/customer-unload-payment", higherManagementOnly(handler.UpdateLotCustomerUnloadPaymentHandler))
-			r.Patch("/{id}/majhi-payment", higherManagementOnly(handler.UpdateLotMajhiPaymentHandler))
+			r.Get("/{id}/transfers", higherManagementOnly(handler.GetLotTransfersHandler))
+			r.Post("/{id}/transfer", higherManagementOnly(handler.CreateLotTransferHandler))
 		})
 
 		// =====================================================
@@ -168,66 +152,43 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 			r.Get("/{id}", higherManagementOnly(handler.GetStoreHandler))
 			r.Patch("/{id}", higherManagementOnly(handler.UpdateStoreHandler))
 			r.Patch("/{id}/toggle-active", higherManagementOnly(handler.ToggleStoreActiveHandler))
+			r.Post("/{id}/refresh-bills", higherManagementOnly(handler.RefreshStoreBillsHandler))
 			r.Delete("/{id}", higherManagementOnly(handler.DeleteStoreHandler))
+
+			r.Get("/{id}/adjustments", higherManagementOnly(handler.GetStoreAdjustmentsHandler))
+			r.Post("/{id}/adjustments", higherManagementOnly(handler.CreateStoreAdjustmentHandler))
+
+			r.Get("/{id}/damages", higherManagementOnly(handler.GetStoreDamagesHandler))
+
+			r.Get("/{id}/transfers", higherManagementOnly(handler.GetStoreTransfersHandler))
+			r.Post("/{id}/transfer", higherManagementOnly(handler.CreateStoreTransferHandler))
 		})
 
 		// =====================================================
-		// DAMAGES
+		// STORE ADJUSTMENTS
 		// =====================================================
-		r.Route("/damages", func(r chi.Router) {
-			r.Get("/", higherManagementOnly(handler.GetAllDamagesHandler))
-			r.Post("/", higherManagementOnly(handler.CreateDamageHandler))
-			r.Get("/{id}", higherManagementOnly(handler.GetDamageHandler))
-			r.Patch("/{id}", higherManagementOnly(handler.UpdateDamageHandler))
-			r.Delete("/{id}", higherManagementOnly(handler.DeleteDamageHandler))
+		r.Route("/store-adjustments", func(r chi.Router) {
+			r.Get("/", higherManagementOnly(handler.GetAllStoreAdjustmentsHandler))
+			r.Get("/{id}", higherManagementOnly(handler.GetStoreAdjustmentHandler))
+			r.Delete("/{id}", higherManagementOnly(handler.DeleteStoreAdjustmentHandler))
 		})
 
 		// =====================================================
-		// DELIVERIES
+		// STORE TRANSFERS
 		// =====================================================
-		r.Route("/deliveries", func(r chi.Router) {
-			r.Get("/", higherManagementOnly(handler.GetAllDeliveriesHandler))
-			r.Post("/", higherManagementOnly(handler.CreateDeliveryHandler))
-			r.Get("/{id}", higherManagementOnly(handler.GetDeliveryHandler))
-			r.Patch("/{id}", higherManagementOnly(handler.UpdateDeliveryHandler))
-			r.Delete("/{id}", higherManagementOnly(handler.DeleteDeliveryHandler))
+		r.Route("/store-transfers", func(r chi.Router) {
+			r.Get("/", higherManagementOnly(handler.GetAllStoreTransfersHandler))
+			r.Get("/{id}", higherManagementOnly(handler.GetStoreTransferHandler))
+			r.Delete("/{id}", higherManagementOnly(handler.DeleteStoreTransferHandler))
 		})
 
 		// =====================================================
-		// DELIVERY ITEMS
+		// LOT TRANSFERS
 		// =====================================================
-		r.Route("/delivery-items", func(r chi.Router) {
-			r.Get("/", higherManagementOnly(handler.GetAllDeliveryItemsHandler))
-			r.Post("/", higherManagementOnly(handler.CreateDeliveryItemHandler))
-			r.Get("/{id}", higherManagementOnly(handler.GetDeliveryItemHandler))
-			r.Patch("/{id}", higherManagementOnly(handler.UpdateDeliveryItemHandler))
-			r.Delete("/{id}", higherManagementOnly(handler.DeleteDeliveryItemHandler))
-
-			r.Patch("/{id}/customer-unload-payment", higherManagementOnly(handler.UpdateDeliveryItemCustomerUnloadPaymentHandler))
-			r.Patch("/{id}/majhi-payment", higherManagementOnly(handler.UpdateDeliveryItemMajhiPaymentHandler))
-		})
-
-		// =====================================================
-		// TRANSPORTS
-		// =====================================================
-		r.Route("/transports", func(r chi.Router) {
-			r.Get("/", higherManagementOnly(handler.GetAllTransportsHandler))
-			r.Post("/", higherManagementOnly(handler.CreateTransportHandler))
-			r.Get("/{id}", higherManagementOnly(handler.GetTransportHandler))
-			r.Patch("/{id}", higherManagementOnly(handler.UpdateTransportHandler))
-			r.Delete("/{id}", higherManagementOnly(handler.DeleteTransportHandler))
-			r.Patch("/{id}/customer-payment", higherManagementOnly(handler.UpdateTransportCustomerPaymentHandler))
-		})
-
-		// =====================================================
-		// VEHICLES
-		// =====================================================
-		r.Route("/vehicles", func(r chi.Router) {
-			r.Get("/", higherManagementOnly(handler.GetAllVehiclesHandler))
-			r.Post("/", higherManagementOnly(handler.CreateVehicleHandler))
-			r.Get("/{id}", higherManagementOnly(handler.GetVehicleHandler))
-			r.Patch("/{id}", higherManagementOnly(handler.UpdateVehicleHandler))
-			r.Delete("/{id}", higherManagementOnly(handler.DeleteVehicleHandler))
+		r.Route("/lot-transfers", func(r chi.Router) {
+			r.Get("/", higherManagementOnly(handler.GetAllLotTransfersHandler))
+			r.Get("/{id}", higherManagementOnly(handler.GetLotTransferHandler))
+			r.Delete("/{id}", higherManagementOnly(handler.DeleteLotTransferHandler))
 		})
 
 		// =====================================================
@@ -242,6 +203,50 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 		})
 
 		// =====================================================
+		// INCOMES
+		// =====================================================
+		r.Route("/incomes", func(r chi.Router) {
+			r.Get("/", higherManagementOnly(handler.GetAllIncomesHandler))
+			r.Post("/", higherManagementOnly(handler.CreateIncomeHandler))
+			r.Get("/{id}", higherManagementOnly(handler.GetIncomeHandler))
+			r.Patch("/{id}", higherManagementOnly(handler.UpdateIncomeHandler))
+			r.Delete("/{id}", higherManagementOnly(handler.DeleteIncomeHandler))
+		})
+
+		// =====================================================
+		// DELIVERIES
+		// =====================================================
+		r.Route("/deliveries", func(r chi.Router) {
+			r.Get("/", higherManagementOnly(handler.GetAllDeliveriesHandler))
+			r.Post("/", higherManagementOnly(handler.CreateDeliveryHandler))
+			r.Get("/{id}", higherManagementOnly(handler.GetDeliveryHandler))
+			r.Patch("/{id}", higherManagementOnly(handler.UpdateDeliveryHandler))
+			r.Delete("/{id}", higherManagementOnly(handler.DeleteDeliveryHandler))
+
+			r.Get("/{id}/items", higherManagementOnly(handler.GetDeliveryItemsHandler))
+			r.Post("/{id}/items", higherManagementOnly(handler.CreateDeliveryItemHandler))
+		})
+
+		// =====================================================
+		// DELIVERY ITEMS (standalone operations)
+		// =====================================================
+		r.Route("/delivery-items", func(r chi.Router) {
+			r.Patch("/{id}", higherManagementOnly(handler.UpdateDeliveryItemHandler))
+			r.Delete("/{id}", higherManagementOnly(handler.DeleteDeliveryItemHandler))
+		})
+
+		// =====================================================
+		// DAMAGES
+		// =====================================================
+		r.Route("/damages", func(r chi.Router) {
+			r.Get("/", higherManagementOnly(handler.GetAllDamagesHandler))
+			r.Post("/", higherManagementOnly(handler.CreateDamageHandler))
+			r.Get("/{id}", higherManagementOnly(handler.GetDamageHandler))
+			r.Patch("/{id}", higherManagementOnly(handler.UpdateDamageHandler))
+			r.Delete("/{id}", higherManagementOnly(handler.DeleteDamageHandler))
+		})
+
+		// =====================================================
 		// LOGS
 		// =====================================================
 		r.Route("/logs", func(r chi.Router) {
@@ -249,15 +254,94 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 		})
 
 		// =====================================================
-		// CUSTOMER ADDITIONAL CHARGES
+		// GODOWN BILLS (MONTHLY)
 		// =====================================================
-		r.Route("/customer-additional-charges", func(r chi.Router) {
-			r.Get("/", higherManagementOnly(handler.GetAllAdditionalChargesHandler))
-			r.Post("/", higherManagementOnly(handler.CreateAdditionalChargeHandler))
-			r.Get("/{id}", higherManagementOnly(handler.GetAdditionalChargeHandler))
-			r.Patch("/{id}", higherManagementOnly(handler.UpdateAdditionalChargeHandler))
-			r.Patch("/{id}/customer-payment", higherManagementOnly(handler.UpdateAdditionalChargeCustomerPaymentHandler))
-			r.Delete("/{id}", higherManagementOnly(handler.DeleteAdditionalChargeHandler))
+		r.Route("/godown-bills", func(r chi.Router) {
+			r.Get("/", higherManagementOnly(handler.GetAllGodownBillsHandler))
+			r.Get("/current-month", higherManagementOnly(handler.GetCurrentMonthGodownBillsHandler))
+			r.Post("/", higherManagementOnly(handler.CreateGodownBillHandler))
+			r.Get("/{id}", higherManagementOnly(handler.GetGodownBillHandler))
+			r.Patch("/{id}", higherManagementOnly(handler.UpdateGodownBillHandler))
+			r.Delete("/{id}", higherManagementOnly(handler.DeleteGodownBillHandler))
+
+			r.Get("/{id}/payments", higherManagementOnly(handler.GetGodownBillPaymentsHandler))
+			r.Post("/{id}/payments", higherManagementOnly(handler.CreateGodownBillPaymentHandler))
+		})
+
+		// =====================================================
+		// MAJHI BILLS (ONE-TIME - store or delivery item)
+		// =====================================================
+		r.Route("/majhi-bills", func(r chi.Router) {
+			r.Get("/", higherManagementOnly(handler.GetAllMajhiBillsHandler))
+			r.Post("/", higherManagementOnly(handler.CreateMajhiBillHandler))
+			r.Get("/{id}", higherManagementOnly(handler.GetMajhiBillHandler))
+			r.Patch("/{id}", higherManagementOnly(handler.UpdateMajhiBillHandler))
+			r.Delete("/{id}", higherManagementOnly(handler.DeleteMajhiBillHandler))
+
+			r.Get("/{id}/payments", higherManagementOnly(handler.GetMajhiBillPaymentsHandler))
+			r.Post("/{id}/payments", higherManagementOnly(handler.CreateMajhiBillPaymentHandler))
+		})
+
+		// =====================================================
+		// CUSTOMER STORE BILLS (MONTHLY)
+		// =====================================================
+		r.Route("/customer-store-bills", func(r chi.Router) {
+			r.Get("/", higherManagementOnly(handler.GetAllCustomerStoreBillsHandler))
+			r.Get("/current-month", higherManagementOnly(handler.GetCurrentMonthCustomerStoreBillsHandler))
+			r.Post("/", higherManagementOnly(handler.CreateCustomerStoreBillHandler))
+			r.Get("/{id}", higherManagementOnly(handler.GetCustomerStoreBillHandler))
+			r.Patch("/{id}", higherManagementOnly(handler.UpdateCustomerStoreBillHandler))
+			r.Delete("/{id}", higherManagementOnly(handler.DeleteCustomerStoreBillHandler))
+
+			r.Get("/{id}/payments", higherManagementOnly(handler.GetCustomerStoreBillPaymentsHandler))
+			r.Post("/{id}/payments", higherManagementOnly(handler.CreateCustomerStoreBillPaymentHandler))
+		})
+
+		// =====================================================
+		// CUSTOMER DELIVERY BILLS (ONE-TIME)
+		// =====================================================
+		r.Route("/customer-delivery-bills", func(r chi.Router) {
+			r.Get("/", higherManagementOnly(handler.GetAllCustomerDeliveryBillsHandler))
+			r.Post("/", higherManagementOnly(handler.CreateCustomerDeliveryBillHandler))
+			r.Get("/{id}", higherManagementOnly(handler.GetCustomerDeliveryBillHandler))
+			r.Patch("/{id}", higherManagementOnly(handler.UpdateCustomerDeliveryBillHandler))
+			r.Delete("/{id}", higherManagementOnly(handler.DeleteCustomerDeliveryBillHandler))
+
+			r.Get("/{id}/payments", higherManagementOnly(handler.GetCustomerDeliveryBillPaymentsHandler))
+			r.Post("/{id}/payments", higherManagementOnly(handler.CreateCustomerDeliveryBillPaymentHandler))
+		})
+
+		// =====================================================
+		// BILL PAYMENTS (standalone operations)
+		// =====================================================
+		r.Route("/bill-payments", func(r chi.Router) {
+			r.Delete("/{id}", higherManagementOnly(handler.DeleteBillPaymentHandler))
+		})
+
+		// =====================================================
+		// CUSTOMER ADDITIONAL BILLS (ONE-TIME)
+		// =====================================================
+		r.Route("/customer-additional-bills", func(r chi.Router) {
+			r.Get("/", higherManagementOnly(handler.GetAllCustomerAdditionalBillsHandler))
+			r.Post("/", higherManagementOnly(handler.CreateCustomerAdditionalBillHandler))
+			r.Get("/{id}", higherManagementOnly(handler.GetCustomerAdditionalBillHandler))
+			r.Patch("/{id}", higherManagementOnly(handler.UpdateCustomerAdditionalBillHandler))
+			r.Delete("/{id}", higherManagementOnly(handler.DeleteCustomerAdditionalBillHandler))
+
+			r.Get("/{id}/payments", higherManagementOnly(handler.GetCustomerAdditionalBillPaymentsHandler))
+			r.Post("/{id}/payments", higherManagementOnly(handler.CreateCustomerAdditionalBillPaymentHandler))
+		})
+
+		// =====================================================
+		// INVOICES
+		// =====================================================
+		r.Route("/invoices", func(r chi.Router) {
+			r.Get("/", higherManagementOnly(handler.GetAllInvoicesHandler))
+			r.Get("/unbilled", higherManagementOnly(handler.GetUnbilledBillsHandler))
+			r.Post("/", higherManagementOnly(handler.CreateInvoiceHandler))
+			r.Get("/{id}", higherManagementOnly(handler.GetInvoiceHandler))
+			r.Patch("/{id}", higherManagementOnly(handler.UpdateInvoiceHandler))
+			r.Delete("/{id}", higherManagementOnly(handler.DeleteInvoiceHandler))
 		})
 
 		// =====================================================
@@ -269,15 +353,13 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 		})
 
 		// =====================================================
-		// BACKUP
+		// BACKUP - admin only
 		// =====================================================
-		r.Get("/backup", protected(handler.BackupHandler))
+		r.Get("/backup", adminOnly(handler.BackupHandler))
 	})
 
-	// Serve static files from bucket directory
 	r.Handle("/bucket/*", http.StripPrefix("/bucket/", http.FileServer(http.Dir("./bucket"))))
 
-	// Serve SPA
 	publicDir := "./public"
 	staticFS := http.FileServer(http.Dir(publicDir))
 

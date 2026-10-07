@@ -1,167 +1,242 @@
-@import 'tailwindcss';
+/* src/assets/main.css */
 
 /* =========================================================
-   LIGHT THEME
+   TAILWIND v4
    ========================================================= */
+@import "tailwindcss";
 
+/* =========================================================
+   THEME TOKENS — LIGHT (default)
+   ========================================================= */
 :root {
-  /* Surfaces */
-  --color-bg: #F4F3F8;
-  --color-surface: #FFFFFF;
-  --color-surface-alt: #E8E7EC;
-  --color-scaffold: #F4F3F8;
-  --color-primary: #FFFFFF;
-  --color-drawer: #FFFFFF;
-  --color-card-primary: #FFFFFF;
-  --color-card-secondary: #E8E7EC;
-  --color-muted-bg: #FAFAFB;
+    /* ---- Base surfaces ---- */
+    --color-bg:             #f7f8fa;
+    --color-surface:        #ffffff;
+    --color-surface-alt:    #f1f3f5;
+    --color-muted-bg:       #eef1f4;
+    --color-card-secondary: #f5f6f8;
 
-  /* Text */
-  --color-text-primary: #000000;
-  --color-text-secondary: #8F8E93;
-  --color-text-on-muted: #6F6E73;
+    /* ---- Text ---- */
+    --color-text-primary:   #1a1d21;
+    --color-text-secondary: #5c636a;
+    --color-muted:          #8b929a;
 
-  /* Icons */
-  --color-icon-primary: #1F1F1F;
-  --color-icon-secondary: #8F8E93;
-  --color-chevron: #AEADB4;
+    /* ---- Icons ---- */
+    --color-icon-primary:   #2d3238;
+    --color-icon-secondary: #7a828a;
 
-  /* Borders */
-  --color-border: #E6E5EA;
+    /* ---- Borders ---- */
+    --color-border:         #e2e5e9;
+    --color-chevron:        #b6bcc4;
 
-  /* Buttons */
-  --color-button-primary: #000000;
-  --color-on-button-primary: #FFFFFF;
-  --color-button-secondary: #1C1C1E;
-  --color-on-button-secondary: #FFFFFF;
+    /* ---- Brand / accent ---- */
+    --color-blue:           #2563eb;
+    --color-accent:         #2563eb;
 
-  /* Controls */
-  --color-switch-bg: #DDE3E6;
+    /* ---- Button ---- */
+    --color-button-primary:    var(--color-blue);
+    --color-on-button-primary: #ffffff;
 
-  /* Semantic */
-  --color-red: #BE0011;
-  --color-green: #008A45;
-  --color-yellow: #9A6800;
-  --color-blue: #0068C7;
+    /* ---- Status colors ---- */
+    --color-green:          #16a34a;
+    --color-red:            #dc2626;
+    --color-yellow:         #ca8a04;
+    --color-purple:         #7c3aed;
+
+    /* ---- Status bg / text pairs (badges) ---- */
+    --color-success-bg:     #dcfce7;
+    --color-success-text:   #166534;
+    --color-success-border: #bbf7d0;
+
+    --color-info-bg:        #dbeafe;
+    --color-info-text:      #1e40af;
+    --color-info-border:    #bfdbfe;
+
+    --color-warning-bg:     #fef9c3;
+    --color-warning-text:   #854d0e;
+    --color-warning-border: #fde68a;
+
+    --color-danger-bg:      #fee2e2;
+    --color-danger-text:    #991b1b;
+    --color-danger-border:  #fecaca;
 }
 
-
 /* =========================================================
-   DARK THEME
+   THEME TOKENS — DARK
    ========================================================= */
-
 [data-theme="dark"] {
-  /* Surfaces */
-  --color-bg: #000000;
-  --color-surface: #1C1C1E;
-  --color-surface-alt: #2C2C2E;
-  --color-scaffold: #000000;
-  --color-primary: #1C1C1E;
-  --color-drawer: #1C1C1E;
-  --color-card-primary: #1C1C1E;
-  --color-card-secondary: #2C2C2E;
-  --color-muted-bg: #1D1D1F;
+    /* ---- Base surfaces ---- */
+    --color-bg:             #0d1117;
+    --color-surface:        #161b22;
+    --color-surface-alt:    #1c2128;
+    --color-muted-bg:       #21262d;
+    --color-card-secondary: #1c2128;
 
-  /* Text */
-  --color-text-primary: #FFFFFF;
-  --color-text-secondary: #8F8E93;
-  --color-text-on-muted: #AEAEB2;
+    /* ---- Text ---- */
+    --color-text-primary:   #e6edf3;
+    --color-text-secondary: #8b949e;
+    --color-muted:          #6e7681;
 
-  /* Icons */
-  --color-icon-primary: #FFFFFF;
-  --color-icon-secondary: #8F8E93;
-  --color-chevron: #636365;
+    /* ---- Icons ---- */
+    --color-icon-primary:   #c9d1d9;
+    --color-icon-secondary: #6e7681;
 
-  /* Borders */
-  --color-border: #2C2C2E;
+    /* ---- Borders ---- */
+    --color-border:         #30363d;
+    --color-chevron:        #484f58;
 
-  /* Buttons */
-  --color-button-primary: #FFFFFF;
-  --color-on-button-primary: #000000;
-  --color-button-secondary: #FFFFFF;
-  --color-on-button-secondary: #000000;
+    /* ---- Brand / accent ---- */
+    --color-blue:           #3b82f6;
+    --color-accent:         #3b82f6;
 
-  /* Controls */
-  --color-switch-bg: #2F3538;
+    /* ---- Button ---- */
+    --color-button-primary:    var(--color-blue);
+    --color-on-button-primary: #ffffff;
 
-  /* Semantic */
-  --color-red: #FFB2AB;
-  --color-green: #63F5A5;
-  --color-yellow: #FFD166;
-  --color-blue: #64B5FF;
+    /* ---- Status colors ---- */
+    --color-green:          #22c55e;
+    --color-red:            #ef4444;
+    --color-yellow:         #eab308;
+    --color-purple:         #a855f7;
+
+    /* ---- Status bg / text pairs (badges) ---- */
+    --color-success-bg:     rgba(34, 197, 94, 0.15);
+    --color-success-text:   #4ade80;
+    --color-success-border: rgba(34, 197, 94, 0.35);
+
+    --color-info-bg:        rgba(59, 130, 246, 0.15);
+    --color-info-text:      #60a5fa;
+    --color-info-border:    rgba(59, 130, 246, 0.35);
+
+    --color-warning-bg:     rgba(234, 179, 8, 0.15);
+    --color-warning-text:   #facc15;
+    --color-warning-border: rgba(234, 179, 8, 0.35);
+
+    --color-danger-bg:      rgba(239, 68, 68, 0.15);
+    --color-danger-text:    #f87171;
+    --color-danger-border:  rgba(239, 68, 68, 0.35);
 }
-
 
 /* =========================================================
-   BASE
+   GLOBAL BASE
    ========================================================= */
-
-html {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background-color: var(--color-bg);
-  color: var(--color-text-primary);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  color-scheme: light;
-}
-
-html[data-theme="dark"] {
-  color-scheme: dark;
+html,
+body,
+#app {
+    min-height: 100%;
 }
 
 body {
-  min-height: 100vh;
-  margin: 0;
-  background-color: var(--color-bg);
-  color: var(--color-text-primary);
-  transition: background-color 0.2s ease, color 0.2s ease;
+    margin: 0;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
+/* Theme transition */
+.theme-transition,
+.theme-transition * {
+    transition: background-color 0.2s ease, color 0.2s ease,
+        border-color 0.2s ease;
+}
 
 /* =========================================================
-   BROWSER PASSWORD FIELD OVERRIDES
+   SCROLLBAR
    ========================================================= */
-
-/* Hide the password reveal button in Edge/IE */
-input::-ms-reveal,
-input::-ms-clear {
-  display: none;
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
 }
 
-/* Hide the autofill credential button in Chrome/Edge */
-input::-webkit-credentials-auto-fill-button {
-  visibility: hidden;
-  pointer-events: none;
-  position: absolute;
-  right: 0;
+*::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
 }
 
-
-/* =========================================================
-   ANIMATIONS
-   ========================================================= */
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+*::-webkit-scrollbar-track {
+    background: transparent;
 }
 
-.animate-spin {
-  animation: spin 1s linear infinite;
+*::-webkit-scrollbar-thumb {
+    background-color: var(--color-border);
+    border-radius: 9999px;
 }
 
+*::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-chevron);
+}
+
+/* Hide scrollbar utility used in BaseDialog */
 .hide-scrollbar {
-    -ms-overflow-style: none;
     scrollbar-width: none;
-    overflow: auto; /* Still allows scrolling */
+    -ms-overflow-style: none;
 }
 
 .hide-scrollbar::-webkit-scrollbar {
     display: none;
-    width: 0;
-    height: 0;
+}
+
+/* =========================================================
+   FORM FOCUS RING (used across inputs)
+   ========================================================= */
+input,
+select,
+textarea {
+    font-family: inherit;
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: var(--color-text-secondary);
+    opacity: 0.6;
+}
+
+/* Remove ugly default number-input arrows on webkit when desired */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+/* =========================================================
+   UTILITY — SELECTION
+   ========================================================= */
+::selection {
+    background-color: color-mix(in srgb, var(--color-blue) 25%, transparent);
+    color: var(--color-text-primary);
+}
+
+/* =========================================================
+   SAFE-AREA (mobile)
+   ========================================================= */
+@supports (padding: env(safe-area-inset-bottom)) {
+    body {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+}
+
+/* ===================================================== */
+/* Prevent mouse wheel from changing input values        */
+/* ===================================================== */
+/* Chrome/Edge/Safari respect this via the vendor        */
+/* pseudo-element. Firefox ignores it (uses a spinner    */
+/* threshold instead), so pair it with the JS handler    */
+/* in main.ts for full coverage.                          */
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
 }

@@ -11,10 +11,12 @@
             </div>
 
             <div class="flex items-center gap-2 flex-wrap">
-                <!-- Search -->
                 <div class="relative flex-1 sm:flex-none w-full sm:w-auto">
                     <input :value="searchQuery" @input="handleSearch" type="text" placeholder="Search deliveries..."
-                        class="w-full sm:w-56 pl-9 pr-8 py-2 rounded-lg text-sm bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent" />
+                        class="w-full sm:w-64 pl-9 pr-8 py-2 rounded-lg text-sm
+                               bg-(--color-muted-bg) border border-(--color-border)
+                               text-(--color-text-primary) placeholder:text-(--color-text-secondary)
+                               focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent" />
                     <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-(--color-text-secondary)"
                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -29,13 +31,9 @@
                     </button>
                 </div>
 
-                <!-- Month Filter -->
-                <MonthFilter v-model="monthFilter" :items="availableMonths" />
-
-                <!-- Copy Button -->
                 <button @click="handleCopyToClipboard"
                     class="h-9 w-9 flex items-center justify-center border border-(--color-border) rounded-lg text-(--color-text-secondary) hover:bg-(--color-muted-bg) transition-colors relative shrink-0"
-                    title="Copy table to clipboard">
+                    title="Copy to clipboard">
                     <svg v-if="!clipboardStore.copied" class="w-4 h-4" fill="none" stroke="currentColor"
                         viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -47,8 +45,7 @@
                     </svg>
                 </button>
 
-                <!-- Create -->
-                <button v-if="canManageDeliveries" @click="createDialogOpen = true"
+                <button v-if="canManage" @click="createDialogOpen = true"
                     class="h-9 px-4 flex items-center gap-2 bg-(--color-blue) text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-all duration-200 active:scale-95 whitespace-nowrap shrink-0">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14" />
@@ -58,61 +55,8 @@
             </div>
         </div>
 
-        <!-- Table -->
         <div class="flex-1 min-h-0 overflow-auto">
             <div class="min-w-225">
-                <!-- Header Row -->
-                <div
-                    class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wider bg-(--color-muted-bg)/30 rounded-t-lg">
-                    <div class="col-span-3 cursor-pointer hover:text-(--color-text-primary) transition-colors"
-                        @click="toggleSort('customer_id')">
-                        <span class="flex items-center gap-1">
-                            Customer
-                            <svg v-if="sortField === 'customer_id'" class="w-3 h-3"
-                                :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
-                                viewBox="0 0 24 24">
-                                <path d="M7 10l5 5 5-5z" />
-                            </svg>
-                        </span>
-                    </div>
-                    <div class="col-span-2">Receiver</div>
-                    <div class="col-span-2 cursor-pointer hover:text-(--color-text-primary) transition-colors"
-                        @click="toggleSort('from_location')">
-                        <span class="flex items-center gap-1">
-                            From
-                            <svg v-if="sortField === 'from_location'" class="w-3 h-3"
-                                :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
-                                viewBox="0 0 24 24">
-                                <path d="M7 10l5 5 5-5z" />
-                            </svg>
-                        </span>
-                    </div>
-                    <div class="col-span-2 cursor-pointer hover:text-(--color-text-primary) transition-colors"
-                        @click="toggleSort('to_location')">
-                        <span class="flex items-center gap-1">
-                            To
-                            <svg v-if="sortField === 'to_location'" class="w-3 h-3"
-                                :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
-                                viewBox="0 0 24 24">
-                                <path d="M7 10l5 5 5-5z" />
-                            </svg>
-                        </span>
-                    </div>
-                    <div class="col-span-2 cursor-pointer hover:text-(--color-text-primary) transition-colors"
-                        @click="toggleSort('delivery_date')">
-                        <span class="flex items-center gap-1">
-                            Items / Date
-                            <svg v-if="sortField === 'delivery_date'" class="w-3 h-3"
-                                :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
-                                viewBox="0 0 24 24">
-                                <path d="M7 10l5 5 5-5z" />
-                            </svg>
-                        </span>
-                    </div>
-                    <div class="col-span-1 flex items-center justify-end">Actions</div>
-                </div>
-
-                <!-- Loading -->
                 <div v-if="loading" class="flex items-center justify-center py-12">
                     <div class="text-center space-y-4">
                         <svg class="animate-spin w-10 h-10 text-(--color-blue) mx-auto" fill="none" viewBox="0 0 24 24">
@@ -124,7 +68,6 @@
                     </div>
                 </div>
 
-                <!-- Empty -->
                 <div v-else-if="filteredDeliveries.length === 0" class="flex items-center justify-center py-12">
                     <div class="text-center space-y-3">
                         <div
@@ -132,7 +75,7 @@
                             <svg class="w-8 h-8 text-(--color-text-secondary)" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                    d="M8 18L12 22M12 22L16 18M12 22V10M21 14L12 10L3 14M21 14L12 18M21 14V18M3 14V18M3 14L12 18M3 14L12 10M3 14V10M21 10L12 6M3 10L12 6M21 10L12 14M3 10L12 14" />
+                                    d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM20 17a2 2 0 11-4 0 2 2 0 014 0zM13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1" />
                             </svg>
                         </div>
                         <p class="text-sm font-medium text-(--color-text-primary)">No deliveries found</p>
@@ -141,40 +84,63 @@
                     </div>
                 </div>
 
-                <!-- Rows -->
-                <div v-else>
-                    <DeliveryRow v-for="delivery in filteredDeliveries" :key="delivery.id" :delivery="delivery"
-                        @view="openDetailDialog" @edit="handleEditDelivery" @delete="handleDeleteDelivery"
-                        @manage-items="handleManageItems" @updated="fetchDeliveries" />
+                <div v-else class="space-y-4">
+                    <div
+                        class="grid grid-cols-12 items-center w-full py-2.5 px-3 rounded-lg bg-(--color-muted-bg)/30 text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wider">
+                        <div class="col-span-4 min-w-0 pr-3">Customer</div>
+                        <div class="col-span-3 min-w-0 pr-3">Date / Receiver</div>
+                        <div class="col-span-3 min-w-0 pr-3">Route</div>
+                        <div class="col-span-2 text-right">Items</div>
+                    </div>
+
+                    <div v-for="delivery in filteredDeliveries" :key="delivery.id"
+                        class="rounded-xl border border-(--color-border) bg-(--color-surface)">
+                        <DeliveryRow :delivery="delivery" :items-count="getItemsFor(delivery.id).length"
+                            @view="openDetailDialog" @edit="handleEditDelivery" @delete="handleDeleteDelivery"
+                            @add-item="handleAddItem" />
+
+                        <div class="border-t border-(--color-border)">
+                            <div v-if="itemsLoading[delivery.id]"
+                                class="px-3 py-3 text-xs text-(--color-text-secondary) italic">
+                                Loading itemsâ€¦
+                            </div>
+                            <div v-else-if="getItemsFor(delivery.id).length === 0"
+                                class="px-3 py-3 text-xs text-(--color-text-secondary) italic">
+                                No items for this delivery
+                            </div>
+                            <div v-else>
+                                <DeliveryItemRow v-for="it in getItemsFor(delivery.id)" :key="it.id" :item="it"
+                                    @edit="handleEditItem" @delete="handleDeleteItem" />
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Footer -->
         <div v-if="!loading && filteredDeliveries.length > 0"
             class="flex items-center justify-between py-3 px-1 border-t border-(--color-border) shrink-0 mt-auto">
             <p class="text-xs text-(--color-text-secondary)">Showing {{ filteredDeliveries.length }} of {{
-                deliveriesStore.deliveries.length }} deliveries</p>
+                deliveriesStore.deliveries.length }} deliveries Â· {{ deliveriesStore.totalItemCount }} items</p>
         </div>
 
-        <!-- Dialogs -->
-        <!-- Create Dialog -->
+        <!-- ===================================================== -->
+        <!-- DIALOGS                                                -->
+        <!-- ===================================================== -->
+
         <BaseDialog v-model="createDialogOpen" max-width="3xl">
             <div class="mb-6">
                 <h2 class="text-xl font-bold text-(--color-text-primary)">Create New Delivery</h2>
-                <p class="text-sm text-(--color-text-secondary) mt-1">Add a new delivery to the system</p>
+                <p class="text-sm text-(--color-text-secondary) mt-1">Record a new delivery and its items</p>
             </div>
             <DeliveryForm mode="create" @delivery-created="handleDeliveryCreated" @cancel="createDialogOpen = false" />
         </BaseDialog>
 
-        <!-- Detail Dialog -->
         <BaseDialog v-model="detailDialogOpen" max-width="3xl">
             <DeliveryDetail v-if="selectedDelivery" :delivery="selectedDelivery" @close="closeDetailDialog"
-                @edit="handleEditDeliveryFromDetail" @manage-items="handleManageItemsFromDetail"
-                @updated="fetchDeliveries" />
+                @edit="handleEditDeliveryFromDetail" @updated="fetchDeliveries" />
         </BaseDialog>
 
-        <!-- Edit Dialog -->
         <BaseDialog v-model="editDialogOpen" max-width="3xl">
             <div class="mb-6">
                 <h2 class="text-xl font-bold text-(--color-text-primary)">Edit Delivery</h2>
@@ -184,7 +150,27 @@
                 @delivery-updated="handleDeliveryUpdated" @cancel="editDialogOpen = false" />
         </BaseDialog>
 
-        <!-- Delete Confirmation Dialog -->
+        <BaseDialog v-model="addItemDialogOpen" max-width="3xl">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-(--color-text-primary)">Add Delivery Item</h2>
+                <p class="text-sm text-(--color-text-secondary) mt-1">
+                    For delivery #{{ selectedDelivery?.id }}
+                </p>
+            </div>
+            <DeliveryItemAddForm v-if="selectedDelivery" :delivery-id="selectedDelivery.id"
+                :customer-id="selectedDelivery.customer_id" @item-created="handleItemCreated"
+                @cancel="addItemDialogOpen = false" />
+        </BaseDialog>
+
+        <BaseDialog v-model="editItemDialogOpen" max-width="3xl">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-(--color-text-primary)">Edit Delivery Item</h2>
+                <p class="text-sm text-(--color-text-secondary) mt-1">Update item details</p>
+            </div>
+            <DeliveryItemEditForm v-if="selectedItem" :item="selectedItem" @item-updated="handleItemUpdated"
+                @cancel="editItemDialogOpen = false" />
+        </BaseDialog>
+
         <BaseDialog v-model="deleteDialogOpen" max-width="sm">
             <div class="flex items-center gap-3">
                 <div
@@ -196,7 +182,7 @@
                 </div>
                 <div>
                     <h2 class="text-lg font-bold text-(--color-text-primary)">Delete Delivery</h2>
-                    <p class="text-xs text-(--color-text-secondary)">This action cannot be undone</p>
+                    <p class="text-xs text-(--color-text-secondary)">This will also delete all its items</p>
                 </div>
             </div>
             <p class="text-sm text-(--color-text-secondary) mt-4">
@@ -210,120 +196,88 @@
                     class="px-4 py-2 text-sm font-semibold bg-(--color-red) text-white rounded-lg hover:opacity-90 transition-colors">Delete</button>
             </template>
         </BaseDialog>
+
+        <BaseDialog v-model="deleteItemDialogOpen" max-width="sm">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-10 h-10 rounded-full bg-(--color-red)/10 text-(--color-red) flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold text-(--color-text-primary)">Delete Item</h2>
+                    <p class="text-xs text-(--color-text-secondary)">This action cannot be undone</p>
+                </div>
+            </div>
+            <p class="text-sm text-(--color-text-secondary) mt-4">
+                Delete this item from delivery #<span class="font-medium text-(--color-text-primary)">{{
+                    selectedItem?.delivery_id }}</span>?
+            </p>
+            <template #actions>
+                <button @click="deleteItemDialogOpen = false"
+                    class="px-4 py-2 text-sm rounded-lg hover:bg-(--color-muted-bg) transition-colors">Cancel</button>
+                <button @click="confirmItemDelete"
+                    class="px-4 py-2 text-sm font-semibold bg-(--color-red) text-white rounded-lg hover:opacity-90 transition-colors">Delete</button>
+            </template>
+        </BaseDialog>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useDeliveriesStore } from '@/stores/deliveries'
 import { useCustomersStore } from '@/stores/customers'
-import { useUsersStore } from '@/stores/users'
-import { useDeliveryItemsStore } from '@/stores/deliveryItems'
+import { useStoresStore } from '@/stores/stores'
+import { useLotsStore } from '@/stores/lots'
+import { useMajhisStore } from '@/stores/majhis'
 import { useAuthStore } from '@/stores/auth'
 import { useClipboardStore } from '@/stores/clipboard'
-import type { Delivery, DeliverySortField, SortDirection } from '@/types/delivery'
+import type { Delivery, DeliveryItem } from '@/types/delivery'
 import DeliveryRow from './DeliveryRow.vue'
+import DeliveryItemRow from './DeliveryItemRow.vue'
 import DeliveryForm from './DeliveryForm.vue'
 import DeliveryDetail from './DeliveryDetail.vue'
-import MonthFilter from '@/components/ui/MonthFilter.vue'
+import DeliveryItemEditForm from './DeliveryItemEditForm.vue'
+import DeliveryItemAddForm from './DeliveryItemAddForm.vue'
 import BaseDialog from '@/components/ui/BaseDialog.vue'
-import { push } from 'notivue'
 
 const deliveriesStore = useDeliveriesStore()
 const customersStore = useCustomersStore()
-const usersStore = useUsersStore()
-const deliveryItemsStore = useDeliveryItemsStore()
+const storesStore = useStoresStore()
+const lotsStore = useLotsStore()
+const majhisStore = useMajhisStore()
 const auth = useAuthStore()
 const clipboardStore = useClipboardStore()
 
 const loading = ref(true)
-const searchQuery = ref('')
-const monthFilter = ref('')
-const sortField = ref<DeliverySortField>('delivery_date')
-const sortDirection = ref<SortDirection>('desc')
+const searchQuery = computed(() => deliveriesStore.searchQuery)
+const itemsLoading = computed(() => deliveriesStore.itemsLoading)
 
-// Dialogs
 const createDialogOpen = ref(false)
 const detailDialogOpen = ref(false)
 const editDialogOpen = ref(false)
+const addItemDialogOpen = ref(false)
+const editItemDialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
+const deleteItemDialogOpen = ref(false)
 
 const selectedDelivery = ref<Delivery | null>(null)
+const selectedItem = ref<DeliveryItem | null>(null)
 
-const canManageDeliveries = computed(() => {
+const canManage = computed(() => {
     const role = auth.user?.role
     return role === 'admin' || role === 'manager'
 })
 
-// Get unique months from deliveries
-const availableMonths = computed(() => {
-    const months = new Set<string>()
-    deliveriesStore.deliveries.forEach(d => {
-        const date = new Date(d.delivery_date)
-        const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-        months.add(month)
-    })
-    return Array.from(months).sort((a, b) => b.localeCompare(a))
-})
+const filteredDeliveries = computed(() => deliveriesStore.filteredDeliveries)
 
-const getCustomerName = (id: number | null): string => {
-    if (!id) return '—'
-    return customersStore.getCustomerName(id)
-}
+const getItemsFor = (id: number): DeliveryItem[] => deliveriesStore.getItemsFor(id)
 
-const filteredDeliveries = computed(() => {
-    let result = [...deliveriesStore.deliveries]
-
-    // Search
-    if (searchQuery.value) {
-        const query = searchQuery.value.toLowerCase()
-        result = result.filter(d =>
-            (d.receiver_name && d.receiver_name.toLowerCase().includes(query)) ||
-            (d.receiver_phone && d.receiver_phone.toLowerCase().includes(query)) ||
-            (d.from_location && d.from_location.toLowerCase().includes(query)) ||
-            (d.to_location && d.to_location.toLowerCase().includes(query)) ||
-            (d.notes && d.notes.toLowerCase().includes(query)) ||
-            getCustomerName(d.customer_id).toLowerCase().includes(query) ||
-            usersStore.getUserName(d.user_id).toLowerCase().includes(query)
-        )
-    }
-
-    // Filter by month
-    if (monthFilter.value) {
-        result = result.filter(d => {
-            const date = new Date(d.delivery_date)
-            const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-            return month === monthFilter.value
-        })
-    }
-
-    // Sort
-    result.sort((a, b) => {
-        let comparison = 0
-        switch (sortField.value) {
-            case 'customer_id':
-                comparison = (a.customer_id || 0) - (b.customer_id || 0)
-                break
-            case 'delivery_date':
-                comparison = new Date(a.delivery_date).getTime() - new Date(b.delivery_date).getTime()
-                break
-            case 'from_location':
-                comparison = (a.from_location || '').localeCompare(b.from_location || '')
-                break
-            case 'to_location':
-                comparison = (a.to_location || '').localeCompare(b.to_location || '')
-                break
-            case 'created_at':
-                comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-                break
-            default:
-                comparison = 0
-        }
-        return sortDirection.value === 'desc' ? -comparison : comparison
-    })
-
-    return result
-})
+// =============================================================================
+// Fetch
+// =============================================================================
 
 const fetchDeliveries = async () => {
     loading.value = true
@@ -331,41 +285,54 @@ const fetchDeliveries = async () => {
         await Promise.all([
             deliveriesStore.fetchDeliveries(),
             customersStore.fetchCustomers(),
-            usersStore.fetchUsers(),
-            deliveryItemsStore.fetchDeliveryItems()
+            storesStore.fetchStores(),
+            lotsStore.fetchLots(),
+            majhisStore.fetchMajhis(),
         ])
+        // Load items for each delivery (uses store cache).
+        await Promise.all(deliveriesStore.deliveries.map(d => deliveriesStore.loadItemsFor(d.id)))
     } finally {
         loading.value = false
     }
 }
 
+// =============================================================================
+// Search / Copy
+// =============================================================================
+
 const handleSearch = (e: Event) => {
     const target = e.target as HTMLInputElement
-    searchQuery.value = target.value
+    deliveriesStore.setSearchQuery(target.value)
 }
 
-const clearSearch = () => {
-    searchQuery.value = ''
-}
-
-const toggleSort = (field: DeliverySortField) => {
-    if (sortField.value === field) {
-        sortDirection.value = sortDirection.value === 'desc' ? 'asc' : 'desc'
-    } else {
-        sortField.value = field
-        sortDirection.value = 'desc'
-    }
-}
+const clearSearch = () => { deliveriesStore.clearSearch() }
 
 const handleCopyToClipboard = async () => {
-    const headers = 'Customer\tReceiver\tFrom\tTo\tDate'
-    const rows = filteredDeliveries.value.map(d => {
-        return `${getCustomerName(d.customer_id)}\t${d.receiver_name || ''}\t${d.from_location || ''}\t${d.to_location || ''}\t${new Date(d.delivery_date).toLocaleDateString()}`
-    })
-    await clipboardStore.copyToClipboard(headers + '\n' + rows.join('\n'))
+    const lines: string[] = []
+    lines.push('ID\tCustomer\tDate\tReceiver\tRoute\tItems')
+
+    for (const d of filteredDeliveries.value) {
+        const items = getItemsFor(d.id)
+        const customer = d.customer_id ? customersStore.getCustomerName(d.customer_id) : ''
+        const receiver = [d.receiver_name, d.receiver_phone].filter(Boolean).join(' / ')
+        const route = `${d.from_location || ''} â†’ ${d.to_location || ''}`
+        lines.push(
+            `${d.id}\t${customer}\t${new Date(d.delivery_date).toLocaleDateString()}\t${receiver}\t${route}\t${items.length}`
+        )
+        for (const it of items) {
+            lines.push(
+                `\t\t\t\tStore #${it.store_id}\tQty:${it.quantity} Wt:${it.weight}`
+            )
+        }
+    }
+
+    await clipboardStore.copyToClipboard(lines.join('\n'))
 }
 
+// =============================================================================
 // Dialog handlers
+// =============================================================================
+
 const openDetailDialog = (delivery: Delivery) => {
     selectedDelivery.value = delivery
     detailDialogOpen.value = true
@@ -394,28 +361,35 @@ const handleDeleteDelivery = (delivery: Delivery) => {
     deleteDialogOpen.value = true
 }
 
-const handleManageItems = (delivery: Delivery) => {
+const handleAddItem = (delivery: Delivery) => {
     selectedDelivery.value = delivery
-    // Close detail dialog if open
-    detailDialogOpen.value = false
-    // Emit event to parent to open delivery items management
-    // This will be handled in the parent view
-    push.info(`Manage items for delivery #${delivery.id}`)
+    addItemDialogOpen.value = true
 }
 
-const handleManageItemsFromDetail = (delivery: Delivery) => {
-    detailDialogOpen.value = false
-    setTimeout(() => {
-        handleManageItems(delivery)
-    }, 300)
+const handleEditItem = (item: DeliveryItem) => {
+    selectedItem.value = item
+    editItemDialogOpen.value = true
+}
+
+const handleDeleteItem = (item: DeliveryItem) => {
+    selectedItem.value = item
+    deleteItemDialogOpen.value = true
 }
 
 const confirmDelete = async () => {
     if (!selectedDelivery.value) return
-    const success = await deliveriesStore.deleteDelivery(selectedDelivery.value.id)
-    if (success) {
+    const ok = await deliveriesStore.deleteDelivery(selectedDelivery.value.id)
+    if (ok) {
         deleteDialogOpen.value = false
         await fetchDeliveries()
+    }
+}
+
+const confirmItemDelete = async () => {
+    if (!selectedItem.value) return
+    const ok = await deliveriesStore.deleteDeliveryItem(selectedItem.value.id)
+    if (ok) {
+        deleteItemDialogOpen.value = false
     }
 }
 
@@ -430,22 +404,19 @@ const handleDeliveryUpdated = async () => {
     await fetchDeliveries()
 }
 
-// Auto-select current month
-watch(() => deliveriesStore.deliveries, (newDeliveries) => {
-    if (newDeliveries.length > 0 && !monthFilter.value) {
-        const currentMonth = new Date().toISOString().slice(0, 7)
-        const hasCurrentMonth = newDeliveries.some(d => {
-            const date = new Date(d.delivery_date)
-            const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-            return month === currentMonth
-        })
-        if (hasCurrentMonth) {
-            monthFilter.value = currentMonth
-        }
+const handleItemCreated = async () => {
+    addItemDialogOpen.value = false
+    if (selectedDelivery.value) {
+        await deliveriesStore.loadItemsFor(selectedDelivery.value.id, true)
     }
-}, { immediate: true })
+}
 
-onMounted(() => {
-    fetchDeliveries()
-})
+const handleItemUpdated = async () => {
+    editItemDialogOpen.value = false
+    if (selectedItem.value) {
+        await deliveriesStore.loadItemsFor(selectedItem.value.delivery_id, true)
+    }
+}
+
+onMounted(() => { fetchDeliveries() })
 </script>

@@ -48,6 +48,28 @@ func InitDB(dbPath, dbName, schemaFile string) *sql.DB {
 	return db
 }
 
+// SeedDB applies a seed.sql file. Idempotent if the seed uses INSERT OR IGNORE.
+// Missing seed file is a warning, not fatal — so production can skip it.
+func SeedDB(db *sql.DB, seedFile string) {
+	if _, err := os.Stat(seedFile); os.IsNotExist(err) {
+		log.Printf("[SEED] no seed file at %s, skipping", seedFile)
+		return
+	}
+
+	data, err := os.ReadFile(seedFile)
+	if err != nil {
+		log.Printf("[SEED] failed to read %s: %v", seedFile, err)
+		return
+	}
+
+	if _, err := db.Exec(string(data)); err != nil {
+		log.Printf("[SEED] failed to apply %s: %v", seedFile, err)
+		return
+	}
+
+	log.Printf("[SEED] seed applied from %s", seedFile)
+}
+
 func execSchema(db *sql.DB, schemaFile string) error {
 	data, err := os.ReadFile(schemaFile)
 	if err != nil {

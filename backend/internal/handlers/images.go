@@ -21,7 +21,7 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	entityType := r.PathValue("type")
+	entityType := utils.GetURLParam(r, "type")
 
 	id, ok := utils.GetParamID(w, r)
 	if !ok {
@@ -88,15 +88,15 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 
 		basePath = filepath.Join("bucket", "users", strconv.FormatInt(id, 10))
 
-	case "lots":
-		lot, err := h.app.Models.Lot.GetByID(r.Context(), id)
+	case "stores":
+		store, err := h.app.Models.Store.GetByID(r.Context(), id)
 		if err != nil {
-			log.Printf("[IMAGES] ERROR: Error fetching lot: %v", err)
-			utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch lot")
+			log.Printf("[IMAGES] ERROR: Error fetching store: %v", err)
+			utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch store")
 			return
 		}
-		if lot == nil {
-			utils.ErrorJson(w, http.StatusNotFound, "lot not found")
+		if store == nil {
+			utils.ErrorJson(w, http.StatusNotFound, "store not found")
 			return
 		}
 
@@ -105,84 +105,11 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if lot.ImageURL != nil && *lot.ImageURL != "" {
-			oldImagePath = "." + *lot.ImageURL
+		if store.ImageURL != nil && *store.ImageURL != "" {
+			oldImagePath = "." + *store.ImageURL
 		}
 
-		basePath = filepath.Join("bucket", "lots", strconv.FormatInt(id, 10))
-
-	case "damages":
-		damage, err := h.app.Models.Damage.GetByID(r.Context(), id)
-		if err != nil {
-			log.Printf("[IMAGES] ERROR: Error fetching damage: %v", err)
-			utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch damage")
-			return
-		}
-		if damage == nil {
-			utils.ErrorJson(w, http.StatusNotFound, "damage not found")
-			return
-		}
-
-		if damage.UserID != userID {
-			if currentUser.Role != "admin" && currentUser.Role != "manager" {
-				utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
-				return
-			}
-		}
-
-		if damage.ImageURL != nil && *damage.ImageURL != "" {
-			oldImagePath = "." + *damage.ImageURL
-		}
-
-		basePath = filepath.Join("bucket", "damages", strconv.FormatInt(id, 10))
-
-	case "deliveries":
-		delivery, err := h.app.Models.Delivery.GetByID(r.Context(), id)
-		if err != nil {
-			log.Printf("[IMAGES] ERROR: Error fetching delivery: %v", err)
-			utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch delivery")
-			return
-		}
-		if delivery == nil {
-			utils.ErrorJson(w, http.StatusNotFound, "delivery not found")
-			return
-		}
-
-		if currentUser.Role != "admin" && currentUser.Role != "manager" {
-			utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
-			return
-		}
-
-		if delivery.ImageURL != nil && *delivery.ImageURL != "" {
-			oldImagePath = "." + *delivery.ImageURL
-		}
-
-		basePath = filepath.Join("bucket", "deliveries", strconv.FormatInt(id, 10))
-
-	case "transports":
-		transport, err := h.app.Models.Transport.GetByID(r.Context(), id)
-		if err != nil {
-			log.Printf("[IMAGES] ERROR: Error fetching transport: %v", err)
-			utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch transport")
-			return
-		}
-		if transport == nil {
-			utils.ErrorJson(w, http.StatusNotFound, "transport not found")
-			return
-		}
-
-		if transport.UserID != userID {
-			if currentUser.Role != "admin" && currentUser.Role != "manager" {
-				utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
-				return
-			}
-		}
-
-		if transport.ImageURL != nil && *transport.ImageURL != "" {
-			oldImagePath = "." + *transport.ImageURL
-		}
-
-		basePath = filepath.Join("bucket", "transports", strconv.FormatInt(id, 10))
+		basePath = filepath.Join("bucket", "stores", strconv.FormatInt(id, 10))
 
 	case "expenses":
 		expense, err := h.app.Models.Expense.GetByID(r.Context(), id)
@@ -209,8 +136,83 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 
 		basePath = filepath.Join("bucket", "expenses", strconv.FormatInt(id, 10))
 
+	case "incomes":
+		income, err := h.app.Models.Income.GetByID(r.Context(), id)
+		if err != nil {
+			log.Printf("[IMAGES] ERROR: Error fetching income: %v", err)
+			utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch income")
+			return
+		}
+		if income == nil {
+			utils.ErrorJson(w, http.StatusNotFound, "income not found")
+			return
+		}
+
+		if income.UserID != userID {
+			if currentUser.Role != "admin" && currentUser.Role != "manager" {
+				utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
+				return
+			}
+		}
+
+		if income.ImageURL != nil && *income.ImageURL != "" {
+			oldImagePath = "." + *income.ImageURL
+		}
+
+		basePath = filepath.Join("bucket", "incomes", strconv.FormatInt(id, 10))
+
+	case "deliveries":
+		delivery, err := h.app.Models.Delivery.GetByID(r.Context(), id)
+		if err != nil {
+			log.Printf("[IMAGES] ERROR: Error fetching delivery: %v", err)
+			utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch delivery")
+			return
+		}
+		if delivery == nil {
+			utils.ErrorJson(w, http.StatusNotFound, "delivery not found")
+			return
+		}
+
+		if delivery.UserID != userID {
+			if currentUser.Role != "admin" && currentUser.Role != "manager" {
+				utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
+				return
+			}
+		}
+
+		if delivery.ImageURL != nil && *delivery.ImageURL != "" {
+			oldImagePath = "." + *delivery.ImageURL
+		}
+
+		basePath = filepath.Join("bucket", "deliveries", strconv.FormatInt(id, 10))
+
+	case "damages":
+		damage, err := h.app.Models.Damage.GetByID(r.Context(), id)
+		if err != nil {
+			log.Printf("[IMAGES] ERROR: Error fetching damage: %v", err)
+			utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch damage")
+			return
+		}
+		if damage == nil {
+			utils.ErrorJson(w, http.StatusNotFound, "damage not found")
+			return
+		}
+
+		if damage.UserID != userID {
+			if currentUser.Role != "admin" && currentUser.Role != "manager" {
+				utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
+				return
+			}
+		}
+
+		if damage.ImageURL != nil && *damage.ImageURL != "" {
+			oldImagePath = "." + *damage.ImageURL
+		}
+
+		basePath = filepath.Join("bucket", "damages", strconv.FormatInt(id, 10))
+
 	default:
-		utils.ErrorJson(w, http.StatusBadRequest, "invalid type. Supported: users, lots, damages, deliveries, transports, expenses")
+		utils.ErrorJson(w, http.StatusBadRequest, "invalid type. Supported: users, stores, expenses, incomes, deliveries, damages")
 		return
 	}
 
@@ -244,16 +246,16 @@ func (h *Handler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 	switch entityType {
 	case "users":
 		err = h.app.Models.User.UpdateImage(r.Context(), id, &imageURL)
-	case "lots":
-		err = h.app.Models.Lot.UpdateImage(r.Context(), id, &imageURL)
-	case "damages":
-		err = h.app.Models.Damage.UpdateImage(r.Context(), id, &imageURL)
-	case "deliveries":
-		err = h.app.Models.Delivery.UpdateImage(r.Context(), id, &imageURL)
-	case "transports":
-		err = h.app.Models.Transport.UpdateImage(r.Context(), id, &imageURL)
+	case "stores":
+		err = h.app.Models.Store.UpdateImage(r.Context(), id, &imageURL)
 	case "expenses":
 		err = h.app.Models.Expense.UpdateImage(r.Context(), id, &imageURL)
+	case "incomes":
+		err = h.app.Models.Income.UpdateImage(r.Context(), id, &imageURL)
+	case "deliveries":
+		err = h.app.Models.Delivery.UpdateImage(r.Context(), id, &imageURL)
+	case "damages":
+		err = h.app.Models.Damage.UpdateImage(r.Context(), id, &imageURL)
 	}
 
 	if err != nil {
@@ -283,7 +285,7 @@ func (h *Handler) DeleteImageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	entityType := r.PathValue("type")
+	entityType := utils.GetURLParam(r, "type")
 
 	id, ok := utils.GetParamID(w, r)
 	if !ok {
@@ -325,15 +327,15 @@ func (h *Handler) DeleteImageHandler(w http.ResponseWriter, r *http.Request) {
 			imageURL = *user.ImageURL
 		}
 
-	case "lots":
-		lot, err := h.app.Models.Lot.GetByID(r.Context(), id)
+	case "stores":
+		store, err := h.app.Models.Store.GetByID(r.Context(), id)
 		if err != nil {
-			log.Printf("[IMAGES] ERROR: Error fetching lot: %v", err)
-			utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch lot")
+			log.Printf("[IMAGES] ERROR: Error fetching store: %v", err)
+			utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch store")
 			return
 		}
-		if lot == nil {
-			utils.ErrorJson(w, http.StatusNotFound, "lot not found")
+		if store == nil {
+			utils.ErrorJson(w, http.StatusNotFound, "store not found")
 			return
 		}
 
@@ -342,75 +344,8 @@ func (h *Handler) DeleteImageHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if lot.ImageURL != nil {
-			imageURL = *lot.ImageURL
-		}
-
-	case "damages":
-		damage, err := h.app.Models.Damage.GetByID(r.Context(), id)
-		if err != nil {
-			log.Printf("[IMAGES] ERROR: Error fetching damage: %v", err)
-			utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch damage")
-			return
-		}
-		if damage == nil {
-			utils.ErrorJson(w, http.StatusNotFound, "damage not found")
-			return
-		}
-
-		if damage.UserID != userID {
-			if currentUser.Role != "admin" && currentUser.Role != "manager" {
-				utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
-				return
-			}
-		}
-
-		if damage.ImageURL != nil {
-			imageURL = *damage.ImageURL
-		}
-
-	case "deliveries":
-		delivery, err := h.app.Models.Delivery.GetByID(r.Context(), id)
-		if err != nil {
-			log.Printf("[IMAGES] ERROR: Error fetching delivery: %v", err)
-			utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch delivery")
-			return
-		}
-		if delivery == nil {
-			utils.ErrorJson(w, http.StatusNotFound, "delivery not found")
-			return
-		}
-
-		if currentUser.Role != "admin" && currentUser.Role != "manager" {
-			utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
-			return
-		}
-
-		if delivery.ImageURL != nil {
-			imageURL = *delivery.ImageURL
-		}
-
-	case "transports":
-		transport, err := h.app.Models.Transport.GetByID(r.Context(), id)
-		if err != nil {
-			log.Printf("[IMAGES] ERROR: Error fetching transport: %v", err)
-			utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch transport")
-			return
-		}
-		if transport == nil {
-			utils.ErrorJson(w, http.StatusNotFound, "transport not found")
-			return
-		}
-
-		if transport.UserID != userID {
-			if currentUser.Role != "admin" && currentUser.Role != "manager" {
-				utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
-				return
-			}
-		}
-
-		if transport.ImageURL != nil {
-			imageURL = *transport.ImageURL
+		if store.ImageURL != nil {
+			imageURL = *store.ImageURL
 		}
 
 	case "expenses":
@@ -436,8 +371,77 @@ func (h *Handler) DeleteImageHandler(w http.ResponseWriter, r *http.Request) {
 			imageURL = *expense.ImageURL
 		}
 
+	case "incomes":
+		income, err := h.app.Models.Income.GetByID(r.Context(), id)
+		if err != nil {
+			log.Printf("[IMAGES] ERROR: Error fetching income: %v", err)
+			utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch income")
+			return
+		}
+		if income == nil {
+			utils.ErrorJson(w, http.StatusNotFound, "income not found")
+			return
+		}
+
+		if income.UserID != userID {
+			if currentUser.Role != "admin" && currentUser.Role != "manager" {
+				utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
+				return
+			}
+		}
+
+		if income.ImageURL != nil {
+			imageURL = *income.ImageURL
+		}
+
+	case "deliveries":
+		delivery, err := h.app.Models.Delivery.GetByID(r.Context(), id)
+		if err != nil {
+			log.Printf("[IMAGES] ERROR: Error fetching delivery: %v", err)
+			utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch delivery")
+			return
+		}
+		if delivery == nil {
+			utils.ErrorJson(w, http.StatusNotFound, "delivery not found")
+			return
+		}
+
+		if delivery.UserID != userID {
+			if currentUser.Role != "admin" && currentUser.Role != "manager" {
+				utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
+				return
+			}
+		}
+
+		if delivery.ImageURL != nil {
+			imageURL = *delivery.ImageURL
+		}
+
+	case "damages":
+		damage, err := h.app.Models.Damage.GetByID(r.Context(), id)
+		if err != nil {
+			log.Printf("[IMAGES] ERROR: Error fetching damage: %v", err)
+			utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch damage")
+			return
+		}
+		if damage == nil {
+			utils.ErrorJson(w, http.StatusNotFound, "damage not found")
+			return
+		}
+
+		if damage.UserID != userID {
+			if currentUser.Role != "admin" && currentUser.Role != "manager" {
+				utils.ErrorJson(w, http.StatusForbidden, "unauthorized")
+				return
+			}
+		}
+
+		if damage.ImageURL != nil {
+			imageURL = *damage.ImageURL
+		}
+
 	default:
-		utils.ErrorJson(w, http.StatusBadRequest, "invalid type. Supported: users, lots, damages, deliveries, transports, expenses")
+		utils.ErrorJson(w, http.StatusBadRequest, "invalid type. Supported: users, stores, expenses, incomes, deliveries, damages")
 		return
 	}
 
@@ -453,16 +457,16 @@ func (h *Handler) DeleteImageHandler(w http.ResponseWriter, r *http.Request) {
 	switch entityType {
 	case "users":
 		err = h.app.Models.User.UpdateImage(r.Context(), id, nil)
-	case "lots":
-		err = h.app.Models.Lot.UpdateImage(r.Context(), id, nil)
-	case "damages":
-		err = h.app.Models.Damage.UpdateImage(r.Context(), id, nil)
-	case "deliveries":
-		err = h.app.Models.Delivery.UpdateImage(r.Context(), id, nil)
-	case "transports":
-		err = h.app.Models.Transport.UpdateImage(r.Context(), id, nil)
+	case "stores":
+		err = h.app.Models.Store.UpdateImage(r.Context(), id, nil)
 	case "expenses":
 		err = h.app.Models.Expense.UpdateImage(r.Context(), id, nil)
+	case "incomes":
+		err = h.app.Models.Income.UpdateImage(r.Context(), id, nil)
+	case "deliveries":
+		err = h.app.Models.Delivery.UpdateImage(r.Context(), id, nil)
+	case "damages":
+		err = h.app.Models.Damage.UpdateImage(r.Context(), id, nil)
 	}
 
 	if err != nil {

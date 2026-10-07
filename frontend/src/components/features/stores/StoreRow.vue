@@ -2,43 +2,52 @@
 <template>
     <div class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) transition-all duration-200 hover:bg-(--color-muted-bg)/30 cursor-pointer"
         @click="handleView">
-        <!-- Lot / Product - 3 columns -->
-        <div class="col-span-3 min-w-0 pr-3">
-            <div class="font-medium text-(--color-text-primary) truncate text-sm">
-                {{ lotDisplayName }}
+        <!-- Lot / Product - 4 columns (image only when nested) -->
+        <div class="col-span-4 min-w-0 pr-3">
+            <!-- Nested: show image + placeholder -->
+            <div v-if="hideLot" class="flex items-center gap-3">
+                <div class="shrink-0">
+                    <div v-if="store.image_url"
+                        class="w-9 h-9 rounded-lg overflow-hidden border border-(--color-border)">
+                        <img :src="getImageUrl(store.image_url)" :alt="lotDisplayName"
+                            class="w-full h-full object-cover" />
+                    </div>
+                    <div v-else
+                        class="w-9 h-9 rounded-lg bg-(--color-muted-bg) border border-(--color-border) flex items-center justify-center">
+                        <svg class="w-4 h-4 text-(--color-text-secondary)" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                    </div>
+                </div>
             </div>
-            <div class="text-xs text-(--color-text-secondary) truncate mt-0.5">
-                Lot #{{ lotNumber }}
+
+            <!-- Standalone: lot name + number -->
+            <div v-else class="min-w-0">
+                <div class="font-medium text-(--color-text-primary) truncate text-sm">
+                    {{ lotDisplayName }}
+                </div>
+                <div class="text-xs text-(--color-text-secondary) truncate mt-0.5">
+                    Lot {{ lotNumber }}
+                </div>
             </div>
         </div>
 
-        <!-- Customer - 3 columns -->
-        <div class="col-span-3 min-w-0 pr-3">
-            <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ customerName }}
-            </span>
-            <span v-if="customerPhone" class="text-xs text-(--color-text-secondary)/70 truncate block mt-0.5">
-                {{ customerPhone }}
-            </span>
-        </div>
-
-        <!-- Godown - 2 columns -->
-        <div class="col-span-2 min-w-0 pr-3">
+        <!-- Godown - 4 columns -->
+        <div class="col-span-4 min-w-0 pr-3">
             <span class="text-sm text-(--color-text-secondary) truncate block">
                 {{ godownName }}
-            </span>
-            <span v-if="godownPhone" class="text-xs text-(--color-text-secondary)/70 truncate block mt-0.5">
-                {{ godownPhone }}
             </span>
         </div>
 
         <!-- Stock - 2 columns -->
         <div class="col-span-2 min-w-0 pr-3">
-            <span class="text-sm text-(--color-text-primary) block truncate">
-                {{ formatNumber(store.quantity) }} {{ store.quantity_unit }}
+            <span class="text-xs text-(--color-text-secondary) truncate block">
+                Wt: {{ formatNumber(store.weight) }} {{ weightUnit }}
             </span>
-            <span class="text-xs text-(--color-text-secondary)/70 block truncate mt-0.5">
-                {{ formatNumber(store.weight) }} {{ store.weight_unit }}
+            <span class="text-xs text-(--color-text-secondary) truncate block mt-0.5">
+                Qty: {{ formatNumber(store.quantity) }} {{ quantityUnit }}
             </span>
         </div>
 
@@ -90,27 +99,24 @@
                         Edit
                     </button>
 
-                    <button @click="handleReadd"
+                    <!-- Adjust Stock -->
+                    <button @click="handleAdjust"
                         class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-blue) hover:bg-(--color-muted-bg) transition-colors">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Re-add Store
+                        Adjust Stock
                     </button>
 
-                    <button @click="handleToggleActive"
-                        class="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-(--color-muted-bg) transition-colors"
-                        :class="store.is_active ? 'text-(--color-yellow)' : 'text-(--color-green)'">
-                        <svg v-if="store.is_active" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
+                    <!-- Transfer Store -->
+                    <button @click="handleTransfer" :disabled="!store.is_active"
+                        class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-green) hover:bg-(--color-muted-bg) transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                d="M14 5l7 7m0 0l-7 7m7-7H3" />
                         </svg>
-                        <svg v-else class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        {{ store.is_active ? 'Deactivate' : 'Activate' }}
+                        Transfer Store
                     </button>
 
                     <button @click="handleDelete"
@@ -133,52 +139,36 @@
 import { ref, computed } from 'vue'
 import type { Store } from '@/types/store'
 import { useLotsStore } from '@/stores/lots'
-import { useCustomersStore } from '@/stores/customers'
 import { useGodownsStore } from '@/stores/godowns'
+import { getImageUrl } from '@/utils/image'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     store: Store
-}>()
+    hideLot?: boolean
+}>(), {
+    hideLot: false,
+})
 
 const emit = defineEmits<{
     'view': [store: Store]
     'edit': [store: Store]
-    'readd': [store: Store]
     'delete': [store: Store]
-    'toggle-active': [store: Store]
+    'adjust': [store: Store]
+    'transfer': [store: Store]
     'updated': []
 }>()
 
 const lotsStore = useLotsStore()
-const customersStore = useCustomersStore()
 const godownsStore = useGodownsStore()
 const isOpen = ref(false)
 
 const lot = computed(() => lotsStore.getLotById(props.store.lot_id))
-const lotNumber = computed(() => lot.value?.lot_number ?? '৳')
-
-const lotDisplayName = computed(() => {
-    if (!lot.value) return '৳'
-    return lotsStore.getLotDisplayName(lot.value)
-})
-
-const customerName = computed(() => {
-    if (!lot.value?.customer_id) return '৳'
-    return customersStore.getCustomerName(lot.value.customer_id)
-})
-
-const customerPhone = computed(() => {
-    if (!lot.value?.customer_id) return ''
-    const c = customersStore.getCustomerById(lot.value.customer_id)
-    return c?.phone || ''
-})
+const lotNumber = computed(() => lot.value?.lot_number ?? '—')
+const lotDisplayName = computed(() => lot.value ? lot.value.product_name : '—')
+const quantityUnit = computed(() => lot.value?.quantity_unit ?? 'units')
+const weightUnit = computed(() => lot.value?.weight_unit ?? 'kg')
 
 const godownName = computed(() => godownsStore.getGodownName(props.store.godown_id))
-
-const godownPhone = computed(() => {
-    const g = godownsStore.getGodownById(props.store.godown_id)
-    return g?.phone || ''
-})
 
 const formatNumber = (n: number): string => {
     return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(n)
@@ -188,7 +178,7 @@ const toggleMenu = () => { isOpen.value = !isOpen.value }
 const closeMenu = () => { isOpen.value = false }
 const handleView = () => { closeMenu(); emit('view', props.store) }
 const handleEdit = () => { closeMenu(); emit('edit', props.store) }
-const handleReadd = () => { closeMenu(); emit('readd', props.store) }
-const handleToggleActive = () => { closeMenu(); emit('toggle-active', props.store) }
+const handleAdjust = () => { closeMenu(); emit('adjust', props.store) }
+const handleTransfer = () => { closeMenu(); emit('transfer', props.store) }
 const handleDelete = () => { closeMenu(); emit('delete', props.store) }
 </script>

@@ -17,13 +17,19 @@ func main() {
 	dbPool := db.InitDB(cfg.DBPath, cfg.DBName, cfg.SchemaPath)
 	defer db.CloseDB(dbPool)
 
+	// =============================================
+	// SEED (OPTIONAL)
+	// Comment this line out to skip seeding.
+	// =============================================
+	db.SeedDB(dbPool, "internal/db/seed/seed.sql")
+
 	a := app.Application{
 		Config: cfg,
 		DB:     dbPool,
 		Models: models.NewModel(dbPool),
 	}
 
-	// NON SEED (CRTICAL)
+	// NON SEED (CRITICAL)
 	// =============================================
 	bootstrap.BootstrapAdmin(&a)
 
@@ -34,4 +40,4 @@ func main() {
 	log.Fatal(a.Run(r))
 }
 
-// go run ./cmd/app/ --config=config/config.env
+// go run ./cmd/main.go --config=config/config.env

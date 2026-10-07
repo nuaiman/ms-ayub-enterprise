@@ -21,7 +21,7 @@ func ReadJson(w http.ResponseWriter, r *http.Request, dst any) error {
 	decodedBody := json.NewDecoder(r.Body)
 	decodedBody.DisallowUnknownFields()
 
-	err := decodedBody.Decode(&dst)
+	err := decodedBody.Decode(dst)
 	if err != nil {
 		return err
 	}
@@ -41,9 +41,7 @@ func SuccessJson(w http.ResponseWriter, status int, message string, data any) er
 		Data:    data,
 	}
 
-	// json.NewEncoder(w).Encode(&resp)
-
-	json, err := json.Marshal(&response)
+	payload, err := json.Marshal(&response)
 	if err != nil {
 		return err
 	}
@@ -51,7 +49,7 @@ func SuccessJson(w http.ResponseWriter, status int, message string, data any) er
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 
-	_, err = w.Write(json)
+	_, err = w.Write(payload)
 
 	return err
 }
@@ -62,7 +60,7 @@ func ErrorJson(w http.ResponseWriter, status int, message string) {
 		Message: message,
 	}
 
-	json, err := json.Marshal(response)
+	payload, err := json.Marshal(response)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -78,5 +76,5 @@ func ErrorJson(w http.ResponseWriter, status int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 
-	_, _ = w.Write(json)
+	_, _ = w.Write(payload)
 }

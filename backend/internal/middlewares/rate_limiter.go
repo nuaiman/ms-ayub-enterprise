@@ -14,17 +14,34 @@ type Client struct {
 
 type RateLimiter struct {
 	mu       sync.Mutex
-	Clients  map[string]*Client
+	clients  map[string]*Client
 	interval time.Duration
 	rate     int
+	lastGC   time.Time
 }
 
 func NewRateLimiter(rate int, interval time.Duration) *RateLimiter {
 	return &RateLimiter{
-		Clients:  make(map[string]*Client),
+		clients:  make(map[string]*Client),
 		rate:     rate,
 		interval: interval,
+		lastGC:   time.Now(),
 	}
+}
+
+// gcLocked removes stale clients. Caller must hold rl.mu.
+func (rl *RateLimiter) gcLocked(now time.Time) {
+	// Run at most once per interval.
+	if now.Sub(rl.lastGC) < rl.interval {
+		return
+	}
+	cutoff := now.Add(-2 * rl.interval)
+	for ip, c := range rl.clients {
+		if c.lastRefil.Before(cutoff) {
+			delete(rl.clients, ip)
+		}
+	}
+	rl.lastGC = now
 }
 
 func (rl *RateLimiter) LimitRate(next http.Handler) http.Handler {
@@ -39,17 +56,19 @@ func (rl *RateLimiter) LimitRate(next http.Handler) http.Handler {
 			rl.mu.Lock()
 			defer rl.mu.Unlock()
 
-			c, exists := rl.Clients[ip]
+			now := time.Now()
+			rl.gcLocked(now)
+
+			c, exists := rl.clients[ip]
 			if !exists {
-				rl.Clients[ip] = &Client{
+				rl.clients[ip] = &Client{
 					tokens:    rl.rate - 1,
-					lastRefil: time.Now(),
+					lastRefil: now,
 				}
 				next.ServeHTTP(w, r)
 				return
 			}
 
-			now := time.Now()
 			if now.Sub(c.lastRefil) > rl.interval {
 				c.tokens = rl.rate
 				c.lastRefil = now

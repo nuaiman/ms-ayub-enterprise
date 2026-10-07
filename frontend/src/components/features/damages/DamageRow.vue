@@ -2,8 +2,8 @@
 <template>
     <div class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) transition-all duration-200 hover:bg-(--color-muted-bg)/30 cursor-pointer"
         @click="handleView">
-        <!-- Store / Lot - 3 columns -->
-        <div class="col-span-3 min-w-0 pr-3">
+        <!-- Store - 4 columns -->
+        <div class="col-span-4 min-w-0 pr-3">
             <div class="flex items-center gap-3">
                 <div class="shrink-0">
                     <div v-if="damage.image_url"
@@ -21,55 +21,40 @@
                 </div>
                 <div class="min-w-0">
                     <div class="font-medium text-(--color-text-primary) truncate text-sm">
-                        {{ godownName }}
+                        {{ storeLabel }}
                     </div>
-                    <div class="text-xs text-(--color-text-secondary) truncate mt-0.5">
-                        {{ lotDisplayName }} ৳· Lot #{{ lotNumber }}
+                    <div v-if="lotLabel" class="text-xs text-(--color-text-secondary) truncate mt-0.5">
+                        {{ lotLabel }}
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Customer - 2 columns -->
+        <!-- Reason - 3 columns -->
+        <div class="col-span-3 min-w-0 pr-3">
+            <div class="text-sm text-(--color-text-primary) truncate">{{ damage.reason }}</div>
+        </div>
+
+        <!-- Quantity / Weight - 2 columns -->
         <div class="col-span-2 min-w-0 pr-3">
-            <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ customerName }}
+            <span class="text-xs text-(--color-text-secondary) truncate block">
+                Qty: {{ formatNumber(damage.quantity) }} {{ damage.quantity_unit }}
             </span>
-            <span v-if="customerPhone" class="text-xs text-(--color-text-secondary)/70 truncate block mt-0.5">
-                {{ customerPhone }}
+            <span class="text-xs text-(--color-text-secondary) truncate block mt-0.5">
+                Wt: {{ formatNumber(damage.weight) }} {{ damage.weight_unit }}
             </span>
         </div>
 
-        <!-- Reason - 2 columns -->
-        <div class="col-span-2 min-w-0 pr-3">
-            <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ damage.reason }}
-            </span>
-            <span v-if="damage.notes" class="text-xs text-(--color-text-secondary)/70 truncate block mt-0.5">
-                {{ damage.notes }}
-            </span>
-        </div>
-
-        <!-- Quantity - 1 column -->
+        <!-- Amount - 1 column -->
         <div class="col-span-1 min-w-0 pr-3">
-            <span class="text-sm text-(--color-text-primary) block truncate">
-                {{ damage.quantity }}
-            </span>
-            <span class="text-xs text-(--color-text-secondary)/70 block truncate mt-0.5">
-                {{ damage.quantity_unit }}
-            </span>
-        </div>
-
-        <!-- Amount - 2 columns -->
-        <div class="col-span-2 min-w-0 pr-3">
-            <span class="text-sm font-semibold text-(--color-red) block truncate">
+            <span class="text-sm font-semibold text-(--color-red) truncate block">
                 {{ formatCurrency(damage.amount) }}
             </span>
         </div>
 
         <!-- Date - 1 column -->
         <div class="col-span-1 min-w-0 pr-3">
-            <span class="text-xs text-(--color-text-secondary) block truncate">
+            <span class="text-xs text-(--color-text-secondary) truncate block">
                 {{ formatDateShort(damage.damage_date) }}
             </span>
         </div>
@@ -133,8 +118,6 @@ import { ref, computed } from 'vue'
 import type { Damage } from '@/types/damage'
 import { useStoresStore } from '@/stores/stores'
 import { useLotsStore } from '@/stores/lots'
-import { useCustomersStore } from '@/stores/customers'
-import { useGodownsStore } from '@/stores/godowns'
 import { formatCurrency } from '@/utils/currency'
 import { getImageUrl } from '@/utils/image'
 
@@ -151,40 +134,31 @@ const emit = defineEmits<{
 
 const storesStore = useStoresStore()
 const lotsStore = useLotsStore()
-const customersStore = useCustomersStore()
-const godownsStore = useGodownsStore()
 const isOpen = ref(false)
 
 const store = computed(() => storesStore.getStoreById(props.damage.store_id))
-const lot = computed(() => (store.value ? lotsStore.getLotById(store.value.lot_id) : null))
-const lotNumber = computed(() => lot.value?.lot_number ?? '৳')
 
-const godownName = computed(() => {
-    if (!store.value) return '৳'
-    return godownsStore.getGodownName(store.value.godown_id)
+const storeLabel = computed(() =>
+    store.value ? `Store #${store.value.id}` : `Store #${props.damage.store_id}`
+)
+
+const lot = computed(() => {
+    if (!store.value) return null
+    return lotsStore.getLotById(store.value.lot_id) ?? null
 })
 
-const lotDisplayName = computed(() => {
-    if (!lot.value) return '৳'
-    return lotsStore.getLotDisplayName(lot.value)
+const lotLabel = computed(() => {
+    if (!lot.value) return ''
+    return `${lot.value.product_name} · Lot ${lot.value.lot_number}`
 })
 
-const customerName = computed(() => {
-    if (!lot.value?.customer_id) return '৳'
-    return customersStore.getCustomerName(lot.value.customer_id)
-})
+const formatNumber = (n: number): string =>
+    new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(n)
 
-const customerPhone = computed(() => {
-    if (!lot.value?.customer_id) return ''
-    const c = customersStore.getCustomerById(lot.value.customer_id)
-    return c?.phone || ''
-})
-
-const formatDateShort = (dateStr: string): string => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
+const formatDateShort = (dateStr: string): string =>
+    new Date(dateStr).toLocaleDateString('en-US', {
         year: 'numeric', month: 'short', day: 'numeric',
     })
-}
 
 const toggleMenu = () => { isOpen.value = !isOpen.value }
 const closeMenu = () => { isOpen.value = false }

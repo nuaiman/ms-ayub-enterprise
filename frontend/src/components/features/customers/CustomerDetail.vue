@@ -23,7 +23,7 @@
                     <span class="text-sm text-(--color-text-secondary)">{{ customer.phone }}</span>
                     <span v-if="customer.email" class="w-1 h-1 rounded-full bg-(--color-text-secondary)"></span>
                     <span v-if="customer.email" class="text-sm text-(--color-text-secondary)">{{ customer.email
-                    }}</span>
+                        }}</span>
                 </div>
             </div>
         </div>
@@ -80,13 +80,9 @@
 
         <!-- Actions -->
         <div class="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-(--color-border)">
-            <button @click="emit('view-ledger', customer)"
-                class="px-4 py-2 text-sm font-medium rounded-lg bg-(--color-green) text-white hover:opacity-90 transition-all duration-200 inline-flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                View Ledger
+            <button @click="emit('ledger', customer)"
+                class="px-4 py-2 text-sm font-medium rounded-lg border border-(--color-border) hover:bg-(--color-muted-bg) transition-all duration-200">
+                Ledger
             </button>
             <button @click="emit('edit', customer)"
                 class="px-4 py-2 text-sm font-medium rounded-lg bg-(--color-blue) text-white hover:opacity-90 transition-all duration-200">
@@ -110,7 +106,7 @@ const props = defineProps<{
 const emit = defineEmits<{
     'close': []
     'edit': [customer: Customer]
-    'view-ledger': [customer: Customer]
+    'ledger': [customer: Customer]
     'updated': []
 }>()
 

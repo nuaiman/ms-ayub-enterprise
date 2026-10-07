@@ -19,6 +19,10 @@ func GenerateAccessToken(userID int64, secret string) (string, error) {
 
 func VerifyAccessToken(tokenString, secret string) (*int64, error) {
 	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (any, error) {
+		// Reject any signing method other than HMAC to prevent algorithm confusion.
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
 		return []byte(secret), nil
 	})
 
@@ -27,12 +31,12 @@ func VerifyAccessToken(tokenString, secret string) (*int64, error) {
 	}
 
 	if !token.Valid {
-		return nil, err
+		return nil, errors.New("invalid token")
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return nil, errors.New("invlaid claims")
+		return nil, errors.New("invalid claims")
 	}
 
 	id, ok := claims["id"].(float64)
@@ -40,7 +44,7 @@ func VerifyAccessToken(tokenString, secret string) (*int64, error) {
 		return nil, errors.New("invalid id claim")
 	}
 
-	userId := int64(id)
+	userID := int64(id)
 
-	return &userId, nil
+	return &userID, nil
 }

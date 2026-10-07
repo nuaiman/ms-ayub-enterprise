@@ -1,53 +1,41 @@
 // src/types/customerAdditionalBill.ts
 
-export interface AdditionalCharge {
+export interface CustomerAdditionalBill {
     id: number
     user_id: number
     customer_id: number
     amount: number
     description: string
-    customer_total_paid: number
-    customer_total_paid_through: string | null
+    total_paid: number
+    total_paid_through: string | null
+    remaining: number
     created_at: string
     updated_at: string
 }
 
-export interface CreateAdditionalChargePayload {
+export interface CreateCustomerAdditionalBillPayload {
     customer_id: number
     amount: number
     description: string
 }
 
-export interface UpdateAdditionalChargePayload {
+export interface UpdateCustomerAdditionalBillPayload {
     amount?: number
     description?: string
 }
 
-export interface UpdateAdditionalChargePaymentPayload {
-    customer_total_paid: number
-    customer_total_paid_through?: string | null
-}
-
-// View model for the bills page — enriched with customer name.
-export interface CustomerAdditionalBill {
-    id: number
-    customer_id: number
-    customer_name: string
+export interface CreateBillPaymentPayload {
     amount: number
-    description: string
-    paid_amount: number
-    outstanding: number
-    status: 'unpaid' | 'paid'
-    payment_date: string | null
-    created_at: string
-    updated_at: string
+    payment_date?: string
+    payment_method?: 'cash' | 'bank_transfer' | 'check' | 'mobile_banking'
+    reference_number?: string | null
+    notes?: string | null
 }
 
 export type CustomerAdditionalBillSortField =
-    | 'customer_name'
+    | 'customer_id'
     | 'amount'
-    | 'description'
-    | 'status'
+    | 'total_paid'
     | 'created_at'
 
 export type SortDirection = 'asc' | 'desc'

@@ -47,12 +47,6 @@ export const useGodownsStore = defineStore("godowns", () => {
         case "phone":
           comparison = (a.phone || "").localeCompare(b.phone || "");
           break;
-        case "is_active":
-          comparison = (a.is_active === b.is_active) ? 0 : a.is_active ? -1 : 1;
-          break;
-        case "monthly_rent":
-          comparison = a.monthly_rent - b.monthly_rent;
-          break;
         case "created_at":
           comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
           break;
@@ -63,10 +57,6 @@ export const useGodownsStore = defineStore("godowns", () => {
     });
 
     return result;
-  });
-
-  const activeGodowns = computed(() => {
-    return godowns.value.filter((g) => g.is_active);
   });
 
   const totalGodowns = computed(() => godowns.value.length);
@@ -86,27 +76,6 @@ export const useGodownsStore = defineStore("godowns", () => {
     } catch (error) {
       const err = error as AxiosError<ApiResponse<null>>;
       push.error(err.response?.data?.message || "Failed to fetch godowns");
-      return [];
-    } finally {
-      destroyLoader();
-    }
-  };
-
-  const fetchActiveGodowns = async () => {
-    displayLoader();
-    try {
-      const res = await api.get<ApiResponse<Godown[]>>("/godowns", {
-        params: { active: true },
-      });
-      if (!res.data.success) {
-        push.error(res.data.message);
-        return [];
-      }
-      godowns.value = res.data.data;
-      return godowns.value;
-    } catch (error) {
-      const err = error as AxiosError<ApiResponse<null>>;
-      push.error(err.response?.data?.message || "Failed to fetch active godowns");
       return [];
     } finally {
       destroyLoader();
@@ -177,29 +146,6 @@ export const useGodownsStore = defineStore("godowns", () => {
     }
   };
 
-  const toggleGodownActive = async (id: number): Promise<boolean> => {
-    displayLoader();
-    try {
-      const res = await api.patch<ApiResponse<Godown>>(`/godowns/${id}/toggle-active`);
-      if (!res.data.success) {
-        push.error(res.data.message);
-        return false;
-      }
-      const index = godowns.value.findIndex((g) => g.id === id);
-      if (index !== -1) {
-        godowns.value[index] = res.data.data;
-      }
-      push.success(res.data.message);
-      return true;
-    } catch (error) {
-      const err = error as AxiosError<ApiResponse<null>>;
-      push.error(err.response?.data?.message || "Failed to toggle godown status");
-      return false;
-    } finally {
-      destroyLoader();
-    }
-  };
-
   const deleteGodown = async (id: number): Promise<boolean> => {
     displayLoader();
     try {
@@ -220,7 +166,7 @@ export const useGodownsStore = defineStore("godowns", () => {
     }
   };
 
-  // ============= SORT =============
+  // ============= SORT / SEARCH =============
   const setSort = (field: GodownSortField) => {
     if (sortField.value === field) {
       sortDirection.value = sortDirection.value === "asc" ? "desc" : "asc";
@@ -230,7 +176,6 @@ export const useGodownsStore = defineStore("godowns", () => {
     }
   };
 
-  // ============= SEARCH =============
   const setSearchQuery = (query: string) => {
     searchQuery.value = query;
   };
@@ -249,12 +194,6 @@ export const useGodownsStore = defineStore("godowns", () => {
     return godowns.value.find((g) => g.id === id);
   };
 
-  const getTotalMonthlyRent = (): number => {
-    return godowns.value
-      .filter((g) => g.is_active)
-      .reduce((sum, g) => sum + g.monthly_rent, 0);
-  };
-
   return {
     godowns,
     searchQuery,
@@ -262,16 +201,13 @@ export const useGodownsStore = defineStore("godowns", () => {
     sortDirection,
 
     filteredGodowns,
-    activeGodowns,
     totalGodowns,
 
     fetchGodowns,
-    fetchActiveGodowns,
     searchGodowns,
 
     createGodown,
     updateGodown,
-    toggleGodownActive,
     deleteGodown,
 
     setSort,
@@ -280,6 +216,5 @@ export const useGodownsStore = defineStore("godowns", () => {
 
     getGodownName,
     getGodownById,
-    getTotalMonthlyRent,
   };
 });

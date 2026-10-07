@@ -15,10 +15,13 @@
 
             <div class="flex-1 min-w-0">
                 <h2 class="text-xl font-bold text-(--color-text-primary)">
-                    {{ customerName }} ৳ Ledger
+                    {{ customerName }} — Ledger
                 </h2>
                 <p class="text-sm text-(--color-text-secondary) mt-1">
                     {{ ledger.summary.eventCount }} event(s)
+                    <template v-if="ledger.hasSelection">
+                        · <span class="text-(--color-blue) font-medium">{{ ledger.selectedCount }} selected</span>
+                    </template>
                 </p>
             </div>
 
@@ -33,17 +36,13 @@
                     <span class="hidden sm:inline">Export CSV</span>
                 </button>
 
-                <button @click="handleExportPDF" :disabled="exporting"
-                    class="px-3 py-2 text-sm font-medium rounded-lg bg-(--color-blue) text-white hover:opacity-90 transition-all duration-200 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                    <svg v-if="!exporting" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button @click="handlePrint"
+                    class="px-3 py-2 text-sm font-medium rounded-lg bg-(--color-blue) text-white hover:opacity-90 transition-all duration-200 inline-flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                     </svg>
-                    <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    <span class="hidden sm:inline">{{ exporting ? 'Generating...' : 'Export PDF' }}</span>
+                    <span class="hidden sm:inline">Print</span>
                 </button>
             </div>
         </div>
@@ -86,7 +85,7 @@
                 <input :value="ledger.dateTo" @input="handleDateTo" type="date"
                     class="px-3 py-2 rounded-lg text-sm bg-(--color-surface) border border-(--color-border) text-(--color-text-primary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent" />
 
-                <button @click="ledger.resetFilters"
+                <button @click="ledger.resetFilters()"
                     class="px-3 py-2 text-sm rounded-lg hover:bg-(--color-muted-bg) transition-colors whitespace-nowrap">
                     Reset
                 </button>
@@ -111,66 +110,99 @@
             </div>
         </div>
 
-        <!-- Timeline (on-screen) -->
-        <div v-if="ledger.filteredEvents.length === 0" class="text-center py-12 text-sm text-(--color-text-secondary)">
+        <!-- Selection toolbar -->
+        <div v-if="!ledger.isLoading && ledger.filteredEvents.length > 0"
+            class="flex flex-wrap items-center justify-between gap-3 p-3 rounded-lg border border-(--color-border) bg-(--color-surface)">
+            <div class="flex items-center gap-3">
+                <label class="inline-flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" :checked="ledger.allVisibleSelected"
+                        :indeterminate.prop="ledger.someVisibleSelected" @change="handleSelectAllToggle"
+                        class="w-4 h-4 rounded border-(--color-border) text-(--color-blue) focus:ring-2 focus:ring-(--color-blue)/20 focus:ring-offset-0 cursor-pointer" />
+                    <span class="text-xs font-medium text-(--color-text-secondary) select-none">
+                        <template v-if="ledger.hasSelection">
+                            {{ ledger.selectedCount }} of {{ ledger.filteredEvents.length }} selected
+                        </template>
+                        <template v-else>
+                            Select events to include (none = all)
+                        </template>
+                    </span>
+                </label>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button v-if="!ledger.allVisibleSelected" @click="ledger.selectAllVisible()"
+                    class="text-xs font-medium text-(--color-blue) hover:opacity-80 transition-opacity">
+                    Select all visible
+                </button>
+                <button v-if="ledger.hasSelection" @click="ledger.clearSelection()"
+                    class="text-xs font-medium text-(--color-text-secondary) hover:text-(--color-text-primary) transition-colors">
+                    Clear selection
+                </button>
+            </div>
+        </div>
+
+        <!-- Timeline -->
+        <div v-if="ledger.isLoading" class="text-center py-12 text-sm text-(--color-text-secondary)">
+            Loading ledger…
+        </div>
+
+        <div v-else-if="ledger.filteredEvents.length === 0"
+            class="text-center py-12 text-sm text-(--color-text-secondary)">
             No events match the current filters.
         </div>
 
-        <div v-else class="relative">
-            <div class="absolute left-5 top-2 bottom-2 w-px bg-(--color-border)" aria-hidden="true"></div>
+        <!-- Events list (no icon column, no timeline spine) -->
+        <div v-else class="space-y-2">
+            <div v-for="event in ledger.filteredEvents" :key="event.id" class="flex items-stretch gap-3">
+                <!-- Checkbox -->
+                <div class="shrink-0 flex items-start pt-3.5">
+                    <input type="checkbox" :checked="ledger.isEventSelected(event.id)"
+                        @change="ledger.toggleEvent(event.id)"
+                        class="w-4 h-4 rounded border-(--color-border) text-(--color-blue) focus:ring-2 focus:ring-(--color-blue)/20 focus:ring-offset-0 cursor-pointer" />
+                </div>
 
-            <div class="space-y-3">
-                <div v-for="event in ledger.filteredEvents" :key="event.id" class="relative flex gap-4 pl-0">
-                    <div class="shrink-0 z-10">
-                        <div
-                            class="w-10 h-10 rounded-full border-2 border-(--color-border) bg-(--color-surface) flex items-center justify-center text-base">
-                            {{ event.icon }}
+                <!-- Event card -->
+                <div class="flex-1 min-w-0 rounded-lg border border-(--color-border) bg-(--color-surface) p-3 hover:border-(--color-blue)/30 transition-colors"
+                    :class="{ 'ring-1 ring-(--color-blue)/40': ledger.isEventSelected(event.id) }">
+                    <div class="flex items-start justify-between gap-3 flex-wrap">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md"
+                                    :class="typeChipClass(event.type)">
+                                    {{ ledger.typeLabel(event.type) }}
+                                </span>
+                                <span v-if="event.reference" class="text-xs text-(--color-text-secondary) font-mono">
+                                    {{ event.reference }}
+                                </span>
+                            </div>
+                            <p class="text-sm font-medium text-(--color-text-primary) mt-1">
+                                {{ event.title }}
+                            </p>
+                            <p class="text-xs text-(--color-text-secondary) mt-0.5">
+                                {{ event.description }}
+                            </p>
+                        </div>
+
+                        <div class="text-right shrink-0">
+                            <p v-if="typeof event.amount === 'number' && event.amount !== 0"
+                                class="text-sm font-semibold" :class="amountClass(event.amountKind)">
+                                {{ formatCurrency(event.amount) }}
+                            </p>
+                            <p v-if="event.amountLabel" class="text-[10px] uppercase tracking-wider"
+                                :class="amountClass(event.amountKind)">
+                                {{ event.amountLabel }}
+                            </p>
+                            <p class="text-[10px] text-(--color-text-secondary) mt-1">
+                                {{ ledger.formatEventDate(event.date) }}
+                            </p>
                         </div>
                     </div>
 
-                    <div
-                        class="flex-1 min-w-0 rounded-lg border border-(--color-border) bg-(--color-surface) p-3 hover:border-(--color-blue)/30 transition-colors">
-                        <div class="flex items-start justify-between gap-3 flex-wrap">
-                            <div class="min-w-0 flex-1">
-                                <div class="flex items-center gap-2 flex-wrap">
-                                    <span class="text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md"
-                                        :class="typeChipClass(event.type)">
-                                        {{ ledger.typeLabel(event.type) }}
-                                    </span>
-                                    <span v-if="event.reference"
-                                        class="text-xs text-(--color-text-secondary) font-mono">
-                                        {{ event.reference }}
-                                    </span>
-                                </div>
-                                <p class="text-sm font-medium text-(--color-text-primary) mt-1">
-                                    {{ event.title }}
-                                </p>
-                                <p class="text-xs text-(--color-text-secondary) mt-0.5">
-                                    {{ event.description }}
-                                </p>
-                            </div>
-
-                            <div class="text-right shrink-0">
-                                <p v-if="typeof event.amount === 'number' && event.amount !== 0"
-                                    class="text-sm font-semibold" :class="amountClass(event.amountKind)">
-                                    {{ formatCurrency(event.amount) }}
-                                </p>
-                                <p v-if="event.amountLabel" class="text-[10px] uppercase tracking-wider"
-                                    :class="amountClass(event.amountKind)">
-                                    {{ event.amountLabel }}
-                                </p>
-                                <p class="text-[10px] text-(--color-text-secondary) mt-1">
-                                    {{ ledger.formatEventDate(event.date) }}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div v-if="event.meta && Object.keys(event.meta).length > 0"
-                            class="mt-2 pt-2 border-t border-(--color-border)/60 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1">
-                            <div v-for="(value, key) in event.meta" :key="key" class="text-xs min-w-0">
-                                <span class="text-(--color-text-secondary)">{{ humanKey(String(key)) }}:</span>
-                                <span class="text-(--color-text-primary) ml-1">{{ value ?? '—' }}</span>
-                            </div>
+                    <div v-if="event.meta && Object.keys(event.meta).length > 0"
+                        class="mt-2 pt-2 border-t border-(--color-border)/60 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1">
+                        <div v-for="(value, key) in event.meta" :key="key" class="text-xs min-w-0">
+                            <span class="text-(--color-text-secondary)">{{ humanKey(String(key)) }}:</span>
+                            <span class="text-(--color-text-primary) ml-1">{{ value ?? '—' }}</span>
                         </div>
                     </div>
                 </div>
@@ -185,12 +217,14 @@
             </button>
         </div>
 
-        <!-- Hidden print view host -->
-        <div class="pdf-render-host" aria-hidden="true">
-            <CustomerLedgerPrintView ref="printViewRef" :customer-name="customerName" :customer-phone="customer?.phone"
-                :customer-address="customer?.address" :events="ledger.filteredEvents" :summary="ledger.summary"
-                :date-from="ledger.dateFrom" :date-to="ledger.dateTo" :customer-view="ledger.customerView" />
-        </div>
+        <!-- Hidden print host -->
+        <Teleport to="body">
+            <div v-if="printMode" class="ledger-print-root">
+                <CustomerLedgerView :customer-name="customerName" :customer-phone="customer?.phone"
+                    :customer-address="customer?.address" :events="ledger.activeEvents" :summary="ledger.summary"
+                    :date-from="ledger.dateFrom" :date-to="ledger.dateTo" />
+            </div>
+        </Teleport>
     </div>
 </template>
 
@@ -200,9 +234,7 @@ import { useCustomerLedgerStore, type LedgerEventType } from '@/stores/customerL
 import { useCustomersStore } from '@/stores/customers'
 import { formatCurrency } from '@/utils/currency'
 import { push } from 'notivue'
-import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
-import CustomerLedgerPrintView from './CustomerLedgerPrintView.vue'
+import CustomerLedgerView from './CustomerLedgerView.vue'
 
 const props = defineProps<{
     customerId: number
@@ -215,8 +247,7 @@ const emit = defineEmits<{
 const ledger = useCustomerLedgerStore()
 const customersStore = useCustomersStore()
 
-const printViewRef = ref<InstanceType<typeof CustomerLedgerPrintView> | null>(null)
-const exporting = ref(false)
+const printMode = ref(false)
 
 const customerName = computed(() => customersStore.getCustomerName(props.customerId))
 const customer = computed(() => customersStore.getCustomerById(props.customerId))
@@ -228,14 +259,13 @@ const allTypes: LedgerEventType[] = [
     'delivery_created',
     'delivery_item_added',
     'damage_recorded',
-    'transport_created',
-    'vehicle_added',
-    'storage_payment',
-    'unload_payment',
-    'delivery_payment',
-    'transport_payment',
-    'additional_charge_created',
-    'additional_charge_payment',
+    'lot_transferred_out',
+    'lot_transferred_in',
+    'customer_store_bill',
+    'customer_delivery_bill',
+    'customer_additional_bill',
+    'invoice_created',
+    'payment_received',
 ]
 
 const handleSearch = (e: Event) => {
@@ -254,6 +284,14 @@ const handleCustomerViewToggle = (e: Event) => {
     ledger.setCustomerView((e.target as HTMLInputElement).checked)
 }
 
+const handleSelectAllToggle = () => {
+    if (ledger.allVisibleSelected) {
+        ledger.clearSelection()
+    } else {
+        ledger.selectAllVisible()
+    }
+}
+
 const typeChipClass = (type: LedgerEventType): string => {
     const map: Record<LedgerEventType, string> = {
         customer_created: 'bg-blue-500/10 text-blue-600',
@@ -262,14 +300,13 @@ const typeChipClass = (type: LedgerEventType): string => {
         delivery_created: 'bg-green-500/10 text-green-600',
         delivery_item_added: 'bg-lime-500/10 text-lime-600',
         damage_recorded: 'bg-red-500/10 text-red-600',
-        transport_created: 'bg-orange-500/10 text-orange-600',
-        vehicle_added: 'bg-amber-500/10 text-amber-600',
-        storage_payment: 'bg-emerald-500/10 text-emerald-600',
-        unload_payment: 'bg-emerald-500/10 text-emerald-600',
-        delivery_payment: 'bg-emerald-500/10 text-emerald-600',
-        transport_payment: 'bg-emerald-500/10 text-emerald-600',
-        additional_charge_created: 'bg-purple-500/10 text-purple-600',
-        additional_charge_payment: 'bg-emerald-500/10 text-emerald-600',
+        lot_transferred_out: 'bg-orange-500/10 text-orange-600',
+        lot_transferred_in: 'bg-amber-500/10 text-amber-600',
+        customer_store_bill: 'bg-purple-500/10 text-purple-600',
+        customer_delivery_bill: 'bg-purple-500/10 text-purple-600',
+        customer_additional_bill: 'bg-purple-500/10 text-purple-600',
+        invoice_created: 'bg-fuchsia-500/10 text-fuchsia-600',
+        payment_received: 'bg-emerald-500/10 text-emerald-600',
     }
     return map[type] || 'bg-(--color-muted-bg) text-(--color-text-secondary)'
 }
@@ -281,7 +318,7 @@ const amountClass = (kind?: 'debit' | 'credit' | 'neutral'): string => {
 }
 
 const humanKey = (key: string): string => {
-    return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+    return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 const csvEscape = (value: unknown): string => {
@@ -291,8 +328,10 @@ const csvEscape = (value: unknown): string => {
 }
 
 const handleExportCSV = () => {
+    const events = ledger.activeEvents
+
     const headers = ['Date', 'Type', 'Reference', 'Title', 'Description', 'Amount', 'Amount Label', 'Meta']
-    const rows = ledger.filteredEvents.map(e => {
+    const rows = events.map((e) => {
         const metaPairs: string[] = []
         if (e.meta) {
             for (const [k, v] of Object.entries(e.meta)) {
@@ -311,17 +350,15 @@ const handleExportCSV = () => {
         ]
     })
 
-    const lines = [
-        headers.map(csvEscape).join(','),
-        ...rows.map(r => r.map(csvEscape).join(',')),
-    ]
+    const lines = [headers.map(csvEscape).join(','), ...rows.map((r) => r.map(csvEscape).join(','))]
     const csv = lines.join('\n')
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `ledger_${slugify(customerName.value)}_${timestamp()}.csv`
+    const suffix = ledger.hasSelection ? '_selected' : ''
+    a.download = `ledger_${slugify(customerName.value)}${suffix}_${timestamp()}.csv`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -338,79 +375,36 @@ const timestamp = (): string => {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-const handleExportPDF = async () => {
-    if (exporting.value) return
-    exporting.value = true
+const handlePrint = async () => {
+    printMode.value = true
+    await nextTick()
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))))
 
-    try {
-        await nextTick()
-        await new Promise(resolve => setTimeout(resolve, 200))
-
-        const pageEls = printViewRef.value?.pageRefs?.filter(Boolean) as HTMLElement[] | undefined
-        if (!pageEls || pageEls.length === 0) {
-            push.error('Failed to prepare PDF')
-            exporting.value = false
-            return
-        }
-
-        const pdf = new jsPDF({
-            orientation: 'portrait',
-            unit: 'px',
-            format: [794, 1123],
-        })
-
-        for (let i = 0; i < pageEls.length; i++) {
-            const el = pageEls[i]
-            if (!el) continue
-
-            const canvas = await html2canvas(el, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                backgroundColor: '#ffffff',
-                width: 794,
-                height: 1123,
-                windowWidth: 794,
-                windowHeight: 1123,
-            })
-
-            const imgData = canvas.toDataURL('image/png')
-            if (i > 0) pdf.addPage()
-            pdf.addImage(imgData, 'PNG', 0, 0, 794, 1123)
-        }
-
-        pdf.save(`ledger_${slugify(customerName.value)}_${timestamp()}.pdf`)
-        push.success('PDF exported')
-    } catch (err) {
-        console.error('[LEDGER] PDF export error:', err)
-        push.error('Failed to generate PDF')
-    } finally {
-        exporting.value = false
+    const cleanup = () => {
+        printMode.value = false
+        window.removeEventListener('afterprint', cleanup)
     }
+    window.addEventListener('afterprint', cleanup)
+    window.print()
+    setTimeout(cleanup, 5000)
 }
 
-watch(() => props.customerId, (id) => {
-    ledger.setCustomer(id)
-}, { immediate: true })
+watch(
+    () => props.customerId,
+    async (id) => {
+        await ledger.setCustomer(id)
+    },
+    { immediate: true }
+)
 
-onMounted(() => {
-    ledger.setCustomer(props.customerId)
+onMounted(async () => {
+    await ledger.setCustomer(props.customerId)
 })
 
 onUnmounted(() => {
     ledger.setCustomer(null)
     ledger.resetFilters()
     ledger.setCustomerView(false)
+    ledger.clearSelection()
 })
 </script>
-
-<style scoped>
-.pdf-render-host {
-    position: fixed;
-    left: -10000px;
-    top: 0;
-    width: 210mm;
-    pointer-events: none;
-    opacity: 0;
-}
-</style>

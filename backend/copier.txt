@@ -1,1 +1,1 @@
-Get-ChildItem -Recurse -Include *.go,*.env,*.sql | ForEach-Object { "`n`n===== $($_.FullName) =====`n" + (Get-Content $_.FullName -Raw) } | Out-File -FilePath "output.txt" -Encoding utf8
+Get-ChildItem -Recurse -Include *.go,*.env,*.sql | ForEach-Object { "===== $($_.FullName) =====`n" + (Get-Content $_.FullName -Raw) } | Out-File -FilePath "output.txt" -Encoding utf8

@@ -1,23 +1,21 @@
 <!-- src/components/layouts/AppLayout.vue -->
 <template>
     <div class="min-h-screen bg-(--color-bg) text-(--color-text-primary) flex selection:bg-(--color-blue)/20">
-        <!-- Sidebar -->
-        <AppSidebar :is-open="sidebarOpen" :menu-groups="menuGroups" @close="closeSidebar" @logout="handleLogout"
+        <AppSidebar :is-open="sidebarOpen" :is-collapsed="isCollapsed" :menu-groups="menuGroups" @close="closeSidebar"
+            @hover-enter="handleSidebarHoverEnter" @hover-leave="handleSidebarHoverLeave" @logout="handleLogout"
             @change-password="handleOpenChangePassword" @reset-all-passwords="handleOpenResetAll"
             @download-backup="handleDownloadBackup" />
 
-        <!-- Mobile Overlay -->
         <div v-if="sidebarOpen" class="fixed inset-0 z-20 bg-black/30 backdrop-blur-sm lg:hidden transition-opacity"
             @click="closeSidebar" />
 
-        <!-- Main Content -->
         <div class="flex-1 flex flex-col min-w-0">
-            <AppHeader @toggle-sidebar="toggleSidebar" @logout="handleLogout"
+            <AppHeader :menu-groups="menuGroups" @toggle-sidebar="toggleSidebar" @logout="handleLogout"
                 @change-password="handleOpenChangePassword" @reset-all-passwords="handleOpenResetAll"
                 @download-backup="handleDownloadBackup" />
 
             <main class="flex-1 px-3 sm:px-4 lg:px-6 py-4 sm:py-5">
-                <slot />
+                <RouterView />
             </main>
         </div>
 
@@ -118,7 +116,7 @@
                     </div>
                 </div>
                 <p class="text-sm text-(--color-text-secondary)">
-                    You'll need to sign in again to access your dashboard.
+                    You'll need to sign in again to access your workspace.
                 </p>
             </div>
 
@@ -137,8 +135,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { RouterView, useRouter } from 'vue-router'
 import { KeyRound, Lock, AlertTriangle } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { useUsersStore } from '@/stores/users'
@@ -147,19 +145,27 @@ import BaseDialog from '@/components/ui/BaseDialog.vue'
 import AppSidebar from './AppSidebar.vue'
 import AppHeader from './AppHeader.vue'
 import { push } from 'notivue'
+import type { MenuGroup } from './types'
 
 const router = useRouter()
 const auth = useAuthStore()
 const usersStore = useUsersStore()
 const settingsStore = useSettingsStore()
 
-// ============= STATE =============
 const sidebarOpen = ref(false)
 const showLogoutDialog = ref(false)
 const showChangePassword = ref(false)
 const showResetAll = ref(false)
 
-// ============= SIDEBAR HANDLERS =============
+const isMobile = ref(window.innerWidth < 1024)
+const isHovered = ref(false)
+let hoverLeaveTimer: ReturnType<typeof setTimeout> | null = null
+
+const isCollapsed = computed(() => {
+    if (isMobile.value) return false
+    return !isHovered.value
+})
+
 const toggleSidebar = () => {
     sidebarOpen.value = !sidebarOpen.value
 }
@@ -168,13 +174,36 @@ const closeSidebar = () => {
     sidebarOpen.value = false
 }
 
-// Close mobile sidebar on route change
-const route = useRouter()
+const handleSidebarHoverEnter = () => {
+    if (hoverLeaveTimer) {
+        clearTimeout(hoverLeaveTimer)
+        hoverLeaveTimer = null
+    }
+    if (!isMobile.value) {
+        isHovered.value = true
+    }
+}
 
-// ============= RESIZE =============
+const handleSidebarHoverLeave = () => {
+    if (isMobile.value) return
+    if (hoverLeaveTimer) {
+        clearTimeout(hoverLeaveTimer)
+    }
+    hoverLeaveTimer = setTimeout(() => {
+        hoverLeaveTimer = null
+        const el = document.querySelector('aside')
+        if (el && el.matches(':hover')) {
+            return
+        }
+        isHovered.value = false
+    }, 120)
+}
+
 const updateMobileStatus = () => {
-    if (window.innerWidth >= 1024) {
-        sidebarOpen.value = false
+    isMobile.value = window.innerWidth < 1024
+
+    if (isMobile.value) {
+        isHovered.value = false
     }
 }
 
@@ -184,9 +213,13 @@ onMounted(() => {
 
 onUnmounted(() => {
     window.removeEventListener('resize', updateMobileStatus)
+    if (hoverLeaveTimer) {
+        clearTimeout(hoverLeaveTimer)
+        hoverLeaveTimer = null
+    }
 })
 
-// ============= LOGOUT =============
+// ============= ACTIONS =============
 const handleLogout = () => {
     showLogoutDialog.value = true
 }
@@ -196,7 +229,6 @@ const confirmLogout = async () => {
     router.push('/auth')
 }
 
-// ============= CHANGE PASSWORD =============
 const changePasswordForm = ref({ current: '', new: '' })
 
 const handleOpenChangePassword = () => {
@@ -223,7 +255,6 @@ const submitChangePassword = async () => {
     }
 }
 
-// ============= RESET ALL PASSWORDS =============
 const resetAllForm = ref({ new: '' })
 
 const handleOpenResetAll = () => {
@@ -247,21 +278,20 @@ const submitResetAll = async () => {
     }
 }
 
-// ============= BACKUP =============
 const handleDownloadBackup = () => {
     settingsStore.downloadBackup()
 }
 
 // ============= MENU GROUPS =============
-const menuGroups = [
+const menuGroups: MenuGroup[] = [
     {
         id: 'parties',
         label: 'Parties',
         icon: 'parties',
         items: [
-            { path: '/brokers', label: 'Brokers', icon: 'brokers' },
-            { path: '/majhis', label: 'Majhis', icon: 'majhis' },
             { path: '/godowns', label: 'Godowns', icon: 'godowns' },
+            { path: '/majhis', label: 'Majhis', icon: 'majhis' },
+            { path: '/brokers', label: 'Brokers', icon: 'brokers' },
         ],
     },
     {
@@ -270,19 +300,11 @@ const menuGroups = [
         icon: 'warehouse',
         items: [
             { path: '/lots', label: 'Lots', icon: 'lots' },
-            { path: '/stores', label: 'Stores', icon: 'stores' },
-            { path: '/damages', label: 'Damages', icon: 'damages' },
             { path: '/deliveries', label: 'Deliveries', icon: 'deliveries' },
-            { path: '/delivery-items', label: 'Delivery Items', icon: 'delivery-items' },
-        ],
-    },
-    {
-        id: 'transport',
-        label: 'Transport',
-        icon: 'transport',
-        items: [
-            { path: '/transports', label: 'Transports', icon: 'transports' },
-            { path: '/vehicles', label: 'Vehicles', icon: 'vehicles' },
+            { path: '/store-adjustments', label: 'Store Adjustments', icon: 'store-adjustments' },
+            { path: '/store-transfers', label: 'Store Transfers', icon: 'store-transfers' },
+            { path: '/lot-transfers', label: 'Lot Transfers', icon: 'lot-transfers' },
+            { path: '/damages', label: 'Damages', icon: 'damages' },
         ],
     },
     {
@@ -290,23 +312,12 @@ const menuGroups = [
         label: 'Bills',
         icon: 'bills',
         items: [
-            { path: '/godown-store-bills', label: 'Godown Store Bills', icon: 'godown-store-bills' },
-            { path: '/customer-storage-bills', label: 'Customer Storage Bills', icon: 'customer-storage-bills' },
-            { path: '/customer-lot-bills', label: 'Customer Unload Bills', icon: 'customer-lot-bills' },
-            { path: '/majhi-lot-bills', label: 'Majhi Lot Bills', icon: 'majhi-lot-bills' },
+            { path: '/invoices', label: 'Invoices', icon: 'invoices' },
+            { path: '/godown-bills', label: 'Godown Bills', icon: 'godown-bills' },
+            { path: '/majhi-bills', label: 'Majhi Bills', icon: 'majhi-bills' },
+            { path: '/customer-store-bills', label: 'Customer Store Bills', icon: 'customer-store-bills' },
             { path: '/customer-delivery-bills', label: 'Customer Delivery Bills', icon: 'customer-delivery-bills' },
-            { path: '/majhi-loading-bills', label: 'Majhi Loading Bills', icon: 'majhi-loading-bills' },
-            { path: '/broker-vehicle-bills', label: 'Broker Vehicle Bills', icon: 'broker-vehicle-bills' },
-            { path: '/customer-transport-bills', label: 'Customer Transport Bills', icon: 'customer-transport-bills' },
             { path: '/customer-additional-bills', label: 'Customer Additional Bills', icon: 'customer-additional-bills' },
-        ],
-    },
-    {
-        id: 'invoices',
-        label: 'Invoices',
-        icon: 'invoices',
-        items: [
-            { path: '/invoices', label: 'Create Invoice', icon: 'invoices' },
         ],
     },
     {
@@ -316,6 +327,7 @@ const menuGroups = [
         items: [
             { path: '/users', label: 'Users', icon: 'users' },
             { path: '/salaries', label: 'Salaries', icon: 'salaries' },
+            { path: '/incomes', label: 'Incomes', icon: 'incomes' },
             { path: '/expenses', label: 'Expenses', icon: 'expenses' },
             { path: '/logs', label: 'Logs', icon: 'logs' },
         ],

@@ -11,7 +11,6 @@
             </div>
 
             <div class="flex items-center gap-2 flex-wrap">
-                <!-- Search -->
                 <div class="relative flex-1 sm:flex-none w-full sm:w-auto">
                     <input :value="searchQuery" @input="handleSearch" type="text" placeholder="Search godowns..."
                         class="w-full sm:w-56 pl-9 pr-8 py-2 rounded-lg text-sm bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent" />
@@ -29,18 +28,6 @@
                     </button>
                 </div>
 
-                <!-- Filter: Active Only -->
-                <button @click="showActiveOnly = !showActiveOnly"
-                    class="h-9 px-3 flex items-center gap-1.5 rounded-lg text-sm border border-(--color-border) transition-colors"
-                    :class="showActiveOnly ? 'bg-(--color-blue)/10 border-(--color-blue) text-(--color-blue)' : 'text-(--color-text-secondary) hover:bg-(--color-muted-bg)'">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Active Only
-                </button>
-
-                <!-- Copy Button -->
                 <button @click="handleCopyToClipboard"
                     class="h-9 w-9 flex items-center justify-center border border-(--color-border) rounded-lg text-(--color-text-secondary) hover:bg-(--color-muted-bg) transition-colors relative shrink-0"
                     title="Copy table to clipboard">
@@ -55,7 +42,6 @@
                     </svg>
                 </button>
 
-                <!-- Create -->
                 <button v-if="canManageGodowns" @click="createDialogOpen = true"
                     class="h-9 px-4 flex items-center gap-2 bg-(--color-blue) text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-all duration-200 active:scale-95 whitespace-nowrap shrink-0">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -69,11 +55,9 @@
         <!-- Table -->
         <div class="flex-1 min-h-0 overflow-auto">
             <div class="min-w-225">
-                <!-- Header Row -->
                 <div
                     class="grid grid-cols-12 items-center w-full py-3 px-3 border-b border-(--color-border) text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wider bg-(--color-muted-bg)/30 rounded-t-lg">
-                    <!-- Name - 3 -->
-                    <div class="col-span-3 cursor-pointer hover:text-(--color-text-primary) transition-colors"
+                    <div class="col-span-4 cursor-pointer hover:text-(--color-text-primary) transition-colors"
                         @click="toggleSort('name')">
                         <span class="flex items-center gap-1">
                             Name
@@ -85,8 +69,7 @@
                         </span>
                     </div>
 
-                    <!-- Phone - 2 -->
-                    <div class="col-span-2 cursor-pointer hover:text-(--color-text-primary) transition-colors"
+                    <div class="col-span-3 cursor-pointer hover:text-(--color-text-primary) transition-colors"
                         @click="toggleSort('phone')">
                         <span class="flex items-center gap-1">
                             Phone
@@ -98,40 +81,11 @@
                         </span>
                     </div>
 
-                    <!-- Notes - 3 -->
-                    <div class="col-span-3">Notes</div>
+                    <div class="col-span-4">Notes</div>
 
-                    <!-- Status - 2 -->
-                    <div class="col-span-2 cursor-pointer hover:text-(--color-text-primary) transition-colors"
-                        @click="toggleSort('is_active')">
-                        <span class="flex items-center gap-1">
-                            Status
-                            <svg v-if="sortField === 'is_active'" class="w-3 h-3"
-                                :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
-                                viewBox="0 0 24 24">
-                                <path d="M7 10l5 5 5-5z" />
-                            </svg>
-                        </span>
-                    </div>
-
-                    <!-- Monthly Rent - 1 -->
-                    <div class="col-span-1 cursor-pointer hover:text-(--color-text-primary) transition-colors"
-                        @click="toggleSort('monthly_rent')">
-                        <span class="flex items-center gap-1">
-                            Rent
-                            <svg v-if="sortField === 'monthly_rent'" class="w-3 h-3"
-                                :class="{ 'rotate-180': sortDirection === 'desc' }" fill="currentColor"
-                                viewBox="0 0 24 24">
-                                <path d="M7 10l5 5 5-5z" />
-                            </svg>
-                        </span>
-                    </div>
-
-                    <!-- Actions - 1 -->
                     <div class="col-span-1 flex items-center justify-end">Actions</div>
                 </div>
 
-                <!-- Loading -->
                 <div v-if="loading" class="flex items-center justify-center py-12">
                     <div class="text-center space-y-4">
                         <svg class="animate-spin w-10 h-10 text-(--color-blue) mx-auto" fill="none" viewBox="0 0 24 24">
@@ -143,7 +97,6 @@
                     </div>
                 </div>
 
-                <!-- Empty -->
                 <div v-else-if="filteredGodowns.length === 0" class="flex items-center justify-center py-12">
                     <div class="text-center space-y-3">
                         <div
@@ -160,24 +113,20 @@
                     </div>
                 </div>
 
-                <!-- Rows -->
                 <div v-else>
                     <GodownRow v-for="godown in filteredGodowns" :key="godown.id" :godown="godown"
                         @view="openDetailDialog" @edit="handleEditGodown" @delete="handleDeleteGodown"
-                        @toggle-active="handleToggleActive" @updated="fetchGodowns" />
+                        @updated="fetchGodowns" />
                 </div>
             </div>
         </div>
 
-        <!-- Footer -->
         <div v-if="!loading && filteredGodowns.length > 0"
             class="flex items-center justify-between py-3 px-1 border-t border-(--color-border) shrink-0 mt-auto">
             <p class="text-xs text-(--color-text-secondary)">Showing {{ filteredGodowns.length }} of {{
                 godownsStore.godowns.length }} godowns</p>
         </div>
 
-        <!-- Dialogs -->
-        <!-- Create Dialog -->
         <BaseDialog v-model="createDialogOpen" max-width="3xl">
             <div class="mb-6">
                 <h2 class="text-xl font-bold text-(--color-text-primary)">Create New Godown</h2>
@@ -186,13 +135,11 @@
             <GodownForm mode="create" @godown-created="handleGodownCreated" @cancel="createDialogOpen = false" />
         </BaseDialog>
 
-        <!-- Detail Dialog -->
         <BaseDialog v-model="detailDialogOpen" max-width="3xl">
             <GodownDetail v-if="selectedGodown" :godown="selectedGodown" @close="closeDetailDialog"
                 @edit="handleEditGodownFromDetail" @updated="fetchGodowns" />
         </BaseDialog>
 
-        <!-- Edit Dialog -->
         <BaseDialog v-model="editDialogOpen" max-width="3xl">
             <div class="mb-6">
                 <h2 class="text-xl font-bold text-(--color-text-primary)">Edit Godown</h2>
@@ -202,7 +149,6 @@
                 @cancel="editDialogOpen = false" />
         </BaseDialog>
 
-        <!-- Delete Confirmation Dialog -->
         <BaseDialog v-model="deleteDialogOpen" max-width="sm">
             <div class="flex items-center gap-3">
                 <div
@@ -236,13 +182,11 @@ import { ref, computed, onMounted } from 'vue'
 import { useGodownsStore } from '@/stores/godowns'
 import { useAuthStore } from '@/stores/auth'
 import { useClipboardStore } from '@/stores/clipboard'
-import type { Godown, GodownSortField, SortDirection } from '@/types/godown'
+import type { Godown, GodownSortField } from '@/types/godown'
 import GodownRow from './GodownRow.vue'
 import GodownForm from './GodownForm.vue'
 import GodownDetail from './GodownDetail.vue'
 import BaseDialog from '@/components/ui/BaseDialog.vue'
-import { push } from 'notivue'
-import { formatCurrency } from '@/utils/currency'
 
 const godownsStore = useGodownsStore()
 const auth = useAuthStore()
@@ -250,11 +194,9 @@ const clipboardStore = useClipboardStore()
 
 const loading = ref(true)
 const searchQuery = ref('')
-const showActiveOnly = ref(false)
 const sortField = ref<GodownSortField>('name')
-const sortDirection = ref<SortDirection>('asc')
+const sortDirection = ref<'asc' | 'desc'>('asc')
 
-// Dialogs
 const createDialogOpen = ref(false)
 const detailDialogOpen = ref(false)
 const editDialogOpen = ref(false)
@@ -270,7 +212,6 @@ const canManageGodowns = computed(() => {
 const filteredGodowns = computed(() => {
     let result = [...godownsStore.godowns]
 
-    // Search
     if (searchQuery.value) {
         const query = searchQuery.value.toLowerCase()
         result = result.filter(g =>
@@ -280,12 +221,6 @@ const filteredGodowns = computed(() => {
         )
     }
 
-    // Filter: Active only
-    if (showActiveOnly.value) {
-        result = result.filter(g => g.is_active)
-    }
-
-    // Sort
     result.sort((a, b) => {
         let comparison = 0
         switch (sortField.value) {
@@ -294,12 +229,6 @@ const filteredGodowns = computed(() => {
                 break
             case 'phone':
                 comparison = (a.phone || '').localeCompare(b.phone || '')
-                break
-            case 'is_active':
-                comparison = (a.is_active === b.is_active) ? 0 : a.is_active ? -1 : 1
-                break
-            case 'monthly_rent':
-                comparison = a.monthly_rent - b.monthly_rent
                 break
             case 'created_at':
                 comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
@@ -341,21 +270,13 @@ const toggleSort = (field: GodownSortField) => {
 }
 
 const handleCopyToClipboard = async () => {
-    const headers = 'Name\tPhone\tNotes\tStatus\tMonthly Rent'
+    const headers = 'Name\tPhone\tNotes'
     const rows = filteredGodowns.value.map(g => {
-        return `${g.name}\t${g.phone || ''}\t${g.notes || ''}\t${g.is_active ? 'Active' : 'Inactive'}\t${g.monthly_rent.toFixed(2)}`
+        return `${g.name}\t${g.phone || ''}\t${g.notes || ''}`
     })
     await clipboardStore.copyToClipboard(headers + '\n' + rows.join('\n'))
 }
 
-const handleToggleActive = async (godown: Godown) => {
-    const success = await godownsStore.toggleGodownActive(godown.id)
-    if (success) {
-        await fetchGodowns()
-    }
-}
-
-// Dialog handlers
 const openDetailDialog = (godown: Godown) => {
     selectedGodown.value = godown
     detailDialogOpen.value = true

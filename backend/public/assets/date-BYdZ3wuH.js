@@ -1,1 +1,0 @@
-var e=e=>{if(e)return`${e}T00:00:00Z`};export{e as t};

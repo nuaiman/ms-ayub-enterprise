@@ -311,7 +311,7 @@ func (h *Handler) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) 
 	// Audit log
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      userID,
 		Action:      "update",
 		Description: "Changed own password",
@@ -396,7 +396,7 @@ func (h *Handler) ChangeUserPasswordHandler(w http.ResponseWriter, r *http.Reque
 	currentUserID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      currentUserID,
 		Action:      "update",
 		Description: "Admin changed password for user #" + strconv.FormatInt(userID, 10),
@@ -456,7 +456,7 @@ func (h *Handler) ResetAllPasswordsHandler(w http.ResponseWriter, r *http.Reques
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      userID,
 		Action:      "update",
 		Description: "Reset all user passwords",
@@ -616,7 +616,7 @@ func (h *Handler) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	currentUserID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      currentUserID,
 		Action:      "create",
 		Description: "Created user: " + req.Username,
@@ -824,7 +824,7 @@ func (h *Handler) UpdateUserProfileHandler(w http.ResponseWriter, r *http.Reques
 	// Audit log
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      currentUserID,
 		Action:      "update",
 		Description: "Updated profile for user #" + strconv.FormatInt(targetUserID, 10),
@@ -902,7 +902,7 @@ func (h *Handler) ChangeUserRoleHandler(w http.ResponseWriter, r *http.Request) 
 	currentUserID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      currentUserID,
 		Action:      "update",
 		Description: "Changed role for user #" + strconv.FormatInt(userID, 10) + " to " + req.Role,
@@ -968,7 +968,7 @@ func (h *Handler) ToggleUserActiveHandler(w http.ResponseWriter, r *http.Request
 	if newStatus {
 		action = "activated"
 	}
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      currentUserID,
 		Action:      "update",
 		Description: "User " + action + ": #" + strconv.FormatInt(userID, 10),
@@ -1035,7 +1035,7 @@ func (h *Handler) UpdateUserSalaryHandler(w http.ResponseWriter, r *http.Request
 	currentUserID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      currentUserID,
 		Action:      "update",
 		Description: "Updated salary for user #" + strconv.FormatInt(userID, 10) + " to " + strconv.FormatFloat(req.MonthlySalary, 'f', 2, 64),
@@ -1097,7 +1097,7 @@ func (h *Handler) DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	currentUserID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      currentUserID,
 		Action:      "delete",
 		Description: "Deleted user: " + user.Username,

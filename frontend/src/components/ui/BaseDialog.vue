@@ -50,7 +50,7 @@ const props = withDefaults(defineProps<{
 }>(), {
     variant: 'info',
     maxWidth: '3xl',
-    closeOnOutsideClick: true,
+    closeOnOutsideClick: false,
 })
 
 const emit = defineEmits<{

@@ -5,13 +5,17 @@ import { ref, computed } from 'vue'
 import { useCustomersStore } from './customers'
 import { useLotsStore } from './lots'
 import { useStoresStore } from './stores'
-import { useDeliveriesStore } from './deliveries'
-import { useDeliveryItemsStore } from './deliveryItems'
-import { useDamagesStore } from './damages'
-import { useTransportsStore } from './transports'
-import { useVehiclesStore } from './vehicles'
 import { useGodownsStore } from './godowns'
+import { useMajhisStore } from './majhis'
+import { useDeliveriesStore } from './deliveries'
+import { useDamagesStore } from './damages'
+import { useCustomerStoreBillsStore } from './customerStoreBills'
+import { useCustomerDeliveryBillsStore } from './customerDeliveryBills'
 import { useCustomerAdditionalBillsStore } from './customerAdditionalBills'
+import { useInvoicesStore } from './invoices'
+import { useLotTransfersStore } from './lotTransfers'
+import api from '@/utils/axios'
+import type { ApiResponse } from '@/types/api'
 
 export type LedgerEventType =
     | 'customer_created'
@@ -20,14 +24,15 @@ export type LedgerEventType =
     | 'delivery_created'
     | 'delivery_item_added'
     | 'damage_recorded'
-    | 'transport_created'
-    | 'vehicle_added'
-    | 'storage_payment'
-    | 'unload_payment'
-    | 'delivery_payment'
-    | 'transport_payment'
-    | 'additional_charge_created'
-    | 'additional_charge_payment'
+    | 'lot_transferred_out'
+    | 'lot_transferred_in'
+    | 'customer_store_bill'
+    | 'customer_delivery_bill'
+    | 'customer_additional_bill'
+    | 'invoice_created'
+    | 'payment_received'
+
+export type LedgerAmountKind = 'debit' | 'credit' | 'neutral'
 
 export interface LedgerEvent {
     id: string
@@ -38,43 +43,69 @@ export interface LedgerEvent {
     reference?: string
     amount?: number
     amountLabel?: string
-    amountKind?: 'debit' | 'credit' | 'neutral'
+    amountKind?: LedgerAmountKind
     icon: string
-    color: string
     meta?: Record<string, string | number | null | undefined>
+}
+
+interface LedgerPayment {
+    id: number
+    bill_type: string
+    bill_id: number
+    amount: number
+    payment_date: string
+    payment_method?: string | null
+    reference_number?: string | null
+    notes?: string | null
 }
 
 const CUSTOMER_VISIBLE_TYPES: LedgerEventType[] = [
     'customer_created',
+    'lot_created',
+    'store_created',
     'delivery_created',
     'delivery_item_added',
-    'transport_created',
-    'storage_payment',
-    'unload_payment',
-    'delivery_payment',
-    'transport_payment',
-    'additional_charge_created',
-    'additional_charge_payment',
+    'damage_recorded',
+    'lot_transferred_out',
+    'lot_transferred_in',
+    'customer_store_bill',
+    'customer_delivery_bill',
+    'customer_additional_bill',
+    'invoice_created',
+    'payment_received',
 ]
 
-const CUSTOMER_HIDDEN_META: Partial<Record<LedgerEventType, string[]>> = {
-    delivery_item_added: ['loading_rate', 'vehicle_number', 'driver_number'],
-    transport_created: ['office_commission_amount', 'customer_total_paid'],
-    storage_payment: ['unload_rate'],
-    unload_payment: ['unload_rate'],
+const CUSTOMER_HIDDEN_META_KEYS: string[] = ['user_id', 'internal_notes', 'rate']
+
+const ICONS: Record<LedgerEventType, string> = {
+    customer_created: '👤',
+    lot_created: '🏷️',
+    store_created: '🏢',
+    delivery_created: '🚚',
+    delivery_item_added: '📦',
+    damage_recorded: '🔴',
+    lot_transferred_out: '➡️',
+    lot_transferred_in: '⬅️',
+    customer_store_bill: '🧾',
+    customer_delivery_bill: '🧾',
+    customer_additional_bill: '🧾',
+    invoice_created: '📄',
+    payment_received: '💵',
 }
 
 export const useCustomerLedgerStore = defineStore('customerLedger', () => {
     const customersStore = useCustomersStore()
     const lotsStore = useLotsStore()
     const storesStore = useStoresStore()
-    const deliveriesStore = useDeliveriesStore()
-    const deliveryItemsStore = useDeliveryItemsStore()
-    const damagesStore = useDamagesStore()
-    const transportsStore = useTransportsStore()
-    const vehiclesStore = useVehiclesStore()
     const godownsStore = useGodownsStore()
-    const additionalChargesStore = useCustomerAdditionalBillsStore()
+    const majhisStore = useMajhisStore()
+    const deliveriesStore = useDeliveriesStore()
+    const damagesStore = useDamagesStore()
+    const customerStoreBillsStore = useCustomerStoreBillsStore()
+    const customerDeliveryBillsStore = useCustomerDeliveryBillsStore()
+    const customerAdditionalBillsStore = useCustomerAdditionalBillsStore()
+    const invoicesStore = useInvoicesStore()
+    const lotTransfersStore = useLotTransfersStore()
 
     const selectedCustomerId = ref<number | null>(null)
     const typeFilter = ref<LedgerEventType[]>([])
@@ -82,13 +113,126 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
     const dateTo = ref<string>('')
     const searchQuery = ref('')
     const customerView = ref(false)
+    const isLoading = ref(false)
 
-    const buildEvents = (customerId: number): LedgerEvent[] => {
+    const allEvents = ref<LedgerEvent[]>([])
+
+    // -------------------------------------------------------------------------
+    // MANUAL SELECTION STATE
+    // -------------------------------------------------------------------------
+    // When selectedEventIds is non-empty, print/export uses only the selected
+    // events. When it's empty, everything visible (post-filter) is used.
+    const selectedEventIds = ref<Set<string>>(new Set())
+
+    const paymentsCache = ref<Record<string, LedgerPayment[]>>({})
+
+    // =========================================================================
+    // HELPERS
+    // =========================================================================
+
+    const lotLabel = (lotId: number): string => {
+        const lot = lotsStore.getLotById(lotId)
+        if (!lot) return `Lot #${lotId}`
+        return `${lot.product_name} · Lot ${lot.lot_number}`
+    }
+
+    const lotLabelFromStore = (storeId: number): string => {
+        const store = storesStore.getStoreById(storeId)
+        if (!store) return `Store #${storeId}`
+        return lotLabel(store.lot_id)
+    }
+
+    const godownName = (godownId: number): string => godownsStore.getGodownName(godownId)
+    const majhiName = (majhiId: number): string => majhisStore.getMajhiName(majhiId)
+
+    const fetchPaymentsForBill = async (
+        billType: string,
+        billId: number
+    ): Promise<LedgerPayment[]> => {
+        const key = `${billType}:${billId}`
+        const cached = paymentsCache.value[key]
+        if (cached) return cached
+
+        const routeMap: Record<string, string> = {
+            customer_store: `/customer-store-bills/${billId}/payments`,
+            customer_delivery: `/customer-delivery-bills/${billId}/payments`,
+            customer_additional: `/customer-additional-bills/${billId}/payments`,
+        }
+        const route = routeMap[billType]
+        if (!route) {
+            paymentsCache.value[key] = []
+            return []
+        }
+
+        try {
+            const res = await api.get<
+                ApiResponse<{
+                    payments: Array<{
+                        id: number
+                        bill_type: string
+                        bill_id: number
+                        amount: number
+                        payment_date: string
+                        payment_method?: string | null
+                        reference_number?: string | null
+                        notes?: string | null
+                    }>
+                }>
+            >(route)
+
+            if (!res.data.success || !res.data.data?.payments) {
+                paymentsCache.value[key] = []
+                return []
+            }
+
+            const mapped: LedgerPayment[] = res.data.data.payments.map((p) => ({
+                id: p.id,
+                bill_type: billType,
+                bill_id: billId,
+                amount: p.amount,
+                payment_date: p.payment_date,
+                payment_method: p.payment_method ?? null,
+                reference_number: p.reference_number ?? null,
+                notes: p.notes ?? null,
+            }))
+
+            paymentsCache.value[key] = mapped
+            return mapped
+        } catch {
+            paymentsCache.value[key] = []
+            return []
+        }
+    }
+
+    const paymentToEvent = (p: LedgerPayment, billLabel: string): LedgerEvent => ({
+        id: `payment_${p.id}`,
+        type: 'payment_received',
+        date: p.payment_date,
+        title: 'Payment received',
+        description: billLabel,
+        reference: p.reference_number || `Payment #${p.id}`,
+        amount: p.amount,
+        amountLabel: 'Paid',
+        amountKind: 'credit',
+        icon: ICONS.payment_received,
+        meta: {
+            method: p.payment_method,
+            reference_number: p.reference_number,
+            notes: p.notes,
+        },
+    })
+
+    // =========================================================================
+    // BUILD EVENTS
+    // =========================================================================
+
+    const buildEvents = async (customerId: number): Promise<LedgerEvent[]> => {
         const events: LedgerEvent[] = []
 
         const customer = customersStore.getCustomerById(customerId)
         if (!customer) return events
 
+        // 1. Customer created
         events.push({
             id: `customer_${customer.id}`,
             type: 'customer_created',
@@ -96,8 +240,8 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
             title: 'Customer created',
             description: customer.company_name || customer.contact_person || `Customer #${customer.id}`,
             reference: customer.phone,
-            icon: '👤',
-            color: 'blue',
+            amountKind: 'neutral',
+            icon: ICONS.customer_created,
             meta: {
                 phone: customer.phone,
                 email: customer.email,
@@ -106,57 +250,55 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
             },
         })
 
-        const customerLots = lotsStore.lots.filter(l => l.customer_id === customerId)
-        const customerLotIds = new Set(customerLots.map(l => l.id))
+        // 2. Lots
+        const customerLots = lotsStore.lots.filter((l) => l.customer_id === customerId)
+        const customerLotIds = new Set(customerLots.map((l) => l.id))
 
         for (const lot of customerLots) {
             events.push({
                 id: `lot_${lot.id}`,
                 type: 'lot_created',
                 date: lot.created_at,
-                title: `Lot #${lot.lot_number} created`,
-                description: lotsStore.getLotDisplayName(lot),
+                title: `Lot ${lot.lot_number} created`,
+                description: lot.product_name,
                 reference: `Lot #${lot.id}`,
-                icon: '🏷️',
-                color: 'indigo',
+                amountKind: 'neutral',
+                icon: ICONS.lot_created,
                 meta: {
                     product_name: lot.product_name,
-                    category: lot.category,
-                    customer_charge_type: lot.customer_charge_type,
-                    majhi_bill_type: lot.majhi_bill_type,
-                    customer_storage_rate: lot.customer_storage_rate,
-                    unload_rate: lot.unload_rate,
-                    majhi_cut: lot.majhi_cut,
+                    weight_unit: lot.weight_unit,
+                    quantity_unit: lot.quantity_unit,
                 },
             })
         }
 
-        const customerStores = storesStore.stores.filter(s => customerLotIds.has(s.lot_id))
+        // 3. Stores
+        const customerStores = storesStore.stores.filter((s) => customerLotIds.has(s.lot_id))
+        const customerStoreIds = new Set(customerStores.map((s) => s.id))
 
         for (const store of customerStores) {
             const lot = lotsStore.getLotById(store.lot_id)
-            const godown = godownsStore.getGodownById(store.godown_id)
             events.push({
                 id: `store_${store.id}`,
                 type: 'store_created',
                 date: store.created_at,
-                title: `Store created`,
-                description: `${lot ? `Lot #${lot.lot_number}` : `Lot #${store.lot_id}`} @ ${godown ? godown.name : `Godown #${store.godown_id}`}`,
+                title: `Store #${store.id} created`,
+                description: `${lotLabel(store.lot_id)} @ ${godownName(store.godown_id)}`,
                 reference: `Store #${store.id}`,
-                icon: '🏢',
-                color: 'teal',
+                amountKind: 'neutral',
+                icon: ICONS.store_created,
                 meta: {
-                    quantity: `${store.quantity} ${store.quantity_unit}`,
-                    weight: `${store.weight} ${store.weight_unit}`,
-                    store_bill_type: store.store_bill_type,
-                    godown_cut: store.godown_cut,
+                    godown: godownName(store.godown_id),
+                    quantity: `${store.quantity} ${lot?.quantity_unit ?? ''}`.trim(),
+                    weight: `${store.weight} ${lot?.weight_unit ?? ''}`.trim(),
+                    start_date: store.start_date,
                     is_active: store.is_active ? 'Active' : 'Inactive',
                 },
             })
         }
 
-        const customerDeliveries = deliveriesStore.deliveries.filter(d => d.customer_id === customerId)
-        const customerDeliveryIds = new Set(customerDeliveries.map(d => d.id))
+        // 4. Deliveries
+        const customerDeliveries = deliveriesStore.deliveries.filter((d) => d.customer_id === customerId)
 
         for (const delivery of customerDeliveries) {
             events.push({
@@ -164,12 +306,13 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
                 type: 'delivery_created',
                 date: delivery.delivery_date,
                 title: `Delivery #${delivery.id} created`,
-                description: delivery.from_location
-                    ? `${delivery.from_location}${delivery.to_location ? ` → ${delivery.to_location}` : ''}`
-                    : `Delivery #${delivery.id}`,
+                description:
+                    delivery.from_location || delivery.to_location
+                        ? `${delivery.from_location || '—'} → ${delivery.to_location || '—'}`
+                        : `Delivery #${delivery.id}`,
                 reference: `Delivery #${delivery.id}`,
-                icon: '🚚',
-                color: 'green',
+                amountKind: 'neutral',
+                icon: ICONS.delivery_created,
                 meta: {
                     receiver_name: delivery.receiver_name,
                     receiver_phone: delivery.receiver_phone,
@@ -179,280 +322,229 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
             })
         }
 
-        const customerDeliveryItems = deliveryItemsStore.deliveryItems.filter(di =>
-            customerDeliveryIds.has(di.delivery_id)
-        )
-
-        for (const di of customerDeliveryItems) {
-            const lot = lotsStore.getLotById(di.lot_id)
-            const lotName = lot ? lotsStore.getLotDisplayName(lot) : `Lot #${di.lot_id}`
-
-            const billAmount =
-                di.customer_charge_type === 'quantity'
-                    ? (di.loading_rate || 0) * (di.quantity || 0)
-                    : (di.loading_rate || 0) * (di.weight || 0)
-
-            events.push({
-                id: `delivery_item_${di.id}`,
-                type: 'delivery_item_added',
-                date: di.created_at,
-                title: `Delivery item added`,
-                description: `${lotName} from ${lot ? `Lot #${lot.lot_number}` : `Lot #${di.lot_id}`}`,
-                reference: `Delivery #${di.delivery_id}`,
-                amount: billAmount,
-                amountLabel: 'Billed',
-                amountKind: 'debit',
-                icon: '📦',
-                color: 'lime',
-                meta: {
-                    quantity: `${di.quantity} ${di.quantity_unit}`,
-                    weight: `${di.weight} ${di.weight_unit}`,
-                    loading_rate: di.loading_rate,
-                    vehicle_number: di.vehicle_number,
-                    driver_number: di.driver_number,
-                    customer_paid_unload_amount: di.customer_paid_unload_amount,
-                },
-            })
-
-            if ((di.customer_paid_unload_amount || 0) > 0) {
+        // 5. Delivery items
+        const itemsByDelivery = deliveriesStore.itemsByDelivery
+        for (const delivery of customerDeliveries) {
+            const items = itemsByDelivery[delivery.id] ?? []
+            for (const item of items) {
+                const store = storesStore.getStoreById(item.store_id)
+                const lot = store ? lotsStore.getLotById(store.lot_id) : null
                 events.push({
-                    id: `delivery_payment_${di.id}`,
-                    type: 'delivery_payment',
-                    date: di.updated_at,
-                    title: `Delivery bill payment`,
-                    description: `Payment for delivery item #${di.id} (${lotName})`,
-                    reference: `Delivery #${di.delivery_id}`,
-                    amount: di.customer_paid_unload_amount || 0,
-                    amountLabel: 'Paid',
-                    amountKind: 'credit',
-                    icon: '💵',
-                    color: 'emerald',
+                    id: `delivery_item_${item.id}`,
+                    type: 'delivery_item_added',
+                    date: item.created_at,
+                    title: 'Delivery item added',
+                    description: lot
+                        ? `${lot.product_name} · Lot ${lot.lot_number}`
+                        : `Store #${item.store_id}`,
+                    reference: `Delivery #${delivery.id}`,
+                    amountKind: 'neutral',
+                    icon: ICONS.delivery_item_added,
                     meta: {
-                        bill_amount: billAmount,
-                        paid_amount: di.customer_paid_unload_amount,
+                        store: `Store #${item.store_id}`,
+                        majhi: majhiName(item.majhi_id),
+                        quantity: `${item.quantity} ${lot?.quantity_unit ?? ''}`.trim(),
+                        weight: `${item.weight} ${lot?.weight_unit ?? ''}`.trim(),
+                        vehicle_number: item.vehicle_number,
+                        driver_number: item.driver_number,
                     },
                 })
             }
         }
 
-        const customerStoreIds = new Set(customerStores.map(s => s.id))
-        const customerDamages = damagesStore.damages.filter(d => customerStoreIds.has(d.store_id))
-
+        // 6. Damages
+        const customerDamages = damagesStore.damages.filter((d) => customerStoreIds.has(d.store_id))
         for (const damage of customerDamages) {
             events.push({
                 id: `damage_${damage.id}`,
                 type: 'damage_recorded',
                 date: damage.damage_date,
-                title: `Damage recorded`,
+                title: 'Damage recorded',
                 description: damage.reason,
                 reference: `Damage #${damage.id}`,
                 amount: damage.amount,
                 amountLabel: 'Damage',
-                amountKind: 'neutral',
-                icon: '🔴',
-                color: 'red',
+                amountKind: 'debit',
+                icon: ICONS.damage_recorded,
                 meta: {
-                    quantity: `${damage.quantity} ${damage.quantity_unit}`,
-                    weight: `${damage.weight} ${damage.weight_unit}`,
+                    store: `Store #${damage.store_id}`,
+                    quantity: `${damage.quantity} ${damage.quantity_unit}`.trim(),
+                    weight: `${damage.weight} ${damage.weight_unit}`.trim(),
                     notes: damage.notes,
                 },
             })
         }
 
-        for (const lot of customerLots) {
-            const lotName = lotsStore.getLotDisplayName(lot)
-
-            if ((lot.customer_last_paid_amount || 0) > 0) {
+        // 7. Lot transfers
+        for (const t of lotTransfersStore.transfers) {
+            if (t.from_customer_id === customerId) {
                 events.push({
-                    id: `storage_payment_${lot.id}`,
-                    type: 'storage_payment',
-                    date: lot.customer_last_paid_through || lot.updated_at,
-                    title: `Storage payment`,
-                    description: `Storage payment for ${lotName} (Lot #${lot.lot_number})`,
-                    reference: `Lot #${lot.id}`,
-                    amount: lot.customer_last_paid_amount || 0,
-                    amountLabel: 'Paid',
-                    amountKind: 'credit',
-                    icon: '💰',
-                    color: 'emerald',
+                    id: `lot_transfer_out_${t.id}`,
+                    type: 'lot_transferred_out',
+                    date: t.transferred_at,
+                    title: 'Lot transferred out',
+                    description: `${lotLabel(t.lot_id)} → ${customersStore.getCustomerName(t.to_customer_id)}`,
+                    reference: `Transfer #${t.id}`,
+                    amountKind: 'neutral',
+                    icon: ICONS.lot_transferred_out,
                     meta: {
-                        paid_through: lot.customer_last_paid_through,
-                        total_paid: lot.customer_last_paid_amount,
+                        to_customer: customersStore.getCustomerName(t.to_customer_id),
+                        notes: t.notes,
                     },
                 })
             }
-
-            if ((lot.customer_paid_unload_amount || 0) > 0) {
+            if (t.to_customer_id === customerId) {
                 events.push({
-                    id: `unload_payment_${lot.id}`,
-                    type: 'unload_payment',
-                    date: lot.updated_at,
-                    title: `Unload payment`,
-                    description: `Unload payment for ${lotName} (Lot #${lot.lot_number})`,
-                    reference: `Lot #${lot.id}`,
-                    amount: lot.customer_paid_unload_amount || 0,
-                    amountLabel: 'Paid',
-                    amountKind: 'credit',
-                    icon: '💵',
-                    color: 'emerald',
+                    id: `lot_transfer_in_${t.id}`,
+                    type: 'lot_transferred_in',
+                    date: t.transferred_at,
+                    title: 'Lot transferred in',
+                    description: `${lotLabel(t.lot_id)} ← ${customersStore.getCustomerName(t.from_customer_id)}`,
+                    reference: `Transfer #${t.id}`,
+                    amountKind: 'neutral',
+                    icon: ICONS.lot_transferred_in,
                     meta: {
-                        unload_rate: lot.unload_rate,
-                        total_paid: lot.customer_paid_unload_amount,
+                        from_customer: customersStore.getCustomerName(t.from_customer_id),
+                        notes: t.notes,
                     },
                 })
             }
         }
 
-        const customerTransports = transportsStore.transports.filter(t => t.customer_id === customerId)
-
-        for (const transport of customerTransports) {
-            const totalCharge = transport.customer_total_charge || 0
-
+        // 8. Customer store bills + payments
+        const csBills = customerStoreBillsStore.bills.filter((b) => b.customer_id === customerId)
+        for (const b of csBills) {
             events.push({
-                id: `transport_${transport.id}`,
-                type: 'transport_created',
-                date: transport.transport_date,
-                title: `Transport #${transport.id} created`,
-                description: transport.from_location
-                    ? `${transport.from_location}${transport.to_location ? ` → ${transport.to_location}` : ''}`
-                    : `Transport #${transport.id}`,
-                reference: `Transport #${transport.id}`,
-                amount: totalCharge,
+                id: `customer_store_bill_${b.id}`,
+                type: 'customer_store_bill',
+                date: b.created_at,
+                title: 'Customer store bill',
+                description: `${lotLabelFromStore(b.store_id)} · ${b.month_year}`,
+                reference: `Bill #${b.id}`,
+                amount: b.total_amount,
                 amountLabel: 'Billed',
                 amountKind: 'debit',
-                icon: '🚛',
-                color: 'orange',
+                icon: ICONS.customer_store_bill,
                 meta: {
-                    vehicle_quantity: transport.vehicle_quantity,
-                    transport_type: transport.transport_type,
-                    customer_charge_unit: transport.customer_charge_unit,
-                    customer_total_unit: transport.customer_total_unit,
-                    customer_charge_per_unit: transport.customer_charge_per_unit,
-                    customer_total_charge: transport.customer_total_charge,
-                    customer_total_paid: transport.customer_total_paid,
-                    office_commission_amount: transport.office_commission_amount,
+                    month: b.month_year,
+                    store: `Store #${b.store_id}`,
+                    bill_type: b.bill_type,
+                    quantity: `${b.quantity_at_billing} ${b.quantity_unit_at_billing ?? ''}`.trim(),
+                    weight: `${b.weight_at_billing} ${b.weight_unit_at_billing ?? ''}`.trim(),
+                    rate: b.rate,
                 },
             })
 
-            if ((transport.customer_total_paid || 0) > 0) {
-                events.push({
-                    id: `transport_payment_${transport.id}`,
-                    type: 'transport_payment',
-                    date: transport.customer_total_paid_through || transport.updated_at,
-                    title: `Transport payment`,
-                    description: `Payment for Transport #${transport.id}`,
-                    reference: `Transport #${transport.id}`,
-                    amount: transport.customer_total_paid || 0,
-                    amountLabel: 'Paid',
-                    amountKind: 'credit',
-                    icon: '💵',
-                    color: 'emerald',
-                    meta: {
-                        total_paid: transport.customer_total_paid,
-                        paid_through: transport.customer_total_paid_through,
-                    },
-                })
+            const payments = await fetchPaymentsForBill('customer_store', b.id)
+            for (const p of payments) {
+                events.push(paymentToEvent(p, `Customer store bill #${b.id}`))
             }
         }
 
-        const customerTransportIds = new Set(customerTransports.map(t => t.id))
-        const customerVehicles = vehiclesStore.vehicles.filter(v => customerTransportIds.has(v.transport_id))
-
-        for (const vehicle of customerVehicles) {
+        // 9. Customer delivery bills + payments
+        const cdBills = customerDeliveryBillsStore.bills.filter((b) => b.customer_id === customerId)
+        for (const b of cdBills) {
             events.push({
-                id: `vehicle_${vehicle.id}`,
-                type: 'vehicle_added',
-                date: vehicle.created_at,
-                title: `Vehicle added`,
-                description: `${vehicle.vehicle_number}`,
-                reference: `Transport #${vehicle.transport_id}`,
-                amountKind: 'neutral',
-                icon: '🚗',
-                color: 'amber',
+                id: `customer_delivery_bill_${b.id}`,
+                type: 'customer_delivery_bill',
+                date: b.created_at,
+                title: 'Customer delivery bill',
+                description: `Delivery item #${b.delivery_item_id}`,
+                reference: `Bill #${b.id}`,
+                amount: b.total_amount,
+                amountLabel: 'Billed',
+                amountKind: 'debit',
+                icon: ICONS.customer_delivery_bill,
                 meta: {
-                    joma_cost: vehicle.joma_cost,
-                    vehicle_cost: vehicle.vehicle_cost,
-                    other_cost: vehicle.other_cost,
-                    labour_cost: vehicle.labour_cost,
-                    demarage_cost: vehicle.demarage_cost,
-                    notes: vehicle.notes,
+                    delivery_item: `Item #${b.delivery_item_id}`,
+                    bill_type: b.bill_type,
+                    quantity: `${b.quantity_at_billing} ${b.quantity_unit_at_billing ?? ''}`.trim(),
+                    weight: `${b.weight_at_billing} ${b.weight_unit_at_billing ?? ''}`.trim(),
+                    rate: b.rate,
                 },
             })
+
+            const payments = await fetchPaymentsForBill('customer_delivery', b.id)
+            for (const p of payments) {
+                events.push(paymentToEvent(p, `Customer delivery bill #${b.id}`))
+            }
         }
 
-        // ============= ADDITIONAL CHARGES =============
-        const customerAdditionalBills = additionalChargesStore.bills.filter(
-            b => b.customer_id === customerId
+        // 10. Customer additional bills + payments
+        const caBills = customerAdditionalBillsStore.bills.filter((b) => b.customer_id === customerId)
+        for (const b of caBills) {
+            events.push({
+                id: `customer_additional_bill_${b.id}`,
+                type: 'customer_additional_bill',
+                date: b.created_at,
+                title: 'Customer additional bill',
+                description: b.description,
+                reference: `Bill #${b.id}`,
+                amount: b.amount,
+                amountLabel: 'Billed',
+                amountKind: 'debit',
+                icon: ICONS.customer_additional_bill,
+                meta: {
+                    description: b.description,
+                },
+            })
+
+            const payments = await fetchPaymentsForBill('customer_additional', b.id)
+            for (const p of payments) {
+                events.push(paymentToEvent(p, `Customer additional bill #${b.id}`))
+            }
+        }
+
+        // 11. Invoices
+        const invoices = invoicesStore.invoices.filter(
+            (i) => i.entity_type === 'customer' && i.entity_id === customerId
         )
-
-        for (const bill of customerAdditionalBills) {
+        for (const inv of invoices) {
             events.push({
-                id: `additional_charge_created_${bill.id}`,
-                type: 'additional_charge_created',
-                date: bill.created_at,
-                title: `Additional charge added`,
-                description: bill.description,
-                reference: `Additional Charge #${bill.id}`,
-                amount: bill.amount,
-                amountLabel: 'Billed',
+                id: `invoice_${inv.id}`,
+                type: 'invoice_created',
+                date: inv.created_at,
+                title: `Invoice INV-${inv.id} created`,
+                description: inv.notes || 'Invoice issued',
+                reference: `INV-${inv.id}`,
+                amount: inv.total,
+                amountLabel: 'Invoiced',
                 amountKind: 'debit',
-                icon: '➕',
-                color: 'purple',
+                icon: ICONS.invoice_created,
                 meta: {
-                    description: bill.description,
+                    subtotal: inv.subtotal,
+                    discount: inv.discount_amount,
+                    total: inv.total,
+                    notes: inv.notes,
                 },
             })
-
-            if ((bill.paid_amount || 0) > 0) {
-                events.push({
-                    id: `additional_charge_payment_${bill.id}`,
-                    type: 'additional_charge_payment',
-                    date: bill.payment_date || bill.updated_at,
-                    title: `Additional charge payment`,
-                    description: `Payment for additional charge: ${bill.description}`,
-                    reference: `Additional Charge #${bill.id}`,
-                    amount: bill.paid_amount,
-                    amountLabel: 'Paid',
-                    amountKind: 'credit',
-                    icon: '💰',
-                    color: 'emerald',
-                    meta: {
-                        paid_amount: bill.paid_amount,
-                        paid_through: bill.payment_date,
-                    },
-                })
-            }
         }
 
         return events
     }
 
+    // =========================================================================
+    // SANITIZE (customer view)
+    // =========================================================================
+
     const sanitizeEvent = (event: LedgerEvent): LedgerEvent | null => {
-        if (!CUSTOMER_VISIBLE_TYPES.includes(event.type)) {
-            return null
-        }
+        if (!CUSTOMER_VISIBLE_TYPES.includes(event.type)) return null
 
-        const hiddenKeys = CUSTOMER_HIDDEN_META[event.type] || []
-
-        let meta: Record<string, string | number | null | undefined> | undefined
-        if (event.meta) {
+        let meta = event.meta
+        if (meta) {
             const cleaned: Record<string, string | number | null | undefined> = {}
-            for (const [k, v] of Object.entries(event.meta)) {
-                if (!hiddenKeys.includes(k)) cleaned[k] = v
+            for (const [k, v] of Object.entries(meta)) {
+                if (!CUSTOMER_HIDDEN_META_KEYS.includes(k)) cleaned[k] = v
             }
             meta = Object.keys(cleaned).length > 0 ? cleaned : undefined
         }
 
-        return {
-            ...event,
-            meta,
-        }
+        return { ...event, meta }
     }
 
-    const allEvents = computed<LedgerEvent[]>(() => {
-        if (!selectedCustomerId.value) return []
-        return buildEvents(selectedCustomerId.value)
-    })
+    // =========================================================================
+    // REACTIVE SELECTORS
+    // =========================================================================
 
     const visibleEvents = computed<LedgerEvent[]>(() => {
         if (!customerView.value) return allEvents.value
@@ -469,24 +561,25 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
 
         if (typeFilter.value.length > 0) {
             const allowed = new Set(typeFilter.value)
-            result = result.filter(e => allowed.has(e.type))
+            result = result.filter((e) => allowed.has(e.type))
         }
 
         if (dateFrom.value) {
             const from = new Date(dateFrom.value + 'T00:00:00').getTime()
-            result = result.filter(e => new Date(e.date).getTime() >= from)
+            result = result.filter((e) => new Date(e.date).getTime() >= from)
         }
         if (dateTo.value) {
             const to = new Date(dateTo.value + 'T23:59:59').getTime()
-            result = result.filter(e => new Date(e.date).getTime() <= to)
+            result = result.filter((e) => new Date(e.date).getTime() <= to)
         }
 
         if (searchQuery.value) {
             const q = searchQuery.value.toLowerCase()
-            result = result.filter(e =>
-                e.title.toLowerCase().includes(q) ||
-                e.description.toLowerCase().includes(q) ||
-                (e.reference && e.reference.toLowerCase().includes(q))
+            result = result.filter(
+                (e) =>
+                    e.title.toLowerCase().includes(q) ||
+                    e.description.toLowerCase().includes(q) ||
+                    (e.reference && e.reference.toLowerCase().includes(q))
             )
         }
 
@@ -495,46 +588,122 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
         return result
     })
 
+    // -------------------------------------------------------------------------
+    // SELECTION-AWARE DERIVATIONS
+    // -------------------------------------------------------------------------
+
+    const hasSelection = computed(() => selectedEventIds.value.size > 0)
+
+    /**
+     * Returns the set of events that should actually be considered "in scope"
+     * for summary + print/export. If the user made a manual selection, we honor
+     * that (intersected with the current filters so a hidden item can't sneak
+     * back in via the selection set). Otherwise we fall back to filteredEvents.
+     */
+    const activeEvents = computed<LedgerEvent[]>(() => {
+        const filtered = filteredEvents.value
+        if (selectedEventIds.value.size === 0) return filtered
+
+        const selected = selectedEventIds.value
+        return filtered.filter((e) => selected.has(e.id))
+    })
+
+    const selectedCount = computed(() => {
+        // Count only items in the current filtered view
+        const filtered = filteredEvents.value
+        let n = 0
+        for (const e of filtered) {
+            if (selectedEventIds.value.has(e.id)) n++
+        }
+        return n
+    })
+
+    const allVisibleSelected = computed(() => {
+        const filtered = filteredEvents.value
+        if (filtered.length === 0) return false
+        for (const e of filtered) {
+            if (!selectedEventIds.value.has(e.id)) return false
+        }
+        return true
+    })
+
+    const someVisibleSelected = computed(() => {
+        const filtered = filteredEvents.value
+        if (filtered.length === 0) return false
+        let any = false
+        for (const e of filtered) {
+            if (selectedEventIds.value.has(e.id)) {
+                any = true
+                break
+            }
+        }
+        return any && !allVisibleSelected.value
+    })
+
+    // -------------------------------------------------------------------------
+    // SUMMARY (now derived from activeEvents)
+    // -------------------------------------------------------------------------
+
     const summary = computed(() => {
         let totalBilled = 0
         let totalPaid = 0
 
-        for (const e of visibleEvents.value) {
-            if (e.amountKind === 'debit' && typeof e.amount === 'number') {
-                totalBilled += e.amount
-            }
-            if (e.amountKind === 'credit' && typeof e.amount === 'number') {
-                totalPaid += e.amount
-            }
+        for (const e of activeEvents.value) {
+            if (e.amountKind === 'debit' && typeof e.amount === 'number') totalBilled += e.amount
+            if (e.amountKind === 'credit' && typeof e.amount === 'number') totalPaid += e.amount
         }
 
         return {
             totalBilled,
             totalPaid,
             outstanding: totalBilled - totalPaid,
-            eventCount: visibleEvents.value.length,
+            eventCount: activeEvents.value.length,
         }
     })
 
-    const setCustomer = (id: number | null) => {
+    // =========================================================================
+    // ACTIONS
+    // =========================================================================
+
+    const setCustomer = async (id: number | null) => {
+        if (selectedCustomerId.value === id) return
         selectedCustomerId.value = id
+        paymentsCache.value = {}
+        selectedEventIds.value = new Set()
+        if (!id) {
+            allEvents.value = []
+            return
+        }
+        isLoading.value = true
+        try {
+            allEvents.value = await buildEvents(id)
+        } finally {
+            isLoading.value = false
+        }
     }
 
-    const setTypeFilter = (types: LedgerEventType[]) => {
-        typeFilter.value = types
+    const refresh = async () => {
+        if (!selectedCustomerId.value) return
+        paymentsCache.value = {}
+        isLoading.value = true
+        try {
+            allEvents.value = await buildEvents(selectedCustomerId.value)
+            // Drop any selection entries that no longer exist
+            const valid = new Set(allEvents.value.map((e) => e.id))
+            const next = new Set<string>()
+            for (const id of selectedEventIds.value) {
+                if (valid.has(id)) next.add(id)
+            }
+            selectedEventIds.value = next
+        } finally {
+            isLoading.value = false
+        }
     }
 
     const toggleType = (type: LedgerEventType) => {
         const idx = typeFilter.value.indexOf(type)
-        if (idx === -1) {
-            typeFilter.value.push(type)
-        } else {
-            typeFilter.value.splice(idx, 1)
-        }
-    }
-
-    const clearTypeFilter = () => {
-        typeFilter.value = []
+        if (idx === -1) typeFilter.value.push(type)
+        else typeFilter.value.splice(idx, 1)
     }
 
     const setDateRange = (from: string, to: string) => {
@@ -542,17 +711,8 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
         dateTo.value = to
     }
 
-    const clearDateRange = () => {
-        dateFrom.value = ''
-        dateTo.value = ''
-    }
-
     const setSearchQuery = (q: string) => {
         searchQuery.value = q
-    }
-
-    const clearSearch = () => {
-        searchQuery.value = ''
     }
 
     const setCustomerView = (on: boolean) => {
@@ -566,6 +726,35 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
         searchQuery.value = ''
     }
 
+    // -------------------------------------------------------------------------
+    // SELECTION ACTIONS
+    // -------------------------------------------------------------------------
+
+    const isEventSelected = (id: string): boolean => selectedEventIds.value.has(id)
+
+    const toggleEvent = (id: string) => {
+        const next = new Set(selectedEventIds.value)
+        if (next.has(id)) next.delete(id)
+        else next.add(id)
+        selectedEventIds.value = next
+    }
+
+    const selectAllVisible = () => {
+        const next = new Set(selectedEventIds.value)
+        for (const e of filteredEvents.value) {
+            next.add(e.id)
+        }
+        selectedEventIds.value = next
+    }
+
+    const clearSelection = () => {
+        selectedEventIds.value = new Set()
+    }
+
+    // =========================================================================
+    // LABELS
+    // =========================================================================
+
     const typeLabel = (type: LedgerEventType): string => {
         const labels: Record<LedgerEventType, string> = {
             customer_created: 'Customer',
@@ -574,14 +763,13 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
             delivery_created: 'Delivery',
             delivery_item_added: 'Delivery Item',
             damage_recorded: 'Damage',
-            transport_created: 'Transport',
-            vehicle_added: 'Vehicle',
-            storage_payment: 'Storage Payment',
-            unload_payment: 'Unload Payment',
-            delivery_payment: 'Delivery Payment',
-            transport_payment: 'Transport Payment',
-            additional_charge_created: 'Additional Charge',
-            additional_charge_payment: 'Additional Charge Payment',
+            lot_transferred_out: 'Lot Out',
+            lot_transferred_in: 'Lot In',
+            customer_store_bill: 'Store Bill',
+            customer_delivery_bill: 'Delivery Bill',
+            customer_additional_bill: 'Additional Bill',
+            invoice_created: 'Invoice',
+            payment_received: 'Payment',
         }
         return labels[type] || type
     }
@@ -597,29 +785,43 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
     }
 
     return {
+        // Filters / view state
         selectedCustomerId,
         typeFilter,
         dateFrom,
         dateTo,
         searchQuery,
         customerView,
+        isLoading,
 
+        // Data
         allEvents,
         visibleEvents,
         filteredEvents,
+        activeEvents,
         summary,
 
+        // Selection
+        selectedEventIds,
+        hasSelection,
+        selectedCount,
+        allVisibleSelected,
+        someVisibleSelected,
+        isEventSelected,
+        toggleEvent,
+        selectAllVisible,
+        clearSelection,
+
+        // Actions
         setCustomer,
-        setTypeFilter,
+        refresh,
         toggleType,
-        clearTypeFilter,
         setDateRange,
-        clearDateRange,
         setSearchQuery,
-        clearSearch,
         setCustomerView,
         resetFilters,
 
+        // Labels
         typeLabel,
         formatEventDate,
     }

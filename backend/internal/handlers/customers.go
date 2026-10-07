@@ -104,7 +104,7 @@ func (h *Handler) CreateCustomerHandler(w http.ResponseWriter, r *http.Request) 
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      userID,
 		Action:      "create",
 		Description: "Created customer: " + req.Phone,
@@ -287,7 +287,7 @@ func (h *Handler) UpdateCustomerHandler(w http.ResponseWriter, r *http.Request) 
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      userID,
 		Action:      "update",
 		Description: "Updated customer #" + strconv.FormatInt(id, 10),
@@ -341,7 +341,7 @@ func (h *Handler) DeleteCustomerHandler(w http.ResponseWriter, r *http.Request) 
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      userID,
 		Action:      "delete",
 		Description: "Deleted customer: " + customer.Phone,

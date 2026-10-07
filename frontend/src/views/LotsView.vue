@@ -1,56 +1,57 @@
 <!-- src/views/LotsView.vue -->
 <template>
-    <AppLayout>
-        <div class="flex flex-col h-full min-h-[calc(100vh-120px)]">
-            <!-- Stats -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 shrink-0">
-                <div class="rounded-xl p-4 bg-(--color-surface) border border-(--color-border)">
-                    <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Total Lots</p>
-                    <p class="text-2xl font-bold text-(--color-text-primary) mt-1">{{ lotsStore.lots.length }}</p>
-                </div>
-                <div class="rounded-xl p-4 bg-(--color-surface) border border-(--color-border)">
-                    <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Active</p>
-                    <p class="text-2xl font-bold text-(--color-green) mt-1">{{ activeCount }}</p>
-                </div>
-                <div class="rounded-xl p-4 bg-(--color-surface) border border-(--color-border)">
-                    <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Inactive</p>
-                    <p class="text-2xl font-bold text-(--color-red) mt-1">{{ inactiveCount }}</p>
-                </div>
-                <div class="rounded-xl p-4 bg-(--color-surface) border border-(--color-border)">
-                    <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">With Majhi</p>
-                    <p class="text-2xl font-bold text-(--color-blue) mt-1">{{ withMajhiCount }}</p>
-                </div>
+    <div class="flex flex-col h-full min-h-[calc(100vh-120px)]">
+        <!-- Stats -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 shrink-0">
+            <div class="rounded-xl p-4 bg-(--color-surface) border border-(--color-border)">
+                <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Total Lots</p>
+                <p class="text-2xl font-bold text-(--color-text-primary) mt-1">{{ lotsStore.lots.length }}</p>
             </div>
-
-            <!-- Lot List -->
-            <div class="flex-1 min-h-0 mt-6">
-                <LotList />
+            <div class="rounded-xl p-4 bg-(--color-surface) border border-(--color-border)">
+                <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Total Stores</p>
+                <p class="text-2xl font-bold text-(--color-blue) mt-1">{{ totalStores }}</p>
+            </div>
+            <div class="rounded-xl p-4 bg-(--color-surface) border border-(--color-border)">
+                <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Active Stores</p>
+                <p class="text-2xl font-bold text-(--color-green) mt-1">{{ activeStores }}</p>
+            </div>
+            <div class="rounded-xl p-4 bg-(--color-surface) border border-(--color-border)">
+                <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Total Customers</p>
+                <p class="text-2xl font-bold text-(--color-yellow) mt-1">{{ distinctCustomers }}</p>
             </div>
         </div>
-    </AppLayout>
+
+        <div class="flex-1 min-h-0 mt-6">
+            <LotList />
+        </div>
+    </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useLotsStore } from '@/stores/lots'
 import { useCustomersStore } from '@/stores/customers'
-import { useMajhisStore } from '@/stores/majhis'
-import AppLayout from '@/components/layouts/AppLayout.vue'
+import { useStoresStore } from '@/stores/stores'
 import LotList from '@/components/features/lots/LotList.vue'
 
 const lotsStore = useLotsStore()
 const customersStore = useCustomersStore()
-const majhisStore = useMajhisStore()
+const storesStore = useStoresStore()
 
-const activeCount = computed(() => lotsStore.lots.filter(l => l.is_active).length)
-const inactiveCount = computed(() => lotsStore.lots.filter(l => !l.is_active).length)
-const withMajhiCount = computed(() => lotsStore.lots.filter(l => l.majhi_id).length)
+const totalStores = computed(() => storesStore.stores.length)
+const activeStores = computed(() => storesStore.stores.filter(s => s.is_active).length)
+
+const distinctCustomers = computed(() => {
+    const set = new Set<number>()
+    lotsStore.lots.forEach(l => set.add(l.customer_id))
+    return set.size
+})
 
 onMounted(async () => {
     await Promise.all([
         lotsStore.fetchLots(),
         customersStore.fetchCustomers(),
-        majhisStore.fetchMajhis(),
+        storesStore.fetchStores(),
     ])
 })
 </script>

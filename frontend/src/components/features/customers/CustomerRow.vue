@@ -30,7 +30,7 @@
             <span class="text-sm text-(--color-text-secondary) truncate block">{{ customer.address || '—' }}</span>
         </div>
 
-        <!-- Actions - 1 column, right aligned -->
+        <!-- Actions - 1 column -->
         <div class="col-span-1 flex justify-end relative" @click.stop>
             <button @click="toggleMenu"
                 class="w-7 h-7 flex items-center justify-center border border-(--color-border) rounded-md hover:bg-(--color-muted-bg) transition-all duration-200">
@@ -48,7 +48,7 @@
                 leave-from-class="opacity-100 scale-100 translate-y-0"
                 leave-to-class="opacity-0 scale-95 translate-y-1">
                 <div v-if="isOpen"
-                    class="absolute right-0 top-9 w-52 bg-(--color-surface) border border-(--color-border) rounded-xl shadow-lg overflow-hidden z-50 py-1">
+                    class="absolute right-0 top-9 w-48 bg-(--color-surface) border border-(--color-border) rounded-xl shadow-lg overflow-hidden z-50 py-1">
                     <button @click="handleView"
                         class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-text-secondary) hover:bg-(--color-muted-bg) transition-colors">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -60,22 +60,13 @@
                         View Details
                     </button>
 
-                    <button @click="handleViewLedger"
-                        class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-green) hover:bg-(--color-muted-bg) transition-colors">
+                    <button @click="handleLedger"
+                        class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-text-secondary) hover:bg-(--color-muted-bg) transition-colors">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         View Ledger
-                    </button>
-
-                    <button @click="handleAddCharge"
-                        class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-blue) hover:bg-(--color-muted-bg) transition-colors">
-                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 5v14M5 12h14" />
-                        </svg>
-                        Add Charge
                     </button>
 
                     <button @click="handleEdit"
@@ -85,6 +76,15 @@
                                 d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                         Edit
+                    </button>
+
+                    <button @click="handleDelete"
+                        class="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-(--color-red) hover:bg-(--color-muted-bg) transition-colors border-t border-(--color-border) mt-1 pt-1">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Delete
                     </button>
                 </div>
             </Transition>
@@ -106,38 +106,17 @@ const props = defineProps<{
 const emit = defineEmits<{
     'view': [customer: Customer]
     'edit': [customer: Customer]
-    'view-ledger': [customer: Customer]
-    'add-charge': [customer: Customer]
+    'delete': [customer: Customer]
+    'ledger': [customer: Customer]
     'updated': []
 }>()
 
 const isOpen = ref(false)
 
-const toggleMenu = () => {
-    isOpen.value = !isOpen.value
-}
-
-const closeMenu = () => {
-    isOpen.value = false
-}
-
-const handleView = () => {
-    closeMenu()
-    emit('view', props.customer)
-}
-
-const handleViewLedger = () => {
-    closeMenu()
-    emit('view-ledger', props.customer)
-}
-
-const handleAddCharge = () => {
-    closeMenu()
-    emit('add-charge', props.customer)
-}
-
-const handleEdit = () => {
-    closeMenu()
-    emit('edit', props.customer)
-}
+const toggleMenu = () => { isOpen.value = !isOpen.value }
+const closeMenu = () => { isOpen.value = false }
+const handleView = () => { closeMenu(); emit('view', props.customer) }
+const handleEdit = () => { closeMenu(); emit('edit', props.customer) }
+const handleDelete = () => { closeMenu(); emit('delete', props.customer) }
+const handleLedger = () => { closeMenu(); emit('ledger', props.customer) }
 </script>

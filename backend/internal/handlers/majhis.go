@@ -70,7 +70,7 @@ func (h *Handler) CreateMajhiHandler(w http.ResponseWriter, r *http.Request) {
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      userID,
 		Action:      "create",
 		Description: "Created majhi: " + req.Name,
@@ -216,7 +216,7 @@ func (h *Handler) UpdateMajhiHandler(w http.ResponseWriter, r *http.Request) {
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      userID,
 		Action:      "update",
 		Description: "Updated majhi #" + strconv.FormatInt(id, 10),
@@ -269,7 +269,7 @@ func (h *Handler) DeleteMajhiHandler(w http.ResponseWriter, r *http.Request) {
 	userID, _ := r.Context().Value(middlewares.UserIDKey).(int64)
 	ip := r.RemoteAddr
 	ua := r.UserAgent()
-	_, _ = h.app.Models.Log.Insert(r.Context(), &models.Log{
+	h.logAudit(r.Context(), &models.Log{
 		UserID:      userID,
 		Action:      "delete",
 		Description: "Deleted majhi: " + majhi.Name,
