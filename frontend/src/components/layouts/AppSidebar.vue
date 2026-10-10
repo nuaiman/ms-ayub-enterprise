@@ -358,6 +358,7 @@ const itemIcons: Record<string, Component> = {
     'customer-store-bills': Receipt,
     'customer-delivery-bills': Receipt,
     'customer-additional-bills': Receipt,
+    'customer-unload-bills': Receipt,
     'invoices': Receipt,
     'store-adjustments': ArrowRightLeft,
     'store-transfers': ArrowRightLeft,

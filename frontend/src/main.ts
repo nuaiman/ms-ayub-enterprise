@@ -87,3 +87,11 @@ const auth = useAuthStore()
 auth.initAuth().finally(() => {
     app.mount('#app')
 })
+
+
+
+
+// InvoiceForm.vue / InvoiceDetail.vue / InvoicePreview.vue / InvoiceRow.vue (the invoice UI 
+//     labels bill_type in a few places — the backend already returns them, but the label maps will 
+//     show the raw customer_unload string until we add it)
+// CustomerLedger (store + view)

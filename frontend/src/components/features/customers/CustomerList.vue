@@ -216,6 +216,7 @@ import { useDamagesStore } from '@/stores/damages'
 import { useCustomerStoreBillsStore } from '@/stores/customerStoreBills'
 import { useCustomerDeliveryBillsStore } from '@/stores/customerDeliveryBills'
 import { useCustomerAdditionalBillsStore } from '@/stores/customerAdditionalBills'
+import { useCustomerUnloadBillsStore } from '@/stores/customerUnloadBills'
 import { useInvoicesStore } from '@/stores/invoices'
 import { useLotTransfersStore } from '@/stores/lotTransfers'
 import { useUsersStore } from '@/stores/users'
@@ -238,6 +239,7 @@ const damagesStore = useDamagesStore()
 const customerStoreBillsStore = useCustomerStoreBillsStore()
 const customerDeliveryBillsStore = useCustomerDeliveryBillsStore()
 const customerAdditionalBillsStore = useCustomerAdditionalBillsStore()
+const customerUnloadBillsStore = useCustomerUnloadBillsStore()
 const invoicesStore = useInvoicesStore()
 const lotTransfersStore = useLotTransfersStore()
 const usersStore = useUsersStore()
@@ -406,6 +408,7 @@ const loadLedgerStores = async () => {
         customerStoreBillsStore.fetchCustomerStoreBills(),
         customerDeliveryBillsStore.fetchCustomerDeliveryBills(),
         customerAdditionalBillsStore.fetchCustomerAdditionalBills(),
+        customerUnloadBillsStore.fetchCustomerUnloadBills(),
         invoicesStore.fetchInvoices(),
         lotTransfersStore.fetchAllTransfers(),
         usersStore.fetchUsers(),

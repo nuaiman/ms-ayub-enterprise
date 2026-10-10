@@ -15,12 +15,12 @@
 
             <div class="flex-1 min-w-0">
                 <h2 class="text-xl font-bold text-(--color-text-primary)">
-                    {{ customerName }} — Ledger
+                    {{ customerName }} â€” Ledger
                 </h2>
                 <p class="text-sm text-(--color-text-secondary) mt-1">
                     {{ ledger.summary.eventCount }} event(s)
                     <template v-if="ledger.hasSelection">
-                        · <span class="text-(--color-blue) font-medium">{{ ledger.selectedCount }} selected</span>
+                        Â· <span class="text-(--color-blue) font-medium">{{ ledger.selectedCount }} selected</span>
                     </template>
                 </p>
             </div>
@@ -143,7 +143,7 @@
 
         <!-- Timeline -->
         <div v-if="ledger.isLoading" class="text-center py-12 text-sm text-(--color-text-secondary)">
-            Loading ledger…
+            Loading ledgerâ€¦
         </div>
 
         <div v-else-if="ledger.filteredEvents.length === 0"
@@ -202,7 +202,7 @@
                         class="mt-2 pt-2 border-t border-(--color-border)/60 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1">
                         <div v-for="(value, key) in event.meta" :key="key" class="text-xs min-w-0">
                             <span class="text-(--color-text-secondary)">{{ humanKey(String(key)) }}:</span>
-                            <span class="text-(--color-text-primary) ml-1">{{ value ?? '—' }}</span>
+                            <span class="text-(--color-text-primary) ml-1">{{ value ?? 'â€”' }}</span>
                         </div>
                     </div>
                 </div>
@@ -264,6 +264,7 @@ const allTypes: LedgerEventType[] = [
     'customer_store_bill',
     'customer_delivery_bill',
     'customer_additional_bill',
+    'customer_unload_bill',
     'invoice_created',
     'payment_received',
 ]
@@ -305,6 +306,7 @@ const typeChipClass = (type: LedgerEventType): string => {
         customer_store_bill: 'bg-purple-500/10 text-purple-600',
         customer_delivery_bill: 'bg-purple-500/10 text-purple-600',
         customer_additional_bill: 'bg-purple-500/10 text-purple-600',
+        customer_unload_bill: 'bg-purple-500/10 text-purple-600',
         invoice_created: 'bg-fuchsia-500/10 text-fuchsia-600',
         payment_received: 'bg-emerald-500/10 text-emerald-600',
     }

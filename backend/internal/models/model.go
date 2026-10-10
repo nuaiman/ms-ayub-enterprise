@@ -22,6 +22,7 @@ type Models struct {
 	CustomerStoreBill      CustomerStoreBillModel
 	CustomerDeliveryBill   CustomerDeliveryBillModel
 	CustomerAdditionalBill CustomerAdditionalBillModel
+	CustomerUnloadBill     CustomerUnloadBillModel
 	BillPayment            BillPaymentModel
 	Expense                ExpenseModel
 	Income                 IncomeModel
@@ -51,6 +52,7 @@ func NewModel(db *sql.DB) Models {
 		CustomerStoreBill:      CustomerStoreBillModel{DB: db},
 		CustomerDeliveryBill:   CustomerDeliveryBillModel{DB: db},
 		CustomerAdditionalBill: CustomerAdditionalBillModel{DB: db},
+		CustomerUnloadBill:     CustomerUnloadBillModel{DB: db},
 		BillPayment:            BillPaymentModel{DB: db},
 		Expense:                ExpenseModel{DB: db},
 		Income:                 IncomeModel{DB: db},

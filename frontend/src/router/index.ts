@@ -146,6 +146,12 @@ const router = createRouter({
                     meta: { requiresAuth: true }
                 },
                 {
+                    path: 'customer-unload-bills',
+                    name: 'customer-unload-bills',
+                    component: () => import('@/views/CustomerUnloadBillsView.vue'),
+                    meta: { requiresAuth: true }
+                },
+                {
                     path: 'invoices',
                     name: 'invoices',
                     component: () => import('@/views/InvoicesView.vue'),

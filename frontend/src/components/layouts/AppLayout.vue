@@ -318,6 +318,7 @@ const menuGroups: MenuGroup[] = [
             { path: '/customer-store-bills', label: 'Customer Store Bills', icon: 'customer-store-bills' },
             { path: '/customer-delivery-bills', label: 'Customer Delivery Bills', icon: 'customer-delivery-bills' },
             { path: '/customer-additional-bills', label: 'Customer Additional Bills', icon: 'customer-additional-bills' },
+            { path: '/customer-unload-bills', label: 'Customer Unload Bills', icon: 'customer-unload-bills' },
         ],
     },
     {

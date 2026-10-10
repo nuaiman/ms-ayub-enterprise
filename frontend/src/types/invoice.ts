@@ -8,6 +8,7 @@ export type UnbilledBillType =
     | 'customer_store'
     | 'customer_delivery'
     | 'customer_additional'
+    | 'customer_unload'
     | 'majhi'
     | 'godown'
 

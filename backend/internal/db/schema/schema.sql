@@ -475,7 +475,7 @@ CREATE TABLE IF NOT EXISTS bill_payments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     bill_type TEXT NOT NULL CHECK (
-        bill_type IN ('godown', 'majhi', 'customer_store', 'customer_delivery', 'customer_additional')
+        bill_type IN ('godown', 'majhi', 'customer_store', 'customer_delivery', 'customer_additional', 'customer_unload')
     ),
     bill_id INTEGER NOT NULL,
     amount REAL NOT NULL CHECK (amount > 0),
@@ -697,7 +697,7 @@ CREATE TABLE IF NOT EXISTS invoice_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     invoice_id INTEGER NOT NULL,
     bill_type TEXT NOT NULL CHECK (
-        bill_type IN ('godown', 'majhi', 'customer_store', 'customer_delivery', 'customer_additional')
+        bill_type IN ('godown', 'majhi', 'customer_store', 'customer_delivery', 'customer_additional', 'customer_unload')
     ),
     bill_id INTEGER NOT NULL,
     amount REAL NOT NULL DEFAULT 0,
@@ -728,6 +728,39 @@ CREATE TABLE IF NOT EXISTS discounts (
 );
 
 CREATE INDEX IF NOT EXISTS idx_discounts_invoice_id ON discounts(invoice_id);
+
+-- =====================================================
+-- 28. CUSTOMER UNLOAD BILLS (ONE-TIME)
+-- Created when a new store is created. One-time fee charged to the
+-- customer for unloading the goods into the store (by weight or quantity).
+-- =====================================================
+CREATE TABLE IF NOT EXISTS customer_unload_bills (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    customer_id INTEGER NOT NULL,
+    store_id INTEGER NOT NULL,
+    bill_type TEXT NOT NULL DEFAULT 'quantity' CHECK (
+        bill_type IN ('weight', 'quantity')
+    ),
+    rate REAL NOT NULL DEFAULT 0 CHECK (rate >= 0),
+    weight_at_billing REAL NOT NULL DEFAULT 0,
+    quantity_at_billing REAL NOT NULL DEFAULT 0,
+    weight_unit_at_billing TEXT,
+    quantity_unit_at_billing TEXT,
+    total_amount REAL NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE RESTRICT,
+    FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_customer_unload_bills_user_id ON customer_unload_bills(user_id);
+CREATE INDEX IF NOT EXISTS idx_customer_unload_bills_customer_id ON customer_unload_bills(customer_id);
+CREATE INDEX IF NOT EXISTS idx_customer_unload_bills_store_id ON customer_unload_bills(store_id);
+CREATE INDEX IF NOT EXISTS idx_customer_unload_bills_bill_type ON customer_unload_bills(bill_type);
+CREATE INDEX IF NOT EXISTS idx_customer_unload_bills_created_at ON customer_unload_bills(created_at);
 
 -- =====================================================
 -- INVENTORY MANAGEMENT TRIGGERS
@@ -1239,4 +1272,10 @@ CREATE TRIGGER IF NOT EXISTS update_discounts_timestamp
 AFTER UPDATE ON discounts
 BEGIN
     UPDATE discounts SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS update_customer_unload_bills_timestamp
+AFTER UPDATE ON customer_unload_bills
+BEGIN
+    UPDATE customer_unload_bills SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;

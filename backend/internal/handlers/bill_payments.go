@@ -50,6 +50,10 @@ func (h *Handler) CreateCustomerAdditionalBillPaymentHandler(w http.ResponseWrit
 	h.createBillPayment(w, r, "customer_additional")
 }
 
+func (h *Handler) CreateCustomerUnloadBillPaymentHandler(w http.ResponseWriter, r *http.Request) {
+	h.createBillPayment(w, r, "customer_unload")
+}
+
 func (h *Handler) createBillPayment(w http.ResponseWriter, r *http.Request, billType string) {
 	log.Printf("[BILL_PAYMENTS] CreateBillPayment called - type=%s method=%s path=%s", billType, r.Method, r.URL.Path)
 
@@ -193,6 +197,10 @@ func (h *Handler) GetCustomerAdditionalBillPaymentsHandler(w http.ResponseWriter
 	h.getBillPayments(w, r, "customer_additional")
 }
 
+func (h *Handler) GetCustomerUnloadBillPaymentsHandler(w http.ResponseWriter, r *http.Request) {
+	h.getBillPayments(w, r, "customer_unload")
+}
+
 func (h *Handler) getBillPayments(w http.ResponseWriter, r *http.Request, billType string) {
 	billID, ok := utils.GetParamID(w, r)
 	if !ok {
@@ -326,6 +334,16 @@ func (h *Handler) lookupBillTotal(r *http.Request, billType string, id int64) (f
 			return 0, false, nil
 		}
 		return b.Amount, true, nil
+
+	case "customer_unload":
+		b, err := h.app.Models.CustomerUnloadBill.GetByID(r.Context(), id)
+		if err != nil {
+			return 0, false, err
+		}
+		if b == nil {
+			return 0, false, nil
+		}
+		return b.TotalAmount, true, nil
 	}
 	return 0, false, nil
 }

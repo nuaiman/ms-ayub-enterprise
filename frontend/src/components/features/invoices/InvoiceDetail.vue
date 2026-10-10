@@ -23,7 +23,7 @@
                     <span class="text-sm text-(--color-text-secondary)">{{ entityLabel }}</span>
                     <span class="w-1 h-1 rounded-full bg-(--color-text-secondary)"></span>
                     <span class="text-sm font-semibold text-(--color-text-primary)">{{ formatCurrency(invoice.total)
-                    }}</span>
+                        }}</span>
                 </div>
             </div>
         </div>
@@ -45,7 +45,8 @@
             </div>
             <div class="rounded-xl p-3 bg-(--color-surface) border border-(--color-border)">
                 <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Discount</p>
-                <p class="text-lg font-bold text-(--color-red) mt-1">− {{ formatCurrency(invoice.discount_amount) }}</p>
+                <p class="text-lg font-bold text-(--color-red) mt-1">âˆ’ {{ formatCurrency(invoice.discount_amount) }}
+                </p>
             </div>
             <div class="rounded-xl p-3 bg-(--color-surface) border border-(--color-border)">
                 <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Total</p>
@@ -107,7 +108,7 @@
                         </div>
                     </div>
                     <div class="text-sm font-semibold text-(--color-red) shrink-0">
-                        − {{ formatCurrency(d.computed_amount) }}
+                        âˆ’ {{ formatCurrency(d.computed_amount) }}
                     </div>
                 </div>
             </div>
@@ -192,6 +193,7 @@ const billTypeLabel = (t: UnbilledBillType): string => {
         customer_store: 'Customer Store Bill',
         customer_delivery: 'Customer Delivery Bill',
         customer_additional: 'Customer Additional Bill',
+        customer_unload: 'Customer Unload Bill',
         majhi: 'Majhi Bill',
         godown: 'Godown Bill',
     }

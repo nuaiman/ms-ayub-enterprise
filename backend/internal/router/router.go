@@ -333,6 +333,20 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 		})
 
 		// =====================================================
+		// CUSTOMER UNLOAD BILLS (ONE-TIME)
+		// =====================================================
+		r.Route("/customer-unload-bills", func(r chi.Router) {
+			r.Get("/", higherManagementOnly(handler.GetAllCustomerUnloadBillsHandler))
+			r.Post("/", higherManagementOnly(handler.CreateCustomerUnloadBillHandler))
+			r.Get("/{id}", higherManagementOnly(handler.GetCustomerUnloadBillHandler))
+			r.Patch("/{id}", higherManagementOnly(handler.UpdateCustomerUnloadBillHandler))
+			r.Delete("/{id}", higherManagementOnly(handler.DeleteCustomerUnloadBillHandler))
+
+			r.Get("/{id}/payments", higherManagementOnly(handler.GetCustomerUnloadBillPaymentsHandler))
+			r.Post("/{id}/payments", higherManagementOnly(handler.CreateCustomerUnloadBillPaymentHandler))
+		})
+
+		// =====================================================
 		// INVOICES
 		// =====================================================
 		r.Route("/invoices", func(r chi.Router) {

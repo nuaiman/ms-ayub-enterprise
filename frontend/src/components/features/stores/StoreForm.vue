@@ -25,7 +25,7 @@
                         class="w-full px-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed">
                         <option :value="null">Select a lot</option>
                         <option v-for="lot in lotOptions" :key="lot.id" :value="lot.id">
-                            {{ lot.product_name }} — Lot {{ lot.lot_number }}
+                            {{ lot.product_name }} â€” Lot {{ lot.lot_number }}
                         </option>
                     </select>
                 </template>
@@ -35,8 +35,8 @@
             <div v-else-if="props.store"
                 class="mb-4 p-3 rounded-lg bg-(--color-muted-bg)/30 border border-(--color-border)">
                 <p class="text-xs text-(--color-text-secondary)">Lot</p>
-                <p class="text-sm text-(--color-text-primary)">{{ currentLot?.product_name ?? '—' }} — Lot {{
-                    currentLot?.lot_number ?? '—' }}</p>
+                <p class="text-sm text-(--color-text-primary)">{{ currentLot?.product_name ?? 'â€”' }} â€” Lot {{
+                    currentLot?.lot_number ?? 'â€”' }}</p>
             </div>
 
             <!-- Godown (create only) -->
@@ -57,7 +57,7 @@
             <div v-else-if="props.store"
                 class="mb-4 p-3 rounded-lg bg-(--color-muted-bg)/30 border border-(--color-border)">
                 <p class="text-xs text-(--color-text-secondary)">Godown</p>
-                <p class="text-sm text-(--color-text-primary)">{{ currentGodown?.name ?? '—' }}</p>
+                <p class="text-sm text-(--color-text-primary)">{{ currentGodown?.name ?? 'â€”' }}</p>
             </div>
 
             <StoreFields v-model:weight="form.weight" v-model:quantity="form.quantity"
@@ -67,7 +67,7 @@
             <div v-if="isEditMode" class="mt-4 flex items-center gap-3">
                 <button type="button" @click="handleRefreshBills" :disabled="submitting || refreshingBills"
                     class="px-3 py-1.5 text-xs font-medium rounded-lg border border-(--color-border) text-(--color-text-secondary) hover:bg-(--color-muted-bg) hover:text-(--color-text-primary) transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
-                    {{ refreshingBills ? 'Refreshing…' : 'Refresh current-month bills' }}
+                    {{ refreshingBills ? 'Refreshingâ€¦' : 'Refresh current-month bills' }}
                 </button>
                 <span class="text-xs text-(--color-text-secondary)">
                     Updates this month's bills with the current weight / quantity above.
@@ -77,6 +77,16 @@
 
         <!-- Bills (create only) -->
         <template v-if="!isEditMode">
+            <!-- Customer Unload Bill -->
+            <div class="border-t border-(--color-border) pt-6">
+                <h3 class="text-sm font-semibold text-(--color-text-secondary) uppercase tracking-wider mb-4">
+                    Customer Unload Bill
+                </h3>
+
+                <CustomerUnloadBillFields v-model:bill-type="unloadBillForm.bill_type"
+                    v-model:rate="unloadBillForm.rate" :disabled="submitting" :derived="true" />
+            </div>
+
             <!-- Customer Store Bill -->
             <div class="border-t border-(--color-border) pt-6">
                 <h3 class="text-sm font-semibold text-(--color-text-secondary) uppercase tracking-wider mb-4">
@@ -133,6 +143,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import type { Store } from '@/types/store'
 import type { CustomerStoreBillType } from '@/types/customerStoreBill'
+import type { CustomerUnloadBillType } from '@/types/customerUnloadBill'
 import type { MajhiBillType } from '@/types/majhiBill'
 import type { GodownBillType } from '@/types/godownBill'
 import { useStoresStore } from '@/stores/stores'
@@ -140,11 +151,13 @@ import { useLotsStore } from '@/stores/lots'
 import { useGodownsStore } from '@/stores/godowns'
 import { useMajhisStore } from '@/stores/majhis'
 import { useCustomerStoreBillsStore } from '@/stores/customerStoreBills'
+import { useCustomerUnloadBillsStore } from '@/stores/customerUnloadBills'
 import { useMajhiBillsStore } from '@/stores/majhiBills'
 import { useGodownBillsStore } from '@/stores/godownBills'
 import { push } from 'notivue'
 import StoreFields from './StoreFields.vue'
 import CustomerStoreBillFields from '@/components/features/customerStoreBills/CustomerStoreBillFields.vue'
+import CustomerUnloadBillFields from '@/components/features/customerUnloadBills/CustomerUnloadBillFields.vue'
 import MajhiBillFields from '@/components/features/majhiBills/MajhiBillFields.vue'
 import GodownBillFields from '@/components/features/godownBills/GodownBillFields.vue'
 
@@ -167,6 +180,7 @@ const lotsStore = useLotsStore()
 const godownsStore = useGodownsStore()
 const majhisStore = useMajhisStore()
 const customerStoreBillsStore = useCustomerStoreBillsStore()
+const customerUnloadBillsStore = useCustomerUnloadBillsStore()
 const majhiBillsStore = useMajhiBillsStore()
 const godownBillsStore = useGodownBillsStore()
 
@@ -182,7 +196,7 @@ const presetLotLabel = computed(() => {
     if (!props.presetLotId) return ''
     const lot = lotsStore.getLotById(props.presetLotId)
     if (!lot) return `Lot #${props.presetLotId}`
-    return `${lot.product_name} — Lot ${lot.lot_number}`
+    return `${lot.product_name} â€” Lot ${lot.lot_number}`
 })
 
 const currentLot = computed(() => {
@@ -203,6 +217,11 @@ const form = ref({
     weight: 0,
     quantity: 0,
     start_date: today,
+})
+
+const unloadBillForm = ref({
+    bill_type: 'quantity' as CustomerUnloadBillType,
+    rate: 0,
 })
 
 const billForm = ref({
@@ -244,6 +263,7 @@ const initialize = () => {
         }
     }
 
+    unloadBillForm.value = { bill_type: 'quantity', rate: 0 }
     billForm.value = { bill_type: 'quantity', rate: 0 }
     majhiBillForm.value = { majhi_id: null, bill_type: 'quantity', rate: 0 }
     godownBillForm.value = { bill_type: 'fixed', rate: 0 }
@@ -317,6 +337,13 @@ const submit = async () => {
             return
         }
 
+        await customerUnloadBillsStore.createCustomerUnloadBill({
+            customer_id: lot.customer_id,
+            store_id: newStore.id,
+            bill_type: unloadBillForm.value.bill_type,
+            rate: unloadBillForm.value.rate,
+        })
+
         await customerStoreBillsStore.createCustomerStoreBill({
             customer_id: lot.customer_id,
             store_id: newStore.id,
@@ -350,6 +377,10 @@ const submit = async () => {
 }
 
 const validateBills = (): boolean => {
+    if (!unloadBillForm.value.rate || unloadBillForm.value.rate <= 0) {
+        push.error('Customer unload bill: rate must be greater than 0')
+        return false
+    }
     if (!billForm.value.rate || billForm.value.rate <= 0) {
         push.error('Customer store bill: rate must be greater than 0')
         return false
@@ -379,6 +410,7 @@ const handleRefreshBills = async () => {
                 godownBillsStore.fetchGodownBills(),
                 majhiBillsStore.fetchMajhiBills(),
                 customerStoreBillsStore.fetchCustomerStoreBills(),
+                customerUnloadBillsStore.fetchCustomerUnloadBills(),
             ])
         }
     } finally {

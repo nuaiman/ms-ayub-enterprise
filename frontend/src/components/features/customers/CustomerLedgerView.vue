@@ -85,7 +85,7 @@
             <div v-else class="ledger-continuation">
                 <div class="ledger-continuation-left">
                     <div class="ledger-continuation-title">
-                        Statement of Account — {{ customerName }}
+                        Statement of Account â€” {{ customerName }}
                     </div>
                     <div class="ledger-continuation-sub">
                         {{ periodLabel }}
@@ -121,7 +121,7 @@
                         <tr v-for="row in page.rows" :key="row.event.id">
                             <td class="col-date">{{ shortDate(row.event.date) }}</td>
                             <td class="col-type">{{ typeLabel(row.event.type) }}</td>
-                            <td class="col-ref">{{ row.event.reference || '—' }}</td>
+                            <td class="col-ref">{{ row.event.reference || 'â€”' }}</td>
                             <td class="col-desc">
                                 <div class="desc-title">{{ row.event.title }}</div>
                                 <div v-if="row.event.description" class="desc-sub">{{ row.event.description }}</div>
@@ -130,13 +130,13 @@
                                 <span v-if="row.event.amountKind === 'debit'">
                                     {{ formatMoney(row.event.amount || 0) }}
                                 </span>
-                                <span v-else class="dash">—</span>
+                                <span v-else class="dash">â€”</span>
                             </td>
                             <td class="col-amt text-right">
                                 <span v-if="row.event.amountKind === 'credit'">
                                     {{ formatMoney(row.event.amount || 0) }}
                                 </span>
-                                <span v-else class="dash">—</span>
+                                <span v-else class="dash">â€”</span>
                             </td>
                             <td class="col-amt text-right balance-cell">
                                 {{ formatMoney(row.balance) }}
@@ -147,7 +147,7 @@
             </section>
 
             <!-- ============================================================ -->
-            <!-- SIGNATURE (left) + SUMMARY (right) — last page only            -->
+            <!-- SIGNATURE (left) + SUMMARY (right) â€” last page only            -->
             <!-- ============================================================ -->
             <section v-if="page.isLast" class="ledger-bottom-row">
                 <div class="ledger-bottom-left">
@@ -185,8 +185,8 @@
             <!-- FOOTER (every page)                                            -->
             <!-- ============================================================ -->
             <footer class="ledger-footer">
-                <p class="ledger-footer-main">M/S. AYUB ENTERPRISE · Commission Agent — Godown &amp; Logistics</p>
-                <p class="ledger-footer-sub">Generated on {{ generatedDate }} · This is a computer-generated statement.
+                <p class="ledger-footer-main">M/S. AYUB ENTERPRISE Â· Commission Agent â€” Godown &amp; Logistics</p>
+                <p class="ledger-footer-sub">Generated on {{ generatedDate }} Â· This is a computer-generated statement.
                 </p>
             </footer>
         </div>
@@ -228,6 +228,7 @@ const typeLabelMap: Record<LedgerEventType, string> = {
     customer_store_bill: 'Store Bill',
     customer_delivery_bill: 'Delivery Bill',
     customer_additional_bill: 'Additional Bill',
+    customer_unload_bill: 'Unload Bill',
     invoice_created: 'Invoice',
     payment_received: 'Payment',
 }
@@ -242,7 +243,7 @@ const generatedDate = computed(() =>
 
 const periodLabel = computed(() => {
     if (props.dateFrom && props.dateTo) {
-        return `${shortDate(props.dateFrom)} — ${shortDate(props.dateTo)}`
+        return `${shortDate(props.dateFrom)} â€” ${shortDate(props.dateTo)}`
     }
     if (props.dateFrom) return `From ${shortDate(props.dateFrom)}`
     if (props.dateTo) return `Up to ${shortDate(props.dateTo)}`

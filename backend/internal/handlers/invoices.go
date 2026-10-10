@@ -57,7 +57,8 @@ func billTypeAllowedForEntity(entityType, billType string) bool {
 	case "customer":
 		return billType == "customer_store" ||
 			billType == "customer_delivery" ||
-			billType == "customer_additional"
+			billType == "customer_additional" ||
+			billType == "customer_unload"
 	case "majhi":
 		return billType == "majhi"
 	case "godown":
@@ -578,6 +579,17 @@ func (h *Handler) billRemaining(r *http.Request, billType string, billID int64) 
 		}
 		paid, _ := h.app.Models.BillPayment.GetTotalPaid(ctx, "customer_additional", billID)
 		return b.Amount - paid, true, nil
+
+	case "customer_unload":
+		b, err := h.app.Models.CustomerUnloadBill.GetByID(ctx, billID)
+		if err != nil {
+			return 0, false, err
+		}
+		if b == nil {
+			return 0, false, nil
+		}
+		paid, _ := h.app.Models.BillPayment.GetTotalPaid(ctx, "customer_unload", billID)
+		return b.TotalAmount - paid, true, nil
 	}
 
 	return 0, false, nil
@@ -605,6 +617,13 @@ func (h *Handler) billBelongsToEntity(r *http.Request, billType string, billID i
 
 	case "customer_additional":
 		b, err := h.app.Models.CustomerAdditionalBill.GetByID(ctx, billID)
+		if err != nil || b == nil {
+			return false
+		}
+		return entityType == "customer" && b.CustomerID == entityID
+
+	case "customer_unload":
+		b, err := h.app.Models.CustomerUnloadBill.GetByID(ctx, billID)
 		if err != nil || b == nil {
 			return false
 		}
@@ -691,8 +710,29 @@ func (h *Handler) collectUnpaidBills(r *http.Request, entityType string, entityI
 			out = append(out, UnbilledBill{
 				BillType:  "customer_additional",
 				BillID:    b.ID,
-				Label:     "Customer Additional Bill #" + strconv.FormatInt(b.ID, 10) + " — " + b.Description,
+				Label:     "Customer Additional Bill #" + strconv.FormatInt(b.ID, 10) + " â€” " + b.Description,
 				Total:     b.Amount,
+				Paid:      paid,
+				Remaining: remaining,
+				Date:      b.CreatedAt.Format(time.RFC3339),
+			})
+		}
+
+		rows4, err := h.app.Models.CustomerUnloadBill.GetByCustomerID(ctx, entityID)
+		if err != nil {
+			return nil, err
+		}
+		for _, b := range rows4 {
+			paid, _ := h.app.Models.BillPayment.GetTotalPaid(ctx, "customer_unload", b.ID)
+			remaining := b.TotalAmount - paid
+			if remaining <= 0 {
+				continue
+			}
+			out = append(out, UnbilledBill{
+				BillType:  "customer_unload",
+				BillID:    b.ID,
+				Label:     "Customer Unload Bill #" + strconv.FormatInt(b.ID, 10) + " (Store #" + strconv.FormatInt(b.StoreID, 10) + ")",
+				Total:     b.TotalAmount,
 				Paid:      paid,
 				Remaining: remaining,
 				Date:      b.CreatedAt.Format(time.RFC3339),

@@ -12,6 +12,7 @@ import { useDamagesStore } from './damages'
 import { useCustomerStoreBillsStore } from './customerStoreBills'
 import { useCustomerDeliveryBillsStore } from './customerDeliveryBills'
 import { useCustomerAdditionalBillsStore } from './customerAdditionalBills'
+import { useCustomerUnloadBillsStore } from './customerUnloadBills'
 import { useInvoicesStore } from './invoices'
 import { useLotTransfersStore } from './lotTransfers'
 import api from '@/utils/axios'
@@ -29,6 +30,7 @@ export type LedgerEventType =
     | 'customer_store_bill'
     | 'customer_delivery_bill'
     | 'customer_additional_bill'
+    | 'customer_unload_bill'
     | 'invoice_created'
     | 'payment_received'
 
@@ -71,6 +73,7 @@ const CUSTOMER_VISIBLE_TYPES: LedgerEventType[] = [
     'customer_store_bill',
     'customer_delivery_bill',
     'customer_additional_bill',
+    'customer_unload_bill',
     'invoice_created',
     'payment_received',
 ]
@@ -78,19 +81,20 @@ const CUSTOMER_VISIBLE_TYPES: LedgerEventType[] = [
 const CUSTOMER_HIDDEN_META_KEYS: string[] = ['user_id', 'internal_notes', 'rate']
 
 const ICONS: Record<LedgerEventType, string> = {
-    customer_created: '👤',
-    lot_created: '🏷️',
-    store_created: '🏢',
-    delivery_created: '🚚',
-    delivery_item_added: '📦',
-    damage_recorded: '🔴',
-    lot_transferred_out: '➡️',
-    lot_transferred_in: '⬅️',
-    customer_store_bill: '🧾',
-    customer_delivery_bill: '🧾',
-    customer_additional_bill: '🧾',
-    invoice_created: '📄',
-    payment_received: '💵',
+    customer_created: 'ðŸ‘¤',
+    lot_created: 'ðŸ·ï¸',
+    store_created: 'ðŸ¢',
+    delivery_created: 'ðŸšš',
+    delivery_item_added: 'ðŸ“¦',
+    damage_recorded: 'ðŸ”´',
+    lot_transferred_out: 'âž¡ï¸',
+    lot_transferred_in: 'â¬…ï¸',
+    customer_store_bill: 'ðŸ§¾',
+    customer_delivery_bill: 'ðŸ§¾',
+    customer_additional_bill: 'ðŸ§¾',
+    customer_unload_bill: 'ðŸ“¥',
+    invoice_created: 'ðŸ“„',
+    payment_received: 'ðŸ’µ',
 }
 
 export const useCustomerLedgerStore = defineStore('customerLedger', () => {
@@ -104,6 +108,7 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
     const customerStoreBillsStore = useCustomerStoreBillsStore()
     const customerDeliveryBillsStore = useCustomerDeliveryBillsStore()
     const customerAdditionalBillsStore = useCustomerAdditionalBillsStore()
+    const customerUnloadBillsStore = useCustomerUnloadBillsStore()
     const invoicesStore = useInvoicesStore()
     const lotTransfersStore = useLotTransfersStore()
 
@@ -133,7 +138,7 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
     const lotLabel = (lotId: number): string => {
         const lot = lotsStore.getLotById(lotId)
         if (!lot) return `Lot #${lotId}`
-        return `${lot.product_name} · Lot ${lot.lot_number}`
+        return `${lot.product_name} Â· Lot ${lot.lot_number}`
     }
 
     const lotLabelFromStore = (storeId: number): string => {
@@ -157,6 +162,7 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
             customer_store: `/customer-store-bills/${billId}/payments`,
             customer_delivery: `/customer-delivery-bills/${billId}/payments`,
             customer_additional: `/customer-additional-bills/${billId}/payments`,
+            customer_unload: `/customer-unload-bills/${billId}/payments`,
         }
         const route = routeMap[billType]
         if (!route) {
@@ -308,7 +314,7 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
                 title: `Delivery #${delivery.id} created`,
                 description:
                     delivery.from_location || delivery.to_location
-                        ? `${delivery.from_location || '—'} → ${delivery.to_location || '—'}`
+                        ? `${delivery.from_location || 'â€”'} â†’ ${delivery.to_location || 'â€”'}`
                         : `Delivery #${delivery.id}`,
                 reference: `Delivery #${delivery.id}`,
                 amountKind: 'neutral',
@@ -335,7 +341,7 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
                     date: item.created_at,
                     title: 'Delivery item added',
                     description: lot
-                        ? `${lot.product_name} · Lot ${lot.lot_number}`
+                        ? `${lot.product_name} Â· Lot ${lot.lot_number}`
                         : `Store #${item.store_id}`,
                     reference: `Delivery #${delivery.id}`,
                     amountKind: 'neutral',
@@ -383,7 +389,7 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
                     type: 'lot_transferred_out',
                     date: t.transferred_at,
                     title: 'Lot transferred out',
-                    description: `${lotLabel(t.lot_id)} → ${customersStore.getCustomerName(t.to_customer_id)}`,
+                    description: `${lotLabel(t.lot_id)} â†’ ${customersStore.getCustomerName(t.to_customer_id)}`,
                     reference: `Transfer #${t.id}`,
                     amountKind: 'neutral',
                     icon: ICONS.lot_transferred_out,
@@ -399,7 +405,7 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
                     type: 'lot_transferred_in',
                     date: t.transferred_at,
                     title: 'Lot transferred in',
-                    description: `${lotLabel(t.lot_id)} ← ${customersStore.getCustomerName(t.from_customer_id)}`,
+                    description: `${lotLabel(t.lot_id)} â† ${customersStore.getCustomerName(t.from_customer_id)}`,
                     reference: `Transfer #${t.id}`,
                     amountKind: 'neutral',
                     icon: ICONS.lot_transferred_in,
@@ -419,7 +425,7 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
                 type: 'customer_store_bill',
                 date: b.created_at,
                 title: 'Customer store bill',
-                description: `${lotLabelFromStore(b.store_id)} · ${b.month_year}`,
+                description: `${lotLabelFromStore(b.store_id)} Â· ${b.month_year}`,
                 reference: `Bill #${b.id}`,
                 amount: b.total_amount,
                 amountLabel: 'Billed',
@@ -495,7 +501,36 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
             }
         }
 
-        // 11. Invoices
+        // 11. Customer unload bills + payments
+        const cuBills = customerUnloadBillsStore.bills.filter((b) => b.customer_id === customerId)
+        for (const b of cuBills) {
+            events.push({
+                id: `customer_unload_bill_${b.id}`,
+                type: 'customer_unload_bill',
+                date: b.created_at,
+                title: 'Customer unload bill',
+                description: `${lotLabelFromStore(b.store_id)}`,
+                reference: `Bill #${b.id}`,
+                amount: b.total_amount,
+                amountLabel: 'Billed',
+                amountKind: 'debit',
+                icon: ICONS.customer_unload_bill,
+                meta: {
+                    store: `Store #${b.store_id}`,
+                    bill_type: b.bill_type,
+                    quantity: `${b.quantity_at_billing} ${b.quantity_unit_at_billing ?? ''}`.trim(),
+                    weight: `${b.weight_at_billing} ${b.weight_unit_at_billing ?? ''}`.trim(),
+                    rate: b.rate,
+                },
+            })
+
+            const payments = await fetchPaymentsForBill('customer_unload', b.id)
+            for (const p of payments) {
+                events.push(paymentToEvent(p, `Customer unload bill #${b.id}`))
+            }
+        }
+
+        // 12. Invoices
         const invoices = invoicesStore.invoices.filter(
             (i) => i.entity_type === 'customer' && i.entity_id === customerId
         )
@@ -768,6 +803,7 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
             customer_store_bill: 'Store Bill',
             customer_delivery_bill: 'Delivery Bill',
             customer_additional_bill: 'Additional Bill',
+            customer_unload_bill: 'Unload Bill',
             invoice_created: 'Invoice',
             payment_received: 'Payment',
         }

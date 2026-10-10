@@ -53,6 +53,15 @@
                             v-model:start-date="store.start_date" :disabled="submitting" :required="false" />
                     </div>
 
+                    <!-- Customer Unload Bill -->
+                    <div class="border-t border-(--color-border)/60 pt-4">
+                        <h4 class="text-sm font-medium text-(--color-text-primary) mb-3">
+                            Customer Unload Bill
+                        </h4>
+                        <CustomerUnloadBillFields v-model:bill-type="store.unload_bill_type"
+                            v-model:rate="store.unload_bill_rate" :disabled="submitting" :derived="true" />
+                    </div>
+
                     <!-- Customer Store Bill (billing month auto-derived from store.start_date) -->
                     <div class="border-t border-(--color-border)/60 pt-4">
                         <h4 class="text-sm font-medium text-(--color-text-primary) mb-3">
@@ -125,6 +134,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import type { Lot } from '@/types/lot'
 import type { CustomerStoreBillType } from '@/types/customerStoreBill'
+import type { CustomerUnloadBillType } from '@/types/customerUnloadBill'
 import type { MajhiBillType } from '@/types/majhiBill'
 import type { GodownBillType } from '@/types/godownBill'
 import { useLotsStore } from '@/stores/lots'
@@ -133,12 +143,14 @@ import { useStoresStore } from '@/stores/stores'
 import { useGodownsStore } from '@/stores/godowns'
 import { useMajhisStore } from '@/stores/majhis'
 import { useCustomerStoreBillsStore } from '@/stores/customerStoreBills'
+import { useCustomerUnloadBillsStore } from '@/stores/customerUnloadBills'
 import { useMajhiBillsStore } from '@/stores/majhiBills'
 import { useGodownBillsStore } from '@/stores/godownBills'
 import { push } from 'notivue'
 import LotFields from './LotFields.vue'
 import StoreFields from '@/components/features/stores/StoreFields.vue'
 import CustomerStoreBillFields from '@/components/features/customerStoreBills/CustomerStoreBillFields.vue'
+import CustomerUnloadBillFields from '@/components/features/customerUnloadBills/CustomerUnloadBillFields.vue'
 import MajhiBillFields from '@/components/features/majhiBills/MajhiBillFields.vue'
 import GodownBillFields from '@/components/features/godownBills/GodownBillFields.vue'
 
@@ -150,6 +162,10 @@ interface StoreForm {
     weight: number
     quantity: number
     start_date: string
+
+    // Customer unload bill (one-time, on store creation)
+    unload_bill_type: CustomerUnloadBillType
+    unload_bill_rate: number
 
     // Customer store bill (month_year auto-derived by backend)
     bill_type: CustomerStoreBillType
@@ -182,6 +198,7 @@ const storesStore = useStoresStore()
 const godownsStore = useGodownsStore()
 const majhisStore = useMajhisStore()
 const customerStoreBillsStore = useCustomerStoreBillsStore()
+const customerUnloadBillsStore = useCustomerUnloadBillsStore()
 const majhiBillsStore = useMajhiBillsStore()
 const godownBillsStore = useGodownBillsStore()
 
@@ -212,6 +229,8 @@ const createEmptyStore = (): StoreForm => ({
     weight: 0,
     quantity: 0,
     start_date: today,
+    unload_bill_type: 'quantity',
+    unload_bill_rate: 0,
     bill_type: 'quantity',
     bill_rate: 0,
     majhi_id: null,
@@ -267,6 +286,12 @@ const validateStores = (): boolean => {
         }
         if (s.weight === 0 && s.quantity === 0) {
             push.error(`Store #${i + 1}: weight or quantity must be greater than 0`)
+            return false
+        }
+
+        // Customer unload bill
+        if (!s.unload_bill_rate || s.unload_bill_rate <= 0) {
+            push.error(`Store #${i + 1}: customer unload bill rate must be greater than 0`)
             return false
         }
 
@@ -345,7 +370,7 @@ const submit = async () => {
 
         // ============================================================
         // STORES + BILLS (create only)
-        // Month_year is intentionally omitted — backend derives it
+        // Month_year is intentionally omitted â€” backend derives it
         // from each newly-created store's start_date.
         // ============================================================
         if (!isEditMode.value) {
@@ -358,6 +383,13 @@ const submit = async () => {
                     start_date: store.start_date ? `${store.start_date}T00:00:00Z` : undefined,
                 })
                 if (!newStore) continue
+
+                await customerUnloadBillsStore.createCustomerUnloadBill({
+                    customer_id: form.value.customer_id,
+                    store_id: newStore.id,
+                    bill_type: store.unload_bill_type,
+                    rate: store.unload_bill_rate,
+                })
 
                 await customerStoreBillsStore.createCustomerStoreBill({
                     customer_id: form.value.customer_id,

@@ -22,7 +22,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div class="p-3 rounded-lg bg-(--color-surface) border border-(--color-border)">
                     <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Invoice Number</p>
-                    <p class="text-sm font-semibold text-(--color-text-primary) mt-1">INV-{{ invoice?.id ?? '—' }}</p>
+                    <p class="text-sm font-semibold text-(--color-text-primary) mt-1">INV-{{ invoice?.id ?? 'â€”' }}</p>
                 </div>
                 <div class="p-3 rounded-lg bg-(--color-surface) border border-(--color-border)">
                     <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Invoice Date</p>
@@ -47,7 +47,7 @@
                 class="flex items-center justify-between p-4 border-b border-(--color-border) bg-(--color-muted-bg)/10">
                 <div>
                     <h2 class="text-base font-semibold text-(--color-text-primary)">Invoice Preview</h2>
-                    <p class="text-sm text-(--color-text-secondary)">A4 · {{ totalPages }} page{{ totalPages === 1 ? ''
+                    <p class="text-sm text-(--color-text-secondary)">A4 Â· {{ totalPages }} page{{ totalPages === 1 ? ''
                         :
                         's' }}</p>
                 </div>
@@ -78,7 +78,7 @@
                                 <div class="invoice-title">INVOICE</div>
                                 <div class="invoice-meta-line">
                                     <span class="invoice-meta-key">Invoice #</span>
-                                    <span class="invoice-meta-val">INV-{{ invoice?.id ?? '—' }}</span>
+                                    <span class="invoice-meta-val">INV-{{ invoice?.id ?? 'â€”' }}</span>
                                 </div>
                                 <div class="invoice-meta-line">
                                     <span class="invoice-meta-key">Date</span>
@@ -117,7 +117,7 @@
                         <div v-else class="invoice-continuation">
                             <div class="invoice-continuation-left">
                                 <div class="invoice-continuation-title">
-                                    Invoice — {{ party.name }}
+                                    Invoice â€” {{ party.name }}
                                 </div>
                                 <div class="invoice-continuation-sub">
                                     <span v-if="invoice?.id">Ref: INV-{{ invoice.id }}</span>
@@ -179,7 +179,7 @@
                                         <td class="capitalize">
                                             {{ d.type === 'percent' ? `${d.value}%` : 'Flat' }}
                                         </td>
-                                        <td class="col-amt">− {{ formatCurrency(d.computed_amount) }}</td>
+                                        <td class="col-amt">âˆ’ {{ formatCurrency(d.computed_amount) }}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -208,7 +208,7 @@
                                     <div class="invoice-totals-row">
                                         <span class="invoice-totals-label">Discount</span>
                                         <span class="invoice-totals-value invoice-totals-value-red">
-                                            − {{ formatCurrency(invoice?.discount_amount || 0) }}
+                                            âˆ’ {{ formatCurrency(invoice?.discount_amount || 0) }}
                                         </span>
                                     </div>
                                     <div class="invoice-totals-row invoice-totals-row-grand">
@@ -229,7 +229,7 @@
 
                         <!-- ============= FOOTER (every page) ============= -->
                         <footer class="invoice-footer">
-                            <p class="invoice-footer-main">{{ company.name }} · {{ company.subtitle }}</p>
+                            <p class="invoice-footer-main">{{ company.name }} Â· {{ company.subtitle }}</p>
                             <p class="invoice-footer-sub">Generated on {{ formatDate(new Date().toISOString()) }}</p>
                         </footer>
                     </div>
@@ -282,7 +282,7 @@
                         <div class="invoice-title">INVOICE</div>
                         <div class="invoice-meta-line">
                             <span class="invoice-meta-key">Invoice #</span>
-                            <span class="invoice-meta-val">INV-{{ invoice?.id ?? '—' }}</span>
+                            <span class="invoice-meta-val">INV-{{ invoice?.id ?? 'â€”' }}</span>
                         </div>
                         <div class="invoice-meta-line">
                             <span class="invoice-meta-key">Date</span>
@@ -320,7 +320,7 @@
                 <div v-else class="invoice-continuation">
                     <div class="invoice-continuation-left">
                         <div class="invoice-continuation-title">
-                            Invoice — {{ party.name }}
+                            Invoice â€” {{ party.name }}
                         </div>
                         <div class="invoice-continuation-sub">
                             <span v-if="invoice?.id">Ref: INV-{{ invoice.id }}</span>
@@ -379,7 +379,7 @@
                                 <td class="capitalize">
                                     {{ d.type === 'percent' ? `${d.value}%` : 'Flat' }}
                                 </td>
-                                <td class="col-amt">− {{ formatCurrency(d.computed_amount) }}</td>
+                                <td class="col-amt">âˆ’ {{ formatCurrency(d.computed_amount) }}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -406,7 +406,7 @@
                             <div class="invoice-totals-row">
                                 <span class="invoice-totals-label">Discount</span>
                                 <span class="invoice-totals-value invoice-totals-value-red">
-                                    − {{ formatCurrency(invoice?.discount_amount || 0) }}
+                                    âˆ’ {{ formatCurrency(invoice?.discount_amount || 0) }}
                                 </span>
                             </div>
                             <div class="invoice-totals-row invoice-totals-row-grand">
@@ -425,7 +425,7 @@
                 </section>
 
                 <footer class="invoice-footer">
-                    <p class="invoice-footer-main">{{ company.name }} · {{ company.subtitle }}</p>
+                    <p class="invoice-footer-main">{{ company.name }} Â· {{ company.subtitle }}</p>
                     <p class="invoice-footer-sub">Generated on {{ formatDate(new Date().toISOString()) }}</p>
                 </footer>
             </div>
@@ -461,7 +461,7 @@ const printMode = ref(false)
 
 const company = {
     name: 'M/S. AYUB ENTERPRISE',
-    subtitle: 'Commission Agent — Godown & Logistics',
+    subtitle: 'Commission Agent â€” Godown & Logistics',
     address: 'Ali Hossain Chairman Building (1st Floor), 958/27, Strand Road, Mazirghat, Chattogram.',
     contact: 'Cell : 01813-397288, 01705-727492, 01793-287709, 01864-106406',
     email: 'E-mail : mdayubenterprise@gmail.com',
@@ -475,6 +475,7 @@ const billTypeLabel = (t: UnbilledBillType): string => {
         customer_store: 'Store',
         customer_delivery: 'Delivery',
         customer_additional: 'Additional',
+        customer_unload: 'Unload',
         majhi: 'Majhi',
         godown: 'Godown',
     }
@@ -489,6 +490,8 @@ const billReference = (it: InvoiceItem): string => {
             return `Customer Delivery Bill #${it.bill_id}`
         case 'customer_additional':
             return `Customer Additional Bill #${it.bill_id}`
+        case 'customer_unload':
+            return `Customer Unload Bill #${it.bill_id}`
         case 'majhi':
             return `Majhi Bill #${it.bill_id}`
         case 'godown':
@@ -500,7 +503,7 @@ const billReference = (it: InvoiceItem): string => {
 
 const party = computed(() => {
     const inv = props.invoice
-    if (!inv) return { name: '—', phone: '', address: '', email: '' }
+    if (!inv) return { name: 'â€”', phone: '', address: '', email: '' }
 
     switch (inv.entity_type) {
         case 'customer': {
@@ -554,7 +557,7 @@ const preparedByName = computed(() => {
 })
 
 const formatDate = (dateStr?: string | null): string => {
-    if (!dateStr) return '—'
+    if (!dateStr) return 'â€”'
     return new Date(dateStr).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
@@ -631,7 +634,7 @@ const handlePrint = async () => {
 
 <style>
 /* ============================================================================
-   Global styles — print portal lives outside the component subtree.
+   Global styles â€” print portal lives outside the component subtree.
    ============================================================================ */
 
 .invoice-page {
@@ -843,7 +846,7 @@ const handlePrint = async () => {
 }
 
 /* ============================================================================
-   TABLE — head is fixed; body fills the rest of the wrapper.
+   TABLE â€” head is fixed; body fills the rest of the wrapper.
    ============================================================================ */
 
 .invoice-table-wrap {
