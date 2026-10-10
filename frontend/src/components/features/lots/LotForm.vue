@@ -370,7 +370,7 @@ const submit = async () => {
 
         // ============================================================
         // STORES + BILLS (create only)
-        // Month_year is intentionally omitted â€” backend derives it
+        // Month_year is intentionally omitted - backend derives it
         // from each newly-created store's start_date.
         // ============================================================
         if (!isEditMode.value) {

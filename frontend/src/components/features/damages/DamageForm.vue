@@ -36,6 +36,9 @@
                         <span v-if="unitLabel('quantity')" class="text-xs font-normal text-(--color-text-secondary)">
                             ({{ unitLabel('quantity') }})
                         </span>
+                        <span v-if="quantityShortfall > 0" class="text-xs font-medium text-(--color-red) ml-1">
+                            - exceeds by {{ formatNumber(quantityShortfall) }}, will be adjusted
+                        </span>
                     </label>
                     <input v-model.number="form.quantity" type="number" step="0.01" min="0" placeholder="0"
                         :disabled="submitting"
@@ -46,6 +49,9 @@
                         Weight
                         <span v-if="unitLabel('weight')" class="text-xs font-normal text-(--color-text-secondary)">
                             ({{ unitLabel('weight') }})
+                        </span>
+                        <span v-if="weightShortfall > 0" class="text-xs font-medium text-(--color-red) ml-1">
+                            - exceeds by {{ formatNumber(weightShortfall) }}, will be adjusted
                         </span>
                     </label>
                     <input v-model.number="form.weight" type="number" step="0.01" min="0" placeholder="0"
@@ -108,7 +114,7 @@
                         class="relative w-24 h-24 rounded-lg overflow-hidden border border-(--color-border)">
                         <img :src="imagePreview" alt="Preview" class="w-full h-full object-cover" />
                         <button type="button" @click="removeImage"
-                            class="absolute top-1 right-1 w-5 h-5 bg-(--color-red) text-white rounded-full flex items-center justify-center text-xs hover:opacity-90 transition-opacity">×</button>
+                            class="absolute top-1 right-1 w-5 h-5 bg-(--color-red) text-white rounded-full flex items-center justify-center text-xs hover:opacity-90 transition-opacity">Ã—</button>
                     </div>
                     <div v-else
                         class="w-24 h-24 rounded-lg border-2 border-dashed border-(--color-border) flex items-center justify-center bg-(--color-muted-bg)">
@@ -175,7 +181,7 @@
                     {{ justCreatedId ? 'Retrying image...' : (isEditMode ? 'Saving...' : 'Creating...') }}
                 </span>
                 <span v-else>{{ justCreatedId ? 'Retry Image Upload' : (isEditMode ? 'Save Changes' : 'Create Damage')
-                }}</span>
+                    }}</span>
             </button>
         </div>
     </form>
@@ -242,17 +248,30 @@ const unitLabel = (kind: 'quantity' | 'weight'): string => {
     return selectedLot.value?.weight_unit ?? ''
 }
 
+const quantityShortfall = computed(() => {
+    if (!selectedStore.value) return 0
+    return Math.max(0, form.value.quantity - selectedStore.value.quantity)
+})
+
+const weightShortfall = computed(() => {
+    if (!selectedStore.value) return 0
+    return Math.max(0, form.value.weight - selectedStore.value.weight)
+})
+
+const formatNumber = (n: number): string =>
+    new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(n)
+
 const lockedStoreLabel = computed(() => {
-    if (!selectedStore.value) return '—'
+    if (!selectedStore.value) return '-'
     const lot = selectedLot.value
     if (!lot) return `Store #${selectedStore.value.id}`
-    return `Store #${selectedStore.value.id} — ${lot.product_name} (Lot ${lot.lot_number})`
+    return `Store #${selectedStore.value.id} - ${lot.product_name} (Lot ${lot.lot_number})`
 })
 
 const storeLabel = (store: Store): string => {
     const lot = lotsStore.getLotById(store.lot_id)
     if (!lot) return `Store #${store.id}`
-    return `Store #${store.id} — ${lot.product_name} (Lot ${lot.lot_number})`
+    return `Store #${store.id} - ${lot.product_name} (Lot ${lot.lot_number})`
 }
 
 // Image state
@@ -346,6 +365,31 @@ watch(() => props.damage, initialize, { immediate: true })
 
 const resetForm = () => { initialize() }
 
+const maybeApplyPreDeliveryAdjustment = async (): Promise<boolean> => {
+    if (!form.value.store_id) return true
+
+    let store = storesStore.getStoreById(form.value.store_id)
+    if (!store) {
+        await storesStore.fetchStores()
+        store = storesStore.getStoreById(form.value.store_id)
+    }
+    if (!store) return true
+
+    const needsQty = form.value.quantity > store.quantity
+    const needsWt = form.value.weight > store.weight
+    if (!needsQty && !needsWt) return true
+
+    const targetQty = needsQty ? form.value.quantity : store.quantity
+    const targetWt = needsWt ? form.value.weight : store.weight
+
+    const result = await storesStore.applyPreDeliveryAdjustment(form.value.store_id, {
+        target_quantity: targetQty,
+        target_weight: targetWt,
+    })
+
+    return result !== null
+}
+
 const submit = async () => {
     // Retry image path
     if (justCreatedId.value !== null) {
@@ -401,6 +445,10 @@ const submit = async () => {
         let damageId: number
 
         if (isEditMode.value && props.damage) {
+            // Pre-delivery adjustment if new values exceed store balance.
+            const adjusted = await maybeApplyPreDeliveryAdjustment()
+            if (!adjusted) return
+
             const updated = await damagesStore.updateDamage(props.damage.id, {
                 quantity: form.value.quantity,
                 weight: form.value.weight,
@@ -412,6 +460,10 @@ const submit = async () => {
             if (!updated) { submitting.value = false; return }
             damageId = props.damage.id
         } else {
+            // Pre-delivery adjustment if values exceed store balance.
+            const adjusted = await maybeApplyPreDeliveryAdjustment()
+            if (!adjusted) { submitting.value = false; return }
+
             const created = await damagesStore.createDamage({
                 store_id: form.value.store_id,
                 quantity: form.value.quantity,

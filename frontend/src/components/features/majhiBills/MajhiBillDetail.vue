@@ -24,7 +24,7 @@
                     </span>
                     <span class="w-1 h-1 rounded-full bg-(--color-text-secondary)"></span>
                     <span class="text-sm font-semibold text-(--color-text-primary)">{{ formatCurrency(bill.rate)
-                    }}</span>
+                        }}</span>
                 </div>
             </div>
         </div>
@@ -135,22 +135,22 @@ const lotsStore = useLotsStore()
 const storesStore = useStoresStore()
 
 const majhiLabel = computed(() => {
-    if (!props.bill) return 'â€”'
+    if (!props.bill) return '-'
     return majhisStore.getMajhiName(props.bill.majhi_id)
 })
 
 const storeLabel = computed(() => {
-    if (!props.bill) return 'â€”'
+    if (!props.bill) return '-'
 
     const storeId = props.bill.store_id
     if (storeId === null || storeId === undefined) {
-        return props.bill.delivery_item_id ? `Delivery Item #${props.bill.delivery_item_id}` : 'â€”'
+        return props.bill.delivery_item_id ? `Delivery Item #${props.bill.delivery_item_id}` : '-'
     }
 
     const store = storesStore.getStoreById(storeId)
     if (!store) return `Store #${storeId}`
     const lot = lotsStore.getLotById(store.lot_id)
-    if (lot) return `Store #${store.id} â€” ${lot.product_name} (Lot ${lot.lot_number})`
+    if (lot) return `Store #${store.id} - ${lot.product_name} (Lot ${lot.lot_number})`
     return `Store #${store.id}`
 })
 

@@ -141,6 +141,10 @@ const submit = async () => {
 
     submitting.value = true
     try {
+        // Pre-delivery adjustment if the new values exceed the store balance.
+        const adjusted = await maybeApplyPreDeliveryAdjustment()
+        if (!adjusted) return
+
         const result = await deliveriesStore.updateDeliveryItem(props.item.id, {
             store_id: form.value.store_id,
             majhi_id: form.value.majhi_id,
@@ -151,7 +155,7 @@ const submit = async () => {
         })
         if (!result) return
 
-        // Customer delivery bill — patch if exists, else create.
+        // Customer delivery bill - patch if exists, else create.
         if (existingCustomerBillId.value) {
             await customerDeliveryBillsStore.updateCustomerDeliveryBill(existingCustomerBillId.value, {
                 bill_type: form.value.cd_bill_type,
@@ -160,7 +164,6 @@ const submit = async () => {
                 quantity_at_billing: form.value.quantity,
             })
         } else if (form.value.cd_bill_rate > 0) {
-            // Need a customer — get from the delivery.
             const detail = await deliveriesStore.fetchDeliveryDetail(props.item.delivery_id)
             if (detail?.delivery?.customer_id) {
                 const created = await customerDeliveryBillsStore.createCustomerDeliveryBill({
@@ -173,7 +176,7 @@ const submit = async () => {
             }
         }
 
-        // Majhi bill — patch if exists, else create.
+        // Majhi bill - patch if exists, else create.
         if (existingMajhiBillId.value) {
             await majhiBillsStore.updateMajhiBill(existingMajhiBillId.value, {
                 bill_type: form.value.majhi_bill_type,
@@ -195,6 +198,35 @@ const submit = async () => {
     } finally {
         submitting.value = false
     }
+}
+
+const maybeApplyPreDeliveryAdjustment = async (): Promise<boolean> => {
+    if (!form.value.store_id) return true
+
+    let store = storesStore.getStoreById(form.value.store_id)
+    if (!store) {
+        await storesStore.fetchStores()
+        store = storesStore.getStoreById(form.value.store_id)
+    }
+    if (!store) return true
+
+    // If the store hasn't changed and the item hasn't grown, no adjustment
+    // is needed. Only check when the new values exceed the store's CURRENT
+    // balance. Note: on the same store, the old item's qty/wt has already
+    // been subtracted from the store by the trigger.
+    const needsQty = form.value.quantity > store.quantity
+    const needsWt = form.value.weight > store.weight
+    if (!needsQty && !needsWt) return true
+
+    const targetQty = needsQty ? form.value.quantity : store.quantity
+    const targetWt = needsWt ? form.value.weight : store.weight
+
+    const result = await storesStore.applyPreDeliveryAdjustment(form.value.store_id, {
+        target_quantity: targetQty,
+        target_weight: targetWt,
+    })
+
+    return result !== null
 }
 
 onMounted(async () => {

@@ -15,7 +15,7 @@
 
             <div class="flex-1 min-w-0">
                 <h2 class="text-xl font-bold text-(--color-text-primary)">
-                    {{ customerName }} â€” Ledger
+                    {{ customerName }} - Ledger
                 </h2>
                 <p class="text-sm text-(--color-text-secondary) mt-1">
                     {{ ledger.summary.eventCount }} event(s)
@@ -202,7 +202,7 @@
                         class="mt-2 pt-2 border-t border-(--color-border)/60 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1">
                         <div v-for="(value, key) in event.meta" :key="key" class="text-xs min-w-0">
                             <span class="text-(--color-text-secondary)">{{ humanKey(String(key)) }}:</span>
-                            <span class="text-(--color-text-primary) ml-1">{{ value ?? 'â€”' }}</span>
+                            <span class="text-(--color-text-primary) ml-1">{{ value ?? '-' }}</span>
                         </div>
                     </div>
                 </div>

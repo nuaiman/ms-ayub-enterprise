@@ -155,7 +155,7 @@ const lockedStoreLabel = computed(() => {
     const store = storesStore.getStoreById(props.bill.store_id)
     if (!store) return `Store #${props.bill.store_id}`
     const lot = lotsStore.getLotById(store.lot_id)
-    if (lot) return `Store #${store.id} â€” ${lot.product_name} (Lot ${lot.lot_number})`
+    if (lot) return `Store #${store.id} - ${lot.product_name} (Lot ${lot.lot_number})`
     return `Store #${store.id}`
 })
 
@@ -164,9 +164,9 @@ const customerLabel = (c: Customer): string =>
 
 const storeLabel = (s: Store): string => {
     const lot = lotsStore.getLotById(s.lot_id)
-    const lotName = lot ? lot.product_name : 'â€”'
-    const lotNum = lot ? lot.lot_number : 'â€”'
-    return `Store #${s.id} â€” ${lotName} (Lot ${lotNum})`
+    const lotName = lot ? lot.product_name : '-'
+    const lotNum = lot ? lot.lot_number : '-'
+    return `Store #${s.id} - ${lotName} (Lot ${lotNum})`
 }
 
 const unitLabel = (kind: 'weight' | 'quantity'): string => {

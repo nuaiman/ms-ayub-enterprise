@@ -21,7 +21,11 @@
         <div v-if="derivedLot" class="p-3 rounded-lg bg-(--color-blue)/5 border border-(--color-blue)/20">
             <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Lot (derived from store)</p>
             <p class="text-sm font-semibold text-(--color-text-primary) mt-0.5">
-                {{ derivedLot.product_name }} — Lot {{ derivedLot.lot_number }}
+                {{ derivedLot.product_name }} - Lot {{ derivedLot.lot_number }}
+            </p>
+            <p v-if="selectedStore" class="text-xs text-(--color-text-secondary) mt-1">
+                Store balance: {{ formatNumber(selectedStore.quantity) }} {{ derivedLot.quantity_unit }} /
+                {{ formatNumber(selectedStore.weight) }} {{ derivedLot.weight_unit }}
             </p>
         </div>
 
@@ -56,6 +60,9 @@
                     <span v-if="quantityUnit" class="text-xs font-normal text-(--color-text-secondary)">
                         ({{ quantityUnit }})
                     </span>
+                    <span v-if="quantityShortfall > 0" class="text-xs font-medium text-(--color-red) ml-1">
+                        - exceeds by {{ formatNumber(quantityShortfall) }}, will be adjusted
+                    </span>
                 </label>
                 <input :value="quantity"
                     @input="$emit('update:quantity', parseFloat(($event.target as HTMLInputElement).value) || 0)"
@@ -68,6 +75,9 @@
                     Weight
                     <span v-if="weightUnit" class="text-xs font-normal text-(--color-text-secondary)">
                         ({{ weightUnit }})
+                    </span>
+                    <span v-if="weightShortfall > 0" class="text-xs font-medium text-(--color-red) ml-1">
+                        - exceeds by {{ formatNumber(weightShortfall) }}, will be adjusted
                     </span>
                 </label>
                 <input :value="weight"
@@ -225,10 +235,23 @@ const derivedLot = computed(() => {
 const weightUnit = computed(() => derivedLot.value?.weight_unit ?? '')
 const quantityUnit = computed(() => derivedLot.value?.quantity_unit ?? '')
 
+const quantityShortfall = computed(() => {
+    if (!selectedStore.value) return 0
+    return Math.max(0, props.quantity - selectedStore.value.quantity)
+})
+
+const weightShortfall = computed(() => {
+    if (!selectedStore.value) return 0
+    return Math.max(0, props.weight - selectedStore.value.weight)
+})
+
+const formatNumber = (n: number): string =>
+    new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(n)
+
 const storeLabel = (store: Store): string => {
     const lot = lotsStore.getLotById(store.lot_id)
-    const lotName = lot ? lot.product_name : '—'
-    const lotNum = lot ? lot.lot_number : '—'
-    return `Store #${store.id} — ${lotName} (Lot ${lotNum})`
+    const lotName = lot ? lot.product_name : '-'
+    const lotNum = lot ? lot.lot_number : '-'
+    return `Store #${store.id} - ${lotName} (Lot ${lotNum})`
 }
 </script>

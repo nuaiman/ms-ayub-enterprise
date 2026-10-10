@@ -25,7 +25,7 @@
                         class="w-full px-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed">
                         <option :value="null">Select a lot</option>
                         <option v-for="lot in lotOptions" :key="lot.id" :value="lot.id">
-                            {{ lot.product_name }} â€” Lot {{ lot.lot_number }}
+                            {{ lot.product_name }} - Lot {{ lot.lot_number }}
                         </option>
                     </select>
                 </template>
@@ -35,8 +35,8 @@
             <div v-else-if="props.store"
                 class="mb-4 p-3 rounded-lg bg-(--color-muted-bg)/30 border border-(--color-border)">
                 <p class="text-xs text-(--color-text-secondary)">Lot</p>
-                <p class="text-sm text-(--color-text-primary)">{{ currentLot?.product_name ?? 'â€”' }} â€” Lot {{
-                    currentLot?.lot_number ?? 'â€”' }}</p>
+                <p class="text-sm text-(--color-text-primary)">{{ currentLot?.product_name ?? '-' }} - Lot {{
+                    currentLot?.lot_number ?? '-' }}</p>
             </div>
 
             <!-- Godown (create only) -->
@@ -57,7 +57,7 @@
             <div v-else-if="props.store"
                 class="mb-4 p-3 rounded-lg bg-(--color-muted-bg)/30 border border-(--color-border)">
                 <p class="text-xs text-(--color-text-secondary)">Godown</p>
-                <p class="text-sm text-(--color-text-primary)">{{ currentGodown?.name ?? 'â€”' }}</p>
+                <p class="text-sm text-(--color-text-primary)">{{ currentGodown?.name ?? '-' }}</p>
             </div>
 
             <StoreFields v-model:weight="form.weight" v-model:quantity="form.quantity"
@@ -196,7 +196,7 @@ const presetLotLabel = computed(() => {
     if (!props.presetLotId) return ''
     const lot = lotsStore.getLotById(props.presetLotId)
     if (!lot) return `Lot #${props.presetLotId}`
-    return `${lot.product_name} â€” Lot ${lot.lot_number}`
+    return `${lot.product_name} - Lot ${lot.lot_number}`
 })
 
 const currentLot = computed(() => {

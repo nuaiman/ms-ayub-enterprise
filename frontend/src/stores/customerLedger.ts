@@ -314,7 +314,7 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
                 title: `Delivery #${delivery.id} created`,
                 description:
                     delivery.from_location || delivery.to_location
-                        ? `${delivery.from_location || 'â€”'} â†’ ${delivery.to_location || 'â€”'}`
+                        ? `${delivery.from_location || '-'} â†’ ${delivery.to_location || '-'}`
                         : `Delivery #${delivery.id}`,
                 reference: `Delivery #${delivery.id}`,
                 amountKind: 'neutral',

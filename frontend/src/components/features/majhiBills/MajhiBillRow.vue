@@ -131,7 +131,7 @@ const storeLabel = computed(() => {
     if (storeId === null || storeId === undefined) {
         return props.bill.delivery_item_id
             ? `Delivery Item #${props.bill.delivery_item_id}`
-            : 'â€”'
+            : '-'
     }
 
     const store = storesStore.getStoreById(storeId)

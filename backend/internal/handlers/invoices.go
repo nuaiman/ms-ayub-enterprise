@@ -710,7 +710,7 @@ func (h *Handler) collectUnpaidBills(r *http.Request, entityType string, entityI
 			out = append(out, UnbilledBill{
 				BillType:  "customer_additional",
 				BillID:    b.ID,
-				Label:     "Customer Additional Bill #" + strconv.FormatInt(b.ID, 10) + " â€” " + b.Description,
+				Label:     "Customer Additional Bill #" + strconv.FormatInt(b.ID, 10) + " - " + b.Description,
 				Total:     b.Amount,
 				Paid:      paid,
 				Remaining: remaining,

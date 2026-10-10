@@ -108,6 +108,10 @@ const submit = async () => {
 
     submitting.value = true
     try {
+        // Pre-delivery adjustment if needed.
+        const adjusted = await maybeApplyPreDeliveryAdjustment()
+        if (!adjusted) return
+
         const created = await deliveriesStore.createDeliveryItem(props.deliveryId, {
             store_id: form.value.store_id,
             majhi_id: form.value.majhi_id,
@@ -138,6 +142,31 @@ const submit = async () => {
     } finally {
         submitting.value = false
     }
+}
+
+const maybeApplyPreDeliveryAdjustment = async (): Promise<boolean> => {
+    if (!form.value.store_id) return true
+
+    let store = storesStore.getStoreById(form.value.store_id)
+    if (!store) {
+        await storesStore.fetchStores()
+        store = storesStore.getStoreById(form.value.store_id)
+    }
+    if (!store) return true
+
+    const needsQty = form.value.quantity > store.quantity
+    const needsWt = form.value.weight > store.weight
+    if (!needsQty && !needsWt) return true
+
+    const targetQty = needsQty ? form.value.quantity : store.quantity
+    const targetWt = needsWt ? form.value.weight : store.weight
+
+    const result = await storesStore.applyPreDeliveryAdjustment(form.value.store_id, {
+        target_quantity: targetQty,
+        target_weight: targetWt,
+    })
+
+    return result !== null
 }
 
 onMounted(async () => {

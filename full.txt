@@ -1634,7 +1634,7 @@ func InitDB(dbPath, dbName, schemaFile string) *sql.DB {
 }
 
 // SeedDB applies a seed.sql file. Idempotent if the seed uses INSERT OR IGNORE.
-// Missing seed file is a warning, not fatal â€” so production can skip it.
+// Missing seed file is a warning, not fatal - so production can skip it.
 func SeedDB(db *sql.DB, seedFile string) {
 	if _, err := os.Stat(seedFile); os.IsNotExist(err) {
 		log.Printf("[SEED] no seed file at %s, skipping", seedFile)
@@ -3622,7 +3622,7 @@ func (h *Handler) CreateCustomerStoreBillHandler(w http.ResponseWriter, r *http.
 	type request struct {
 		CustomerID int64   `json:"customer_id"`
 		StoreID    int64   `json:"store_id"`
-		MonthYear  string  `json:"month_year"` // optional â€” derived from store.start_date if empty
+		MonthYear  string  `json:"month_year"` // optional - derived from store.start_date if empty
 		BillType   string  `json:"bill_type"`
 		Rate       float64 `json:"rate"`
 	}
@@ -5750,7 +5750,7 @@ func (h *Handler) CreateGodownBillHandler(w http.ResponseWriter, r *http.Request
 	type request struct {
 		GodownID  int64   `json:"godown_id"`
 		StoreID   int64   `json:"store_id"`
-		MonthYear string  `json:"month_year"` // optional â€” derived from store.start_date if empty
+		MonthYear string  `json:"month_year"` // optional - derived from store.start_date if empty
 		BillType  string  `json:"bill_type"`
 		Rate      float64 `json:"rate"`
 	}
@@ -7727,7 +7727,7 @@ func (h *Handler) collectUnpaidBills(r *http.Request, entityType string, entityI
 			out = append(out, UnbilledBill{
 				BillType:  "customer_additional",
 				BillID:    b.ID,
-				Label:     "Customer Additional Bill #" + strconv.FormatInt(b.ID, 10) + " â€” " + b.Description,
+				Label:     "Customer Additional Bill #" + strconv.FormatInt(b.ID, 10) + " - " + b.Description,
 				Total:     b.Amount,
 				Paid:      paid,
 				Remaining: remaining,
@@ -10568,7 +10568,7 @@ func (h *Handler) RefreshStoreBillsHandler(w http.ResponseWriter, r *http.Reques
 		refreshed["customer_store"]++
 	}
 
-	// ---- Majhi bills (one-time, no month â€” refresh all for this store) ----
+	// ---- Majhi bills (one-time, no month - refresh all for this store) ----
 	majhiBills, err := h.app.Models.MajhiBill.GetByStoreID(r.Context(), id)
 	if err != nil {
 		log.Printf("[STORES] RefreshStoreBillsHandler ERROR: failed to fetch majhi bills - %v", err)
@@ -13823,7 +13823,7 @@ func (m *CustomerStoreBillModel) ExistsForCustomerStoreMonth(
 
 // EnsureCurrentMonthBills creates a draft customer store bill for every
 // (active store Ã— its customer) that doesn't already have one for the
-// current month. Rate starts at 0 â€” set per bill via Update afterwards.
+// current month. Rate starts at 0 - set per bill via Update afterwards.
 func (m *CustomerStoreBillModel) EnsureCurrentMonthBills(ctx context.Context, userID int64) error {
 	currentMonth := time.Now().Format("2006-01")
 
@@ -15392,7 +15392,7 @@ func (m *GodownBillModel) ExistsForGodownStoreMonth(ctx context.Context, godownI
 
 // EnsureCurrentMonthBills creates a draft godown bill for every
 // (active store Ã— active godown) that doesn't already have one for the
-// current month. Rate starts at 0 â€” set per bill via Update afterwards.
+// current month. Rate starts at 0 - set per bill via Update afterwards.
 func (m *GodownBillModel) EnsureCurrentMonthBills(ctx context.Context, userID int64) error {
 	currentMonth := time.Now().Format("2006-01")
 
@@ -19296,7 +19296,7 @@ import (
 )
 
 // GetParamID extracts the "id" URL parameter using chi's router.
-// Chi does NOT populate r.PathValue() â€” that's only for net/http.ServeMux (Go 1.22+).
+// Chi does NOT populate r.PathValue() - that's only for net/http.ServeMux (Go 1.22+).
 func GetParamID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -19604,7 +19604,7 @@ FILE: src\components\features\brokers\BrokerDetail.vue
             <!-- Phone -->
             <div>
                 <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Phone</p>
-                <p class="text-sm text-(--color-text-primary)">{{ broker.phone || 'â€”' }}</p>
+                <p class="text-sm text-(--color-text-primary)">{{ broker.phone || '-' }}</p>
             </div>
 
             <!-- Notes -->
@@ -20281,14 +20281,14 @@ FILE: src\components\features\brokers\BrokerRow.vue
         <!-- Phone - 3 columns -->
         <div class="col-span-3 min-w-0">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ broker.phone || 'â€”' }}
+                {{ broker.phone || '-' }}
             </span>
         </div>
 
         <!-- Notes - 4 columns -->
         <div class="col-span-4 min-w-0">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ broker.notes || 'â€”' }}
+                {{ broker.notes || '-' }}
             </span>
         </div>
 
@@ -20450,7 +20450,7 @@ FILE: src\components\features\customerAdditionalBills\CustomerAdditionalBillDeta
             <div class="rounded-xl p-3 bg-(--color-surface) border border-(--color-border)">
                 <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Paid Through</p>
                 <p class="text-sm font-semibold text-(--color-text-primary) mt-1">
-                    {{ bill.total_paid_through ? formatDateShort(bill.total_paid_through) : 'â€”' }}
+                    {{ bill.total_paid_through ? formatDateShort(bill.total_paid_through) : '-' }}
                 </p>
             </div>
         </div>
@@ -20487,7 +20487,7 @@ FILE: src\components\features\customerAdditionalBills\CustomerAdditionalBillDeta
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Total Paid
                         Through</p>
                     <p class="text-sm text-(--color-text-primary)">
-                        {{ bill.total_paid_through ? formatDateShort(bill.total_paid_through) : 'â€”' }}
+                        {{ bill.total_paid_through ? formatDateShort(bill.total_paid_through) : '-' }}
                     </p>
                 </div>
             </div>
@@ -20530,7 +20530,7 @@ const emit = defineEmits<{
 const customersStore = useCustomersStore()
 
 const customerLabel = computed(() => {
-    if (!props.bill) return 'â€”'
+    if (!props.bill) return '-'
     return customersStore.getCustomerName(props.bill.customer_id)
 })
 
@@ -21450,7 +21450,7 @@ FILE: src\components\features\customerDeliveryBills\CustomerDeliveryBillDetail.v
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Total Paid
                         Through</p>
                     <p class="text-sm text-(--color-text-primary)">
-                        {{ bill.total_paid_through ? formatDateShort(bill.total_paid_through) : 'â€”' }}
+                        {{ bill.total_paid_through ? formatDateShort(bill.total_paid_through) : '-' }}
                     </p>
                 </div>
                 <div>
@@ -21497,7 +21497,7 @@ const emit = defineEmits<{
 const customersStore = useCustomersStore()
 
 const customerLabel = computed(() => {
-    if (!props.bill) return 'â€”'
+    if (!props.bill) return '-'
     return customersStore.getCustomerName(props.bill.customer_id)
 })
 
@@ -22428,13 +22428,13 @@ FILE: src\components\features\customers\CustomerDetail.vue
             <!-- Company Name -->
             <div>
                 <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Company Name</p>
-                <p class="text-sm text-(--color-text-primary)">{{ customer.company_name || 'â€”' }}</p>
+                <p class="text-sm text-(--color-text-primary)">{{ customer.company_name || '-' }}</p>
             </div>
 
             <!-- Contact Person -->
             <div>
                 <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Contact Person</p>
-                <p class="text-sm text-(--color-text-primary)">{{ customer.contact_person || 'â€”' }}</p>
+                <p class="text-sm text-(--color-text-primary)">{{ customer.contact_person || '-' }}</p>
             </div>
 
             <!-- Phone -->
@@ -22446,13 +22446,13 @@ FILE: src\components\features\customers\CustomerDetail.vue
             <!-- Email -->
             <div>
                 <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Email</p>
-                <p class="text-sm text-(--color-text-primary)">{{ customer.email || 'â€”' }}</p>
+                <p class="text-sm text-(--color-text-primary)">{{ customer.email || '-' }}</p>
             </div>
 
             <!-- Address -->
             <div class="md:col-span-2">
                 <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Address</p>
-                <p class="text-sm text-(--color-text-primary)">{{ customer.address || 'â€”' }}</p>
+                <p class="text-sm text-(--color-text-primary)">{{ customer.address || '-' }}</p>
             </div>
 
             <!-- Notes -->
@@ -22753,7 +22753,7 @@ FILE: src\components\features\customers\CustomerLedger.vue
 
             <div class="flex-1 min-w-0">
                 <h2 class="text-xl font-bold text-(--color-text-primary)">
-                    {{ customerName }} â€” Ledger
+                    {{ customerName }} - Ledger
                 </h2>
                 <p class="text-sm text-(--color-text-secondary) mt-1">
                     {{ ledger.summary.eventCount }} event(s)
@@ -22940,7 +22940,7 @@ FILE: src\components\features\customers\CustomerLedger.vue
                         class="mt-2 pt-2 border-t border-(--color-border)/60 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1">
                         <div v-for="(value, key) in event.meta" :key="key" class="text-xs min-w-0">
                             <span class="text-(--color-text-secondary)">{{ humanKey(String(key)) }}:</span>
-                            <span class="text-(--color-text-primary) ml-1">{{ value ?? 'â€”' }}</span>
+                            <span class="text-(--color-text-primary) ml-1">{{ value ?? '-' }}</span>
                         </div>
                     </div>
                 </div>
@@ -23238,7 +23238,7 @@ FILE: src\components\features\customers\CustomerLedgerView.vue
             <div v-else class="ledger-continuation">
                 <div class="ledger-continuation-left">
                     <div class="ledger-continuation-title">
-                        Statement of Account â€” {{ customerName }}
+                        Statement of Account - {{ customerName }}
                     </div>
                     <div class="ledger-continuation-sub">
                         {{ periodLabel }}
@@ -23274,7 +23274,7 @@ FILE: src\components\features\customers\CustomerLedgerView.vue
                         <tr v-for="row in page.rows" :key="row.event.id">
                             <td class="col-date">{{ shortDate(row.event.date) }}</td>
                             <td class="col-type">{{ typeLabel(row.event.type) }}</td>
-                            <td class="col-ref">{{ row.event.reference || 'â€”' }}</td>
+                            <td class="col-ref">{{ row.event.reference || '-' }}</td>
                             <td class="col-desc">
                                 <div class="desc-title">{{ row.event.title }}</div>
                                 <div v-if="row.event.description" class="desc-sub">{{ row.event.description }}</div>
@@ -23283,13 +23283,13 @@ FILE: src\components\features\customers\CustomerLedgerView.vue
                                 <span v-if="row.event.amountKind === 'debit'">
                                     {{ formatMoney(row.event.amount || 0) }}
                                 </span>
-                                <span v-else class="dash">â€”</span>
+                                <span v-else class="dash">-</span>
                             </td>
                             <td class="col-amt text-right">
                                 <span v-if="row.event.amountKind === 'credit'">
                                     {{ formatMoney(row.event.amount || 0) }}
                                 </span>
-                                <span v-else class="dash">â€”</span>
+                                <span v-else class="dash">-</span>
                             </td>
                             <td class="col-amt text-right balance-cell">
                                 {{ formatMoney(row.balance) }}
@@ -23300,7 +23300,7 @@ FILE: src\components\features\customers\CustomerLedgerView.vue
             </section>
 
             <!-- ============================================================ -->
-            <!-- SIGNATURE (left) + SUMMARY (right) â€” last page only            -->
+            <!-- SIGNATURE (left) + SUMMARY (right) - last page only            -->
             <!-- ============================================================ -->
             <section v-if="page.isLast" class="ledger-bottom-row">
                 <div class="ledger-bottom-left">
@@ -23338,7 +23338,7 @@ FILE: src\components\features\customers\CustomerLedgerView.vue
             <!-- FOOTER (every page)                                            -->
             <!-- ============================================================ -->
             <footer class="ledger-footer">
-                <p class="ledger-footer-main">M/S. AYUB ENTERPRISE Â· Commission Agent â€” Godown &amp; Logistics</p>
+                <p class="ledger-footer-main">M/S. AYUB ENTERPRISE Â· Commission Agent - Godown &amp; Logistics</p>
                 <p class="ledger-footer-sub">Generated on {{ generatedDate }} Â· This is a computer-generated statement.
                 </p>
             </footer>
@@ -23395,7 +23395,7 @@ const generatedDate = computed(() =>
 
 const periodLabel = computed(() => {
     if (props.dateFrom && props.dateTo) {
-        return `${shortDate(props.dateFrom)} â€” ${shortDate(props.dateTo)}`
+        return `${shortDate(props.dateFrom)} - ${shortDate(props.dateTo)}`
     }
     if (props.dateFrom) return `From ${shortDate(props.dateFrom)}`
     if (props.dateTo) return `Up to ${shortDate(props.dateTo)}`
@@ -24597,12 +24597,12 @@ FILE: src\components\features\customers\CustomerRow.vue
 
         <!-- Email - 3 columns -->
         <div class="col-span-3">
-            <span class="text-sm text-(--color-text-secondary) truncate block">{{ customer.email || 'â€”' }}</span>
+            <span class="text-sm text-(--color-text-secondary) truncate block">{{ customer.email || '-' }}</span>
         </div>
 
         <!-- Address - 3 columns -->
         <div class="col-span-3">
-            <span class="text-sm text-(--color-text-secondary) truncate block">{{ customer.address || 'â€”' }}</span>
+            <span class="text-sm text-(--color-text-secondary) truncate block">{{ customer.address || '-' }}</span>
         </div>
 
         <!-- Actions - 1 column -->
@@ -24793,7 +24793,7 @@ FILE: src\components\features\customerStoreBills\CustomerStoreBillDetail.vue
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Total Paid
                         Through</p>
                     <p class="text-sm text-(--color-text-primary)">
-                        {{ bill.total_paid_through ? formatDateShort(bill.total_paid_through) : 'â€”' }}
+                        {{ bill.total_paid_through ? formatDateShort(bill.total_paid_through) : '-' }}
                     </p>
                 </div>
                 <div>
@@ -24844,16 +24844,16 @@ const storesStore = useStoresStore()
 const lotsStore = useLotsStore()
 
 const customerLabel = computed(() => {
-    if (!props.bill) return 'â€”'
+    if (!props.bill) return '-'
     return customersStore.getCustomerName(props.bill.customer_id)
 })
 
 const storeLabel = computed(() => {
-    if (!props.bill) return 'â€”'
+    if (!props.bill) return '-'
     const store = storesStore.getStoreById(props.bill.store_id)
     if (store) {
         const lot = lotsStore.getLotById(store.lot_id)
-        if (lot) return `Store #${store.id} â€” ${lot.product_name} (Lot ${lot.lot_number})`
+        if (lot) return `Store #${store.id} - ${lot.product_name} (Lot ${lot.lot_number})`
     }
     return `Store #${props.bill.store_id}`
 })
@@ -25007,9 +25007,9 @@ const getCustomerLabel = (customer: Customer): string => {
 
 const getStoreLabel = (store: Store): string => {
     const lot = lotsStore.getLotById(store.lot_id)
-    const lotName = lot ? lot.product_name : 'â€”'
-    const lotNum = lot ? lot.lot_number : 'â€”'
-    return `Store #${store.id} â€” ${lotName} (Lot ${lotNum})`
+    const lotName = lot ? lot.product_name : '-'
+    const lotNum = lot ? lot.lot_number : '-'
+    return `Store #${store.id} - ${lotName} (Lot ${lotNum})`
 }
 </script>
 
@@ -25079,7 +25079,7 @@ FILE: src\components\features\customerStoreBills\CustomerStoreBillForm.vue
                     </div>
                     <div class="p-3 rounded-lg bg-(--color-muted-bg)/30 border border-(--color-border)">
                         <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Month</p>
-                        <p class="text-sm text-(--color-text-primary) mt-0.5">{{ props.bill?.month_year || 'â€”' }}</p>
+                        <p class="text-sm text-(--color-text-primary) mt-0.5">{{ props.bill?.month_year || '-' }}</p>
                     </div>
                 </div>
 
@@ -25225,7 +25225,7 @@ const lockedStoreLabel = computed(() => {
     const store = storesStore.getStoreById(props.bill.store_id)
     if (!store) return `Store #${props.bill.store_id}`
     const lot = lotsStore.getLotById(store.lot_id)
-    if (lot) return `Store #${store.id} â€” ${lot.product_name} (Lot ${lot.lot_number})`
+    if (lot) return `Store #${store.id} - ${lot.product_name} (Lot ${lot.lot_number})`
     return `Store #${store.id}`
 })
 
@@ -25234,9 +25234,9 @@ const customerLabel = (c: Customer): string =>
 
 const storeLabel = (s: Store): string => {
     const lot = lotsStore.getLotById(s.lot_id)
-    const lotName = lot ? lot.product_name : 'â€”'
-    const lotNum = lot ? lot.lot_number : 'â€”'
-    return `Store #${s.id} â€” ${lotName} (Lot ${lotNum})`
+    const lotName = lot ? lot.product_name : '-'
+    const lotNum = lot ? lot.lot_number : '-'
+    return `Store #${s.id} - ${lotName} (Lot ${lotNum})`
 }
 
 const unitLabel = (kind: 'weight' | 'quantity'): string => {
@@ -26145,16 +26145,16 @@ const lotsStore = useLotsStore()
 const usersStore = useUsersStore()
 
 const storeLabel = computed(() => {
-    if (!props.damage) return 'â€”'
+    if (!props.damage) return '-'
     const store = storesStore.getStoreById(props.damage.store_id)
     if (!store) return `Store #${props.damage.store_id}`
     const lot = lotsStore.getLotById(store.lot_id)
     if (!lot) return `Store #${store.id}`
-    return `Store #${store.id} â€” ${lot.product_name} (Lot ${lot.lot_number})`
+    return `Store #${store.id} - ${lot.product_name} (Lot ${lot.lot_number})`
 })
 
 const userName = computed(() => {
-    if (!props.damage) return 'â€”'
+    if (!props.damage) return '-'
     return usersStore.getUserName(props.damage.user_id)
 })
 
@@ -26421,16 +26421,16 @@ const unitLabel = (kind: 'quantity' | 'weight'): string => {
 }
 
 const lockedStoreLabel = computed(() => {
-    if (!selectedStore.value) return 'â€”'
+    if (!selectedStore.value) return '-'
     const lot = selectedLot.value
     if (!lot) return `Store #${selectedStore.value.id}`
-    return `Store #${selectedStore.value.id} â€” ${lot.product_name} (Lot ${lot.lot_number})`
+    return `Store #${selectedStore.value.id} - ${lot.product_name} (Lot ${lot.lot_number})`
 })
 
 const storeLabel = (store: Store): string => {
     const lot = lotsStore.getLotById(store.lot_id)
     if (!lot) return `Store #${store.id}`
-    return `Store #${store.id} â€” ${lot.product_name} (Lot ${lot.lot_number})`
+    return `Store #${store.id} - ${lot.product_name} (Lot ${lot.lot_number})`
 }
 
 // Image state
@@ -27213,20 +27213,20 @@ FILE: src\components\features\deliveries\DeliveryDetail.vue
                 <div>
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Receiver Name
                     </p>
-                    <p class="text-sm text-(--color-text-primary)">{{ delivery.receiver_name || 'â€”' }}</p>
+                    <p class="text-sm text-(--color-text-primary)">{{ delivery.receiver_name || '-' }}</p>
                 </div>
                 <div>
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Receiver Phone
                     </p>
-                    <p class="text-sm text-(--color-text-primary)">{{ delivery.receiver_phone || 'â€”' }}</p>
+                    <p class="text-sm text-(--color-text-primary)">{{ delivery.receiver_phone || '-' }}</p>
                 </div>
                 <div>
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">From</p>
-                    <p class="text-sm text-(--color-text-primary)">{{ delivery.from_location || 'â€”' }}</p>
+                    <p class="text-sm text-(--color-text-primary)">{{ delivery.from_location || '-' }}</p>
                 </div>
                 <div>
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">To</p>
-                    <p class="text-sm text-(--color-text-primary)">{{ delivery.to_location || 'â€”' }}</p>
+                    <p class="text-sm text-(--color-text-primary)">{{ delivery.to_location || '-' }}</p>
                 </div>
             </div>
         </section>
@@ -27340,7 +27340,7 @@ const customerBillsByItem = ref<Record<number, CustomerDeliveryBill>>({})
 const majhiBillsByItem = ref<Record<number, MajhiBill>>({})
 
 const customerName = computed(() => {
-    if (!props.delivery?.customer_id) return 'â€”'
+    if (!props.delivery?.customer_id) return '-'
     return customersStore.getCustomerName(props.delivery.customer_id)
 })
 
@@ -27420,7 +27420,7 @@ FILE: src\components\features\deliveries\DeliveryForm.vue
                         </label>
                         <select v-model="form.customer_id" :disabled="submitting"
                             class="w-full px-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed">
-                            <option :value="null">â€” None â€”</option>
+                            <option :value="null">- None -</option>
                             <option v-for="c in customerOptions" :key="c.id" :value="c.id">
                                 {{ customerLabel(c) }}
                             </option>
@@ -27851,7 +27851,7 @@ const submit = async () => {
         const deliveryDateISO = `${form.value.delivery_date}T00:00:00Z`
 
         // ============================================================
-        // EDIT MODE â€” master only.
+        // EDIT MODE - master only.
         // ============================================================
         if (isEditMode.value && props.delivery) {
             const success = await deliveriesStore.updateDelivery(props.delivery.id, {
@@ -27942,7 +27942,7 @@ const submit = async () => {
                 // more contextual toast so the user knows which item and
                 // what to do next.
                 push.error(
-                    `Item #${i + 1} failed to save. The delivery was created â€” ` +
+                    `Item #${i + 1} failed to save. The delivery was created - ` +
                     `open it and add the missing item manually.`
                 )
                 await deliveriesStore.refreshDelivery(newDelivery.id)
@@ -28306,7 +28306,7 @@ const submit = async () => {
         })
         if (!result) return
 
-        // Customer delivery bill â€” patch if exists, else create.
+        // Customer delivery bill - patch if exists, else create.
         if (existingCustomerBillId.value) {
             await customerDeliveryBillsStore.updateCustomerDeliveryBill(existingCustomerBillId.value, {
                 bill_type: form.value.cd_bill_type,
@@ -28315,7 +28315,7 @@ const submit = async () => {
                 quantity_at_billing: form.value.quantity,
             })
         } else if (form.value.cd_bill_rate > 0) {
-            // Need a customer â€” get from the delivery.
+            // Need a customer - get from the delivery.
             const detail = await deliveriesStore.fetchDeliveryDetail(props.item.delivery_id)
             if (detail?.delivery?.customer_id) {
                 const created = await customerDeliveryBillsStore.createCustomerDeliveryBill({
@@ -28328,7 +28328,7 @@ const submit = async () => {
             }
         }
 
-        // Majhi bill â€” patch if exists, else create.
+        // Majhi bill - patch if exists, else create.
         if (existingMajhiBillId.value) {
             await majhiBillsStore.updateMajhiBill(existingMajhiBillId.value, {
                 bill_type: form.value.majhi_bill_type,
@@ -28385,7 +28385,7 @@ FILE: src\components\features\deliveries\DeliveryItemFields.vue
         <div v-if="derivedLot" class="p-3 rounded-lg bg-(--color-blue)/5 border border-(--color-blue)/20">
             <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Lot (derived from store)</p>
             <p class="text-sm font-semibold text-(--color-text-primary) mt-0.5">
-                {{ derivedLot.product_name }} â€” Lot {{ derivedLot.lot_number }}
+                {{ derivedLot.product_name }} - Lot {{ derivedLot.lot_number }}
             </p>
         </div>
 
@@ -28591,9 +28591,9 @@ const quantityUnit = computed(() => derivedLot.value?.quantity_unit ?? '')
 
 const storeLabel = (store: Store): string => {
     const lot = lotsStore.getLotById(store.lot_id)
-    const lotName = lot ? lot.product_name : 'â€”'
-    const lotNum = lot ? lot.lot_number : 'â€”'
-    return `Store #${store.id} â€” ${lotName} (Lot ${lotNum})`
+    const lotName = lot ? lot.product_name : '-'
+    const lotNum = lot ? lot.lot_number : '-'
+    return `Store #${store.id} - ${lotName} (Lot ${lotNum})`
 }
 </script>
 
@@ -28620,7 +28620,7 @@ FILE: src\components\features\deliveries\DeliveryItemRow.vue
         <!-- Majhi / Vehicle - 3 columns -->
         <div class="col-span-3 min-w-0 pr-3">
             <div class="text-xs text-(--color-text-secondary) truncate">
-                {{ majhiName || 'â€”' }}
+                {{ majhiName || '-' }}
             </div>
             <div v-if="item.vehicle_number" class="text-xs text-(--color-text-secondary)/70 truncate mt-0.5">
                 {{ item.vehicle_number }}
@@ -29280,7 +29280,7 @@ const customersStore = useCustomersStore()
 const isOpen = ref(false)
 
 const customerName = computed(() => {
-    if (!props.delivery.customer_id) return 'â€”'
+    if (!props.delivery.customer_id) return '-'
     return customersStore.getCustomerName(props.delivery.customer_id)
 })
 
@@ -29294,12 +29294,12 @@ const receiverLine = computed(() => {
     const parts: string[] = []
     if (props.delivery.receiver_name) parts.push(props.delivery.receiver_name)
     if (props.delivery.receiver_phone) parts.push(props.delivery.receiver_phone)
-    return parts.length ? parts.join(' Â· ') : 'â€”'
+    return parts.length ? parts.join(' Â· ') : '-'
 })
 
 const routeLine = computed(() => {
-    const from = props.delivery.from_location || 'â€”'
-    const to = props.delivery.to_location || 'â€”'
+    const from = props.delivery.from_location || '-'
+    const to = props.delivery.to_location || '-'
     return `${from} â†’ ${to}`
 })
 
@@ -29480,7 +29480,7 @@ FILE: src\components\features\expenses\ExpenseForm.vue
                                     <span class="flex items-center gap-2">
                                         <span>{{ suggestion }}</span>
                                         <span class="text-xs text-(--color-text-secondary) ml-auto">
-                                            {{ getUsageCount(suggestion) }}৳â€”
+                                            {{ getUsageCount(suggestion) }}৳-
                                         </span>
                                     </span>
                                 </button>
@@ -29535,7 +29535,7 @@ FILE: src\components\features\expenses\ExpenseForm.vue
                         class="relative w-24 h-24 rounded-lg overflow-hidden border border-(--color-border)">
                         <img :src="imagePreview" alt="Preview" class="w-full h-full object-cover" />
                         <button type="button" @click="removeImage"
-                            class="absolute top-1 right-1 w-5 h-5 bg-(--color-red) text-white rounded-full flex items-center justify-center text-xs hover:opacity-90 transition-opacity">৳â€”</button>
+                            class="absolute top-1 right-1 w-5 h-5 bg-(--color-red) text-white rounded-full flex items-center justify-center text-xs hover:opacity-90 transition-opacity">৳-</button>
                     </div>
                     <div v-else
                         class="w-24 h-24 rounded-lg border-2 border-dashed border-(--color-border) flex items-center justify-center bg-(--color-muted-bg)">
@@ -30613,7 +30613,7 @@ FILE: src\components\features\godownBills\GodownBillDetail.vue
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Total Paid
                         Through</p>
                     <p class="text-sm text-(--color-text-primary)">
-                        {{ bill.total_paid_through ? formatDateShort(bill.total_paid_through) : 'â€”' }}
+                        {{ bill.total_paid_through ? formatDateShort(bill.total_paid_through) : '-' }}
                     </p>
                 </div>
                 <div>
@@ -30662,11 +30662,11 @@ const storesStore = useStoresStore()
 const lotsStore = useLotsStore()
 
 const storeLabel = computed(() => {
-    if (!props.bill) return 'â€”'
+    if (!props.bill) return '-'
     const store = storesStore.getStoreById(props.bill.store_id)
     if (store) {
         const lot = lotsStore.getLotById(store.lot_id)
-        if (lot) return `Store #${store.id} â€” ${lot.product_name} (Lot ${lot.lot_number})`
+        if (lot) return `Store #${store.id} - ${lot.product_name} (Lot ${lot.lot_number})`
     }
     return `Store #${props.bill.store_id}`
 })
@@ -30825,7 +30825,7 @@ FILE: src\components\features\godownBills\GodownBillForm.vue
                     </div>
                     <div class="p-3 rounded-lg bg-(--color-muted-bg)/30 border border-(--color-border)">
                         <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Month</p>
-                        <p class="text-sm text-(--color-text-primary) mt-0.5">{{ props.bill?.month_year || 'â€”' }}</p>
+                        <p class="text-sm text-(--color-text-primary) mt-0.5">{{ props.bill?.month_year || '-' }}</p>
                     </div>
                 </div>
 
@@ -30972,15 +30972,15 @@ const lockedStoreLabel = computed(() => {
     const store = storesStore.getStoreById(props.bill.store_id)
     if (!store) return `Store #${props.bill.store_id}`
     const lot = lotsStore.getLotById(store.lot_id)
-    if (lot) return `Store #${store.id} â€” ${lot.product_name} (Lot ${lot.lot_number})`
+    if (lot) return `Store #${store.id} - ${lot.product_name} (Lot ${lot.lot_number})`
     return `Store #${store.id}`
 })
 
 const storeLabel = (store: Store): string => {
     const lot = lotsStore.getLotById(store.lot_id)
-    const lotName = lot ? lot.product_name : 'â€”'
-    const lotNum = lot ? lot.lot_number : 'â€”'
-    return `Store #${store.id} â€” ${lotName} (Lot ${lotNum})`
+    const lotName = lot ? lot.product_name : '-'
+    const lotNum = lot ? lot.lot_number : '-'
+    return `Store #${store.id} - ${lotName} (Lot ${lotNum})`
 }
 
 const unitLabel = (kind: 'weight' | 'quantity'): string => {
@@ -31745,7 +31745,7 @@ FILE: src\components\features\godowns\GodownDetail.vue
         <div class="grid grid-cols-1 gap-6">
             <div>
                 <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Phone</p>
-                <p class="text-sm text-(--color-text-primary)">{{ godown.phone || 'â€”' }}</p>
+                <p class="text-sm text-(--color-text-primary)">{{ godown.phone || '-' }}</p>
             </div>
 
             <div v-if="godown.notes">
@@ -32296,14 +32296,14 @@ FILE: src\components\features\godowns\GodownRow.vue
         <!-- Phone - 3 columns -->
         <div class="col-span-3 min-w-0">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ godown.phone || 'â€”' }}
+                {{ godown.phone || '-' }}
             </span>
         </div>
 
         <!-- Notes - 4 columns -->
         <div class="col-span-4 min-w-0">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ godown.notes || 'â€”' }}
+                {{ godown.notes || '-' }}
             </span>
         </div>
 
@@ -33968,7 +33968,7 @@ FILE: src\components\features\invoices\InvoiceForm.vue
         <div v-else class="p-3 rounded-lg bg-(--color-muted-bg)/30 border border-(--color-border)">
             <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Entity</p>
             <p class="text-sm text-(--color-text-primary) mt-0.5">
-                <span class="capitalize">{{ form.entity_type }}</span> â€” {{ lockedEntityLabel }}
+                <span class="capitalize">{{ form.entity_type }}</span> - {{ lockedEntityLabel }}
             </p>
         </div>
 
@@ -34293,7 +34293,7 @@ const loadUnbilled = async () => {
     loadingUnbilled.value = true
     try {
         unbilled.value = await invoicesStore.fetchUnbilled(form.value.entity_type, form.value.entity_id)
-        // Auto-select all bills by default â€” user can uncheck.
+        // Auto-select all bills by default - user can uncheck.
         selectedBills.value = new Set(unbilled.value.map(billKey))
     } finally {
         loadingUnbilled.value = false
@@ -34865,7 +34865,7 @@ FILE: src\components\features\invoices\InvoicePreview.vue
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div class="p-3 rounded-lg bg-(--color-surface) border border-(--color-border)">
                     <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Invoice Number</p>
-                    <p class="text-sm font-semibold text-(--color-text-primary) mt-1">INV-{{ invoice?.id ?? 'â€”' }}</p>
+                    <p class="text-sm font-semibold text-(--color-text-primary) mt-1">INV-{{ invoice?.id ?? '-' }}</p>
                 </div>
                 <div class="p-3 rounded-lg bg-(--color-surface) border border-(--color-border)">
                     <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Invoice Date</p>
@@ -34921,7 +34921,7 @@ FILE: src\components\features\invoices\InvoicePreview.vue
                                 <div class="invoice-title">INVOICE</div>
                                 <div class="invoice-meta-line">
                                     <span class="invoice-meta-key">Invoice #</span>
-                                    <span class="invoice-meta-val">INV-{{ invoice?.id ?? 'â€”' }}</span>
+                                    <span class="invoice-meta-val">INV-{{ invoice?.id ?? '-' }}</span>
                                 </div>
                                 <div class="invoice-meta-line">
                                     <span class="invoice-meta-key">Date</span>
@@ -34960,7 +34960,7 @@ FILE: src\components\features\invoices\InvoicePreview.vue
                         <div v-else class="invoice-continuation">
                             <div class="invoice-continuation-left">
                                 <div class="invoice-continuation-title">
-                                    Invoice â€” {{ party.name }}
+                                    Invoice - {{ party.name }}
                                 </div>
                                 <div class="invoice-continuation-sub">
                                     <span v-if="invoice?.id">Ref: INV-{{ invoice.id }}</span>
@@ -35125,7 +35125,7 @@ FILE: src\components\features\invoices\InvoicePreview.vue
                         <div class="invoice-title">INVOICE</div>
                         <div class="invoice-meta-line">
                             <span class="invoice-meta-key">Invoice #</span>
-                            <span class="invoice-meta-val">INV-{{ invoice?.id ?? 'â€”' }}</span>
+                            <span class="invoice-meta-val">INV-{{ invoice?.id ?? '-' }}</span>
                         </div>
                         <div class="invoice-meta-line">
                             <span class="invoice-meta-key">Date</span>
@@ -35163,7 +35163,7 @@ FILE: src\components\features\invoices\InvoicePreview.vue
                 <div v-else class="invoice-continuation">
                     <div class="invoice-continuation-left">
                         <div class="invoice-continuation-title">
-                            Invoice â€” {{ party.name }}
+                            Invoice - {{ party.name }}
                         </div>
                         <div class="invoice-continuation-sub">
                             <span v-if="invoice?.id">Ref: INV-{{ invoice.id }}</span>
@@ -35304,7 +35304,7 @@ const printMode = ref(false)
 
 const company = {
     name: 'M/S. AYUB ENTERPRISE',
-    subtitle: 'Commission Agent â€” Godown & Logistics',
+    subtitle: 'Commission Agent - Godown & Logistics',
     address: 'Ali Hossain Chairman Building (1st Floor), 958/27, Strand Road, Mazirghat, Chattogram.',
     contact: 'Cell : 01813-397288, 01705-727492, 01793-287709, 01864-106406',
     email: 'E-mail : mdayubenterprise@gmail.com',
@@ -35343,7 +35343,7 @@ const billReference = (it: InvoiceItem): string => {
 
 const party = computed(() => {
     const inv = props.invoice
-    if (!inv) return { name: 'â€”', phone: '', address: '', email: '' }
+    if (!inv) return { name: '-', phone: '', address: '', email: '' }
 
     switch (inv.entity_type) {
         case 'customer': {
@@ -35397,7 +35397,7 @@ const preparedByName = computed(() => {
 })
 
 const formatDate = (dateStr?: string | null): string => {
-    if (!dateStr) return 'â€”'
+    if (!dateStr) return '-'
     return new Date(dateStr).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
@@ -35474,7 +35474,7 @@ const handlePrint = async () => {
 
 <style>
 /* ============================================================================
-   Global styles â€” print portal lives outside the component subtree.
+   Global styles - print portal lives outside the component subtree.
    ============================================================================ */
 
 .invoice-page {
@@ -35686,7 +35686,7 @@ const handlePrint = async () => {
 }
 
 /* ============================================================================
-   TABLE â€” head is fixed; body fills the rest of the wrapper.
+   TABLE - head is fixed; body fills the rest of the wrapper.
    ============================================================================ */
 
 .invoice-table-wrap {
@@ -36069,7 +36069,7 @@ FILE: src\components\features\invoices\InvoiceRow.vue
         <div class="col-span-2 min-w-0 pr-3">
             <span class="text-sm font-semibold text-(--color-red) block"
                 :class="{ 'text-(--color-text-secondary)': invoice.discount_amount === 0 }">
-                {{ invoice.discount_amount > 0 ? 'âˆ’ ' + formatCurrency(invoice.discount_amount) : 'â€”' }}
+                {{ invoice.discount_amount > 0 ? 'âˆ’ ' + formatCurrency(invoice.discount_amount) : '-' }}
             </span>
         </div>
 
@@ -36260,13 +36260,13 @@ FILE: src\components\features\logs\LogDetail.vue
             <!-- IP Address -->
             <div>
                 <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">IP Address</p>
-                <p class="text-sm text-(--color-text-primary)">{{ log.ip_address || 'â€”' }}</p>
+                <p class="text-sm text-(--color-text-primary)">{{ log.ip_address || '-' }}</p>
             </div>
 
             <!-- User Agent -->
             <div>
                 <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">User Agent</p>
-                <p class="text-sm text-(--color-text-primary) break-all">{{ log.user_agent || 'â€”' }}</p>
+                <p class="text-sm text-(--color-text-primary) break-all">{{ log.user_agent || '-' }}</p>
             </div>
         </div>
 
@@ -36330,7 +36330,7 @@ const formatLogDate = (dateStr: string): string => {
 }
 
 const formatJson = (data: string | null): string => {
-    if (!data) return 'â€”'
+    if (!data) return '-'
     try {
         const parsed = JSON.parse(data)
         return JSON.stringify(parsed, null, 2)
@@ -36766,7 +36766,7 @@ FILE: src\components\features\lots\LotDetail.vue
             <div class="rounded-xl p-3 bg-(--color-surface) border border-(--color-border)">
                 <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Stock on Hand</p>
                 <div class="mt-1">
-                    <p v-if="stockTotals.length === 0" class="text-lg font-bold text-(--color-text-primary)">â€”</p>
+                    <p v-if="stockTotals.length === 0" class="text-lg font-bold text-(--color-text-primary)">-</p>
                     <p v-else v-for="(line, idx) in stockTotals" :key="idx"
                         class="text-lg font-bold text-(--color-text-primary) leading-tight">
                         {{ line }}
@@ -36910,7 +36910,7 @@ const customersStore = useCustomersStore()
 const storesStore = useStoresStore()
 
 const customerName = computed(() => {
-    if (!props.lot) return 'â€”'
+    if (!props.lot) return '-'
     return customersStore.getCustomerName(props.lot.customer_id)
 })
 
@@ -37410,7 +37410,7 @@ const submit = async () => {
 
         // ============================================================
         // STORES + BILLS (create only)
-        // Month_year is intentionally omitted â€” backend derives it
+        // Month_year is intentionally omitted - backend derives it
         // from each newly-created store's start_date.
         // ============================================================
         if (!isEditMode.value) {
@@ -38396,7 +38396,7 @@ const currentLot = computed<Lot | null>(() => {
 })
 
 const currentCustomerName = computed(() => {
-    if (!currentLot.value) return 'â€”'
+    if (!currentLot.value) return '-'
     return customersStore.getCustomerName(currentLot.value.customer_id)
 })
 
@@ -38406,15 +38406,15 @@ const availableCustomers = computed(() => {
 })
 
 const lockedLotLabel = computed(() => {
-    if (!currentLot.value) return 'â€”'
-    return `${currentLot.value.product_name} â€” Lot ${currentLot.value.lot_number}`
+    if (!currentLot.value) return '-'
+    return `${currentLot.value.product_name} - Lot ${currentLot.value.lot_number}`
 })
 
 const customerLabel = (c: Customer): string =>
     c.company_name || c.contact_person || `Customer #${c.id}`
 
 const lotLabel = (lot: Lot): string =>
-    `${lot.product_name} â€” Lot ${lot.lot_number} (${customersStore.getCustomerName(lot.customer_id)})`
+    `${lot.product_name} - Lot ${lot.lot_number} (${customersStore.getCustomerName(lot.customer_id)})`
 
 watch(() => props.presetLotId, (val) => {
     if (val) form.value.lot_id = val
@@ -39164,7 +39164,7 @@ FILE: src\components\features\majhiBills\MajhiBillFields.vue
                     <p class="text-sm text-(--color-text-primary) mt-0.5">{{ lockedMajhiLabel }}</p>
                 </div>
 
-                <!-- Store picker (create) â€” hidden when store is implicit (derived, but that branch is above) -->
+                <!-- Store picker (create) - hidden when store is implicit (derived, but that branch is above) -->
                 <div v-if="!locked">
                     <label class="text-sm font-medium text-(--color-text-primary) block mb-1.5">
                         Store <span class="text-(--color-red)">*</span>
@@ -39262,9 +39262,9 @@ const lotsStore = useLotsStore()
 
 const storeLabel = (store: Store): string => {
     const lot = lotsStore.getLotById(store.lot_id)
-    const lotName = lot ? lot.product_name : 'â€”'
-    const lotNum = lot ? lot.lot_number : 'â€”'
-    return `Store #${store.id} â€” ${lotName} (Lot ${lotNum})`
+    const lotName = lot ? lot.product_name : '-'
+    const lotNum = lot ? lot.lot_number : '-'
+    return `Store #${store.id} - ${lotName} (Lot ${lotNum})`
 }
 </script>
 
@@ -40155,7 +40155,7 @@ FILE: src\components\features\majhis\MajhiDetail.vue
             <!-- Phone -->
             <div>
                 <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Phone</p>
-                <p class="text-sm text-(--color-text-primary)">{{ majhi.phone || 'â€”' }}</p>
+                <p class="text-sm text-(--color-text-primary)">{{ majhi.phone || '-' }}</p>
             </div>
 
             <!-- Notes -->
@@ -40746,14 +40746,14 @@ FILE: src\components\features\majhis\MajhiRow.vue
         <!-- Phone - 3 columns -->
         <div class="col-span-3 min-w-0">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ majhi.phone || 'â€”' }}
+                {{ majhi.phone || '-' }}
             </span>
         </div>
 
         <!-- Notes - 4 columns -->
         <div class="col-span-4 min-w-0">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ majhi.notes || 'â€”' }}
+                {{ majhi.notes || '-' }}
             </span>
         </div>
 
@@ -40942,10 +40942,10 @@ FILE: src\components\features\salaries\SalaryDetail.vue
                         Details</p>
                     <div class="space-y-1">
                         <p class="text-sm text-(--color-text-primary)">
-                            Method: {{ salary.payment_method ? formatPaymentMethod(salary.payment_method) : 'â€”' }}
+                            Method: {{ salary.payment_method ? formatPaymentMethod(salary.payment_method) : '-' }}
                         </p>
                         <p class="text-sm text-(--color-text-primary)">
-                            Date: {{ salary.payment_date ? formatDate(salary.payment_date) : 'â€”' }}
+                            Date: {{ salary.payment_date ? formatDate(salary.payment_date) : '-' }}
                         </p>
                         <p v-if="salary.reference_number" class="text-sm text-(--color-text-primary)">
                             Reference: {{ salary.reference_number }}
@@ -42281,16 +42281,16 @@ const weightUnit = computed(() => currentLot.value?.weight_unit ?? '')
 const quantityUnit = computed(() => currentLot.value?.quantity_unit ?? '')
 
 const lockedStoreLabel = computed(() => {
-    if (!currentStore.value) return 'â€”'
+    if (!currentStore.value) return '-'
     const lot = currentLot.value
     if (!lot) return `Store #${currentStore.value.id}`
-    return `Store #${currentStore.value.id} â€” ${lot.product_name} (Lot ${lot.lot_number})`
+    return `Store #${currentStore.value.id} - ${lot.product_name} (Lot ${lot.lot_number})`
 })
 
 const storeLabel = (store: Store): string => {
     const lot = lotsStore.getLotById(store.lot_id)
     if (!lot) return `Store #${store.id}`
-    return `Store #${store.id} â€” ${lot.product_name} (Lot ${lot.lot_number})`
+    return `Store #${store.id} - ${lot.product_name} (Lot ${lot.lot_number})`
 }
 
 const formatNumber = (n: number): string =>
@@ -42651,7 +42651,7 @@ const confirmDelete = async () => {
         if (success) {
             deleteDialogOpen.value = false
             selectedAdjustment.value = null
-            // Store values were reversed â€” refresh them.
+            // Store values were reversed - refresh them.
             await storesStore.fetchStores()
         }
     } finally {
@@ -42706,7 +42706,7 @@ FILE: src\components\features\storeAdjustments\StoreAdjustmentRow.vue
         <!-- Reason - 2 columns -->
         <div class="col-span-2 min-w-0 pr-3">
             <span class="text-sm text-(--color-text-secondary) truncate block">
-                {{ adjustment.reason || 'â€”' }}
+                {{ adjustment.reason || '-' }}
             </span>
         </div>
 
@@ -42955,18 +42955,18 @@ const lot = computed(() => {
     return lotsStore.getLotById(props.store.lot_id) || null
 })
 
-const lotNumber = computed(() => lot.value?.lot_number ?? 'â€”')
-const lotDisplayName = computed(() => lot.value?.product_name ?? 'â€”')
+const lotNumber = computed(() => lot.value?.lot_number ?? '-')
+const lotDisplayName = computed(() => lot.value?.product_name ?? '-')
 const quantityUnit = computed(() => lot.value?.quantity_unit ?? 'units')
 const weightUnit = computed(() => lot.value?.weight_unit ?? 'kg')
 
 const customerName = computed(() => {
-    if (!lot.value) return 'â€”'
+    if (!lot.value) return '-'
     return customersStore.getCustomerName(lot.value.customer_id)
 })
 
 const godownName = computed(() => {
-    if (!props.store) return 'â€”'
+    if (!props.store) return '-'
     return godownsStore.getGodownName(props.store.godown_id)
 })
 
@@ -43076,7 +43076,7 @@ FILE: src\components\features\stores\StoreForm.vue
                         class="w-full px-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed">
                         <option :value="null">Select a lot</option>
                         <option v-for="lot in lotOptions" :key="lot.id" :value="lot.id">
-                            {{ lot.product_name }} â€” Lot {{ lot.lot_number }}
+                            {{ lot.product_name }} - Lot {{ lot.lot_number }}
                         </option>
                     </select>
                 </template>
@@ -43086,8 +43086,8 @@ FILE: src\components\features\stores\StoreForm.vue
             <div v-else-if="props.store"
                 class="mb-4 p-3 rounded-lg bg-(--color-muted-bg)/30 border border-(--color-border)">
                 <p class="text-xs text-(--color-text-secondary)">Lot</p>
-                <p class="text-sm text-(--color-text-primary)">{{ currentLot?.product_name ?? 'â€”' }} â€” Lot {{
-                    currentLot?.lot_number ?? 'â€”' }}</p>
+                <p class="text-sm text-(--color-text-primary)">{{ currentLot?.product_name ?? '-' }} - Lot {{
+                    currentLot?.lot_number ?? '-' }}</p>
             </div>
 
             <!-- Godown (create only) -->
@@ -43108,7 +43108,7 @@ FILE: src\components\features\stores\StoreForm.vue
             <div v-else-if="props.store"
                 class="mb-4 p-3 rounded-lg bg-(--color-muted-bg)/30 border border-(--color-border)">
                 <p class="text-xs text-(--color-text-secondary)">Godown</p>
-                <p class="text-sm text-(--color-text-primary)">{{ currentGodown?.name ?? 'â€”' }}</p>
+                <p class="text-sm text-(--color-text-primary)">{{ currentGodown?.name ?? '-' }}</p>
             </div>
 
             <StoreFields v-model:weight="form.weight" v-model:quantity="form.quantity"
@@ -43233,7 +43233,7 @@ const presetLotLabel = computed(() => {
     if (!props.presetLotId) return ''
     const lot = lotsStore.getLotById(props.presetLotId)
     if (!lot) return `Lot #${props.presetLotId}`
-    return `${lot.product_name} â€” Lot ${lot.lot_number}`
+    return `${lot.product_name} - Lot ${lot.lot_number}`
 })
 
 const currentLot = computed(() => {
@@ -43613,8 +43613,8 @@ const godownsStore = useGodownsStore()
 const isOpen = ref(false)
 
 const lot = computed(() => lotsStore.getLotById(props.store.lot_id))
-const lotNumber = computed(() => lot.value?.lot_number ?? 'â€”')
-const lotDisplayName = computed(() => lot.value ? lot.value.product_name : 'â€”')
+const lotNumber = computed(() => lot.value?.lot_number ?? '-')
+const lotDisplayName = computed(() => lot.value ? lot.value.product_name : '-')
 const quantityUnit = computed(() => lot.value?.quantity_unit ?? 'units')
 const weightUnit = computed(() => lot.value?.weight_unit ?? 'kg')
 
@@ -43786,7 +43786,7 @@ const weightUnit = computed(() => currentLot.value?.weight_unit ?? '')
 const quantityUnit = computed(() => currentLot.value?.quantity_unit ?? '')
 
 const currentGodownName = computed(() => {
-    if (!currentStore.value) return 'â€”'
+    if (!currentStore.value) return '-'
     return godownsStore.getGodownName(currentStore.value.godown_id)
 })
 
@@ -43796,16 +43796,16 @@ const availableGodowns = computed(() => {
 })
 
 const lockedStoreLabel = computed(() => {
-    if (!currentStore.value) return 'â€”'
+    if (!currentStore.value) return '-'
     const lot = currentLot.value
     if (!lot) return `Store #${currentStore.value.id}`
-    return `Store #${currentStore.value.id} â€” ${lot.product_name} (Lot ${lot.lot_number})`
+    return `Store #${currentStore.value.id} - ${lot.product_name} (Lot ${lot.lot_number})`
 })
 
 const storeLabel = (store: Store): string => {
     const lot = lotsStore.getLotById(store.lot_id)
     if (!lot) return `Store #${store.id}`
-    return `Store #${store.id} â€” ${lot.product_name} (Lot ${lot.lot_number})`
+    return `Store #${store.id} - ${lot.product_name} (Lot ${lot.lot_number})`
 }
 
 const formatNumber = (n: number): string =>
@@ -44368,19 +44368,19 @@ FILE: src\components\features\users\UserDetail.vue
         <!-- Email -->
         <div>
           <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Email</p>
-          <p class="text-sm text-(--color-text-primary)">{{ user.email || 'â€”' }}</p>
+          <p class="text-sm text-(--color-text-primary)">{{ user.email || '-' }}</p>
         </div>
 
         <!-- Phone -->
         <div>
           <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Phone</p>
-          <p class="text-sm text-(--color-text-primary)">{{ user.phone || 'â€”' }}</p>
+          <p class="text-sm text-(--color-text-primary)">{{ user.phone || '-' }}</p>
         </div>
 
         <!-- Address -->
         <div>
           <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Address</p>
-          <p class="text-sm text-(--color-text-primary)">{{ user.address || 'â€”' }}</p>
+          <p class="text-sm text-(--color-text-primary)">{{ user.address || '-' }}</p>
         </div>
       </div>
 
@@ -44394,13 +44394,13 @@ FILE: src\components\features\users\UserDetail.vue
         <!-- ID Type -->
         <div>
           <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">ID Type</p>
-          <p class="text-sm text-(--color-text-primary) capitalize">{{ user.id_type || 'â€”' }}</p>
+          <p class="text-sm text-(--color-text-primary) capitalize">{{ user.id_type || '-' }}</p>
         </div>
 
         <!-- ID Number -->
         <div>
           <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">ID Number</p>
-          <p class="text-sm text-(--color-text-primary)">{{ user.id_number || 'â€”' }}</p>
+          <p class="text-sm text-(--color-text-primary)">{{ user.id_number || '-' }}</p>
         </div>
       </div>
     </div>
@@ -44596,7 +44596,7 @@ FILE: src\components\features\users\UserForm.vue
           <div v-if="imagePreview" class="relative w-24 h-24 rounded-lg overflow-hidden border border-(--color-border)">
             <img :src="imagePreview" alt="Preview" class="w-full h-full object-cover" />
             <button type="button" @click="removeImage"
-              class="absolute top-1 right-1 w-5 h-5 bg-(--color-red) text-white rounded-full flex items-center justify-center text-xs hover:opacity-90 transition-opacity">৳â€”</button>
+              class="absolute top-1 right-1 w-5 h-5 bg-(--color-red) text-white rounded-full flex items-center justify-center text-xs hover:opacity-90 transition-opacity">৳-</button>
           </div>
           <div v-else
             class="w-24 h-24 rounded-lg border-2 border-dashed border-(--color-border) flex items-center justify-center bg-(--color-muted-bg)">
@@ -46867,7 +46867,7 @@ document.addEventListener(
         const type = (input.getAttribute('type') || '').toLowerCase()
         if (!WHEEL_BLOCKED_INPUT_TYPES.has(type)) return
 
-        // Only block if the input is actually focused â€” otherwise the
+        // Only block if the input is actually focused - otherwise the
         // user is just scrolling past it and browser wouldn't step
         // the value anyway. This keeps tabbing/keyboard flow intact.
         if (document.activeElement !== input) return
@@ -48515,7 +48515,7 @@ export const useCustomerLedgerStore = defineStore('customerLedger', () => {
                 title: `Delivery #${delivery.id} created`,
                 description:
                     delivery.from_location || delivery.to_location
-                        ? `${delivery.from_location || 'â€”'} â†’ ${delivery.to_location || 'â€”'}`
+                        ? `${delivery.from_location || '-'} â†’ ${delivery.to_location || '-'}`
                         : `Delivery #${delivery.id}`,
                 reference: `Delivery #${delivery.id}`,
                 amountKind: 'neutral',
@@ -49509,7 +49509,7 @@ const generateExpenseTitle = (damage: Damage): string => {
         parts.push(`${damage.weight} ${damage.weight_unit}`);
     }
 
-    return parts.join(" â€” ");
+    return parts.join(" - ");
 };
 
 const generateExpenseNotes = (damage: Damage): string => {
@@ -50116,7 +50116,7 @@ export const useDeliveriesStore = defineStore('deliveries', () => {
             )
 
             if (!res.data.success) {
-                // Backend said success:false â€” surface the message and log everything.
+                // Backend said success:false - surface the message and log everything.
                 console.error('[createDeliveryItem] API success=false', {
                     deliveryId,
                     payload,
@@ -55063,7 +55063,7 @@ export interface CustomerStoreBill {
 export interface CreateCustomerStoreBillPayload {
     customer_id: number
     store_id: number
-    month_year?: string   // optional â€” backend derives from store.start_date if omitted
+    month_year?: string   // optional - backend derives from store.start_date if omitted
     bill_type: CustomerStoreBillType
     rate: number
 }
@@ -55329,7 +55329,7 @@ export interface GodownBill {
 export interface CreateGodownBillPayload {
     godown_id: number
     store_id: number
-    month_year?: string   // optional â€” backend derives from store.start_date if omitted
+    month_year?: string   // optional - backend derives from store.start_date if omitted
     bill_type: GodownBillType
     rate: number
 }
@@ -55575,7 +55575,7 @@ export interface LotTransfer {
 export interface CreateLotTransferPayload {
     to_customer_id: number
     notes?: string | null
-    // Optional billing block â€” if bill_type is set and rate > 0, backend
+    // Optional billing block - if bill_type is set and rate > 0, backend
     // creates a customer_store_bill for each active store under the lot,
     // for the current month, under the new customer.
     bill_type?: LotBillType
@@ -56030,7 +56030,7 @@ FILE: src\utils\currency.ts
 export const CURRENCY_SYMBOL = '৳';
 
 export const formatCurrency = (amount: number | null | undefined): string => {
-    if (amount === null || amount === undefined || isNaN(amount)) return 'â€”';
+    if (amount === null || amount === undefined || isNaN(amount)) return '-';
     return `${CURRENCY_SYMBOL} ${amount.toFixed(2)}`;
 };
 
@@ -56041,7 +56041,7 @@ export const parseCurrency = (value: string): number | null => {
 };
 
 export const formatCurrencyCompact = (amount: number | null | undefined): string => {
-    if (amount === null || amount === undefined || isNaN(amount)) return 'â€”';
+    if (amount === null || amount === undefined || isNaN(amount)) return '-';
     if (amount >= 1000000) return `${CURRENCY_SYMBOL} ${(amount / 1000000).toFixed(1)}M`;
     if (amount >= 1000) return `${CURRENCY_SYMBOL} ${(amount / 1000).toFixed(1)}K`;
     return `${CURRENCY_SYMBOL} ${amount.toFixed(2)}`;

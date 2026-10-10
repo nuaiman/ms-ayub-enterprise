@@ -22,7 +22,7 @@
                     <span class="text-sm text-(--color-text-secondary) capitalize">{{ bill.bill_type }}</span>
                     <span class="w-1 h-1 rounded-full bg-(--color-text-secondary)"></span>
                     <span class="text-sm font-semibold text-(--color-text-primary)">{{ formatCurrency(bill.rate)
-                        }}</span>
+                    }}</span>
                 </div>
             </div>
         </div>
@@ -106,7 +106,7 @@
                     <p class="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">Total Paid
                         Through</p>
                     <p class="text-sm text-(--color-text-primary)">
-                        {{ bill.total_paid_through ? formatDateShort(bill.total_paid_through) : 'â€”' }}
+                        {{ bill.total_paid_through ? formatDateShort(bill.total_paid_through) : '-' }}
                     </p>
                 </div>
                 <div>
@@ -157,16 +157,16 @@ const storesStore = useStoresStore()
 const lotsStore = useLotsStore()
 
 const customerLabel = computed(() => {
-    if (!props.bill) return 'â€”'
+    if (!props.bill) return '-'
     return customersStore.getCustomerName(props.bill.customer_id)
 })
 
 const storeLabel = computed(() => {
-    if (!props.bill) return 'â€”'
+    if (!props.bill) return '-'
     const store = storesStore.getStoreById(props.bill.store_id)
     if (store) {
         const lot = lotsStore.getLotById(store.lot_id)
-        if (lot) return `Store #${store.id} â€” ${lot.product_name} (Lot ${lot.lot_number})`
+        if (lot) return `Store #${store.id} - ${lot.product_name} (Lot ${lot.lot_number})`
     }
     return `Store #${props.bill.store_id}`
 })

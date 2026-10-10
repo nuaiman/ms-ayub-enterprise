@@ -153,6 +153,7 @@ func RegisterRouter(app *app.Application, handler *handlers.Handler) http.Handle
 			r.Patch("/{id}", higherManagementOnly(handler.UpdateStoreHandler))
 			r.Patch("/{id}/toggle-active", higherManagementOnly(handler.ToggleStoreActiveHandler))
 			r.Post("/{id}/refresh-bills", higherManagementOnly(handler.RefreshStoreBillsHandler))
+			r.Post("/{id}/pre-delivery-adjust", higherManagementOnly(handler.PreDeliveryAdjustHandler))
 			r.Delete("/{id}", higherManagementOnly(handler.DeleteStoreHandler))
 
 			r.Get("/{id}/adjustments", higherManagementOnly(handler.GetStoreAdjustmentsHandler))

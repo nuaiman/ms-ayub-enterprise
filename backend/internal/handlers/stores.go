@@ -377,6 +377,264 @@ func (h *Handler) DeleteStoreHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // =============================================================================
+// PRE-DELIVERY ADJUSTMENT
+// =============================================================================
+
+// PreDeliveryAdjustHandler - POST /api/stores/{id}/pre-delivery-adjust
+//
+// Bumps the store's quantity/weight UP to a target value so a subsequent
+// delivery or damage can proceed without tripping the stock guards.
+//
+// Only positive adjustments are supported (target must be >= current).
+// To decrease a store, use the regular adjustments endpoint.
+//
+// After the store is updated, any CURRENT-MONTH bills for this store
+// that are NOT yet attached to an invoice are refreshed with the new
+// frozen snapshot. Invoiced bills are left untouched.
+func (h *Handler) PreDeliveryAdjustHandler(w http.ResponseWriter, r *http.Request) {
+	storeID, ok := utils.GetParamID(w, r)
+	if !ok {
+		log.Printf("[STORES] PreDeliveryAdjustHandler ERROR: invalid parameter")
+		return
+	}
+
+	log.Printf("[STORES] PreDeliveryAdjustHandler called - StoreID: %d", storeID)
+
+	type request struct {
+		TargetQuantity float64 `json:"target_quantity"`
+		TargetWeight   float64 `json:"target_weight"`
+		Reason         *string `json:"reason,omitempty"`
+	}
+
+	var req request
+	if err := utils.ReadJson(w, r, &req); err != nil {
+		log.Printf("[STORES] PreDeliveryAdjustHandler ERROR: invalid request body - %v", err)
+		utils.ErrorJson(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if req.TargetQuantity < 0 || req.TargetWeight < 0 {
+		utils.ErrorJson(w, http.StatusBadRequest, "target values cannot be negative")
+		return
+	}
+
+	store, err := h.app.Models.Store.GetByID(r.Context(), storeID)
+	if err != nil {
+		log.Printf("[STORES] PreDeliveryAdjustHandler ERROR: failed to fetch store - %v", err)
+		utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch store")
+		return
+	}
+	if store == nil {
+		utils.ErrorJson(w, http.StatusNotFound, "store not found")
+		return
+	}
+
+	lot, err := h.app.Models.Lot.GetByID(r.Context(), store.LotID)
+	if err != nil {
+		log.Printf("[STORES] PreDeliveryAdjustHandler ERROR: failed to fetch lot - %v", err)
+		utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch lot")
+		return
+	}
+	if lot == nil {
+		utils.ErrorJson(w, http.StatusNotFound, "lot not found")
+		return
+	}
+
+	// Target must be >= current (this is a top-up only).
+	if req.TargetQuantity < store.Quantity || req.TargetWeight < store.Weight {
+		utils.ErrorJson(w, http.StatusBadRequest, "target values must be greater than or equal to the current store balance")
+		return
+	}
+
+	quantityDelta := req.TargetQuantity - store.Quantity
+	weightDelta := req.TargetWeight - store.Weight
+
+	// If nothing to do, return early with current state.
+	if quantityDelta == 0 && weightDelta == 0 {
+		updatedStore, _ := h.app.Models.Store.GetByID(r.Context(), storeID)
+		utils.SuccessJson(w, http.StatusOK, "no adjustment needed", map[string]any{
+			"adjustment":      nil,
+			"store":           updatedStore,
+			"bills_refreshed": map[string]int{},
+		})
+		return
+	}
+
+	userID, ok := r.Context().Value(middlewares.UserIDKey).(int64)
+	if !ok {
+		utils.ErrorJson(w, http.StatusUnauthorized, "invalid user context")
+		return
+	}
+
+	reason := "Pre-delivery adjustment"
+	if req.Reason != nil && *req.Reason != "" {
+		reason = *req.Reason
+	}
+
+	adjustment := &models.StoreAdjustment{
+		UserID:         userID,
+		StoreID:        storeID,
+		AdjustmentType: "delta",
+		InputWeight:    weightDelta,
+		InputQuantity:  quantityDelta,
+		WeightDelta:    weightDelta,
+		QuantityDelta:  quantityDelta,
+		Reason:         &reason,
+		Notes:          nil,
+		AdjustedAt:     time.Now(),
+	}
+
+	adjustmentID, err := h.app.Models.StoreAdjustment.Insert(r.Context(), adjustment)
+	if err != nil {
+		log.Printf("[STORES] PreDeliveryAdjustHandler ERROR: failed to insert adjustment - %v", err)
+		utils.ErrorJson(w, http.StatusInternalServerError, "failed to create adjustment")
+		return
+	}
+	adjustment.ID = adjustmentID
+
+	// Apply to store.
+	if err := h.app.Models.Store.UpdateInventory(r.Context(), storeID, req.TargetQuantity, req.TargetWeight); err != nil {
+		log.Printf("[STORES] PreDeliveryAdjustHandler ERROR: failed to update store - %v", err)
+		utils.ErrorJson(w, http.StatusInternalServerError, "adjustment saved but store update failed")
+		return
+	}
+
+	updatedStore, _ := h.app.Models.Store.GetByID(r.Context(), storeID)
+
+	// Refresh unbilled current-month bills.
+	refreshed := h.refreshUnbilledStoreBills(r, storeID, updatedStore, lot)
+
+	log.Printf("[STORES] PreDeliveryAdjustHandler SUCCESS: store=%d +qty=%.2f +wt=%.2f", storeID, quantityDelta, weightDelta)
+
+	ip := r.RemoteAddr
+	ua := r.UserAgent()
+	h.logAudit(r.Context(), &models.Log{
+		UserID: userID,
+		Action: "create",
+		Description: "Pre-delivery adjustment #" + strconv.FormatInt(adjustmentID, 10) +
+			" for store #" + strconv.FormatInt(storeID, 10) +
+			" (+qty=" + strconv.FormatFloat(quantityDelta, 'f', 2, 64) +
+			", +wt=" + strconv.FormatFloat(weightDelta, 'f', 2, 64) + ")",
+		EntityType: "store_adjustments",
+		EntityID:   adjustmentID,
+		IPAddress:  &ip,
+		UserAgent:  &ua,
+	})
+
+	utils.SuccessJson(w, http.StatusOK, "adjustment applied", map[string]any{
+		"adjustment":      adjustment,
+		"store":           updatedStore,
+		"bills_refreshed": refreshed,
+	})
+}
+
+// refreshUnbilledStoreBills refreshes current-month godown / customer_store /
+// majhi bills for a store, skipping any bill that is attached to an invoice.
+// Returns counts per bill type of how many were refreshed.
+func (h *Handler) refreshUnbilledStoreBills(r *http.Request, storeID int64, store *models.Store, lot *models.Lot) map[string]int {
+	ctx := r.Context()
+	refreshed := map[string]int{}
+	currentMonth := time.Now().Format("2006-01")
+
+	// ---- Godown bills (current month, unbilled) ----
+	godownBills, err := h.app.Models.GodownBill.GetByStoreID(ctx, storeID)
+	if err == nil {
+		for i := range godownBills {
+			b := &godownBills[i]
+			if b.MonthYear != currentMonth {
+				continue
+			}
+			invoiced, _ := h.app.Models.InvoiceItem.ExistsForBill(ctx, "godown", b.ID)
+			if invoiced {
+				continue
+			}
+			b.WeightAtBilling = store.Weight
+			b.QuantityAtBilling = store.Quantity
+			b.WeightUnitAtBilling = &lot.WeightUnit
+			b.QuantityUnitAtBilling = &lot.QuantityUnit
+			b.TotalAmount = billTotalFromSnapshot(b.BillType, b.Rate, b.WeightAtBilling, b.QuantityAtBilling)
+			if err := h.app.Models.GodownBill.Update(ctx, b); err != nil {
+				log.Printf("[STORES] refreshUnbilledStoreBills ERROR: godown bill #%d - %v", b.ID, err)
+				continue
+			}
+			refreshed["godown"]++
+		}
+	}
+
+	// ---- Customer store bills (current month, unbilled) ----
+	customerBills, err := h.app.Models.CustomerStoreBill.GetByStoreID(ctx, storeID)
+	if err == nil {
+		for i := range customerBills {
+			b := &customerBills[i]
+			if b.MonthYear != currentMonth {
+				continue
+			}
+			invoiced, _ := h.app.Models.InvoiceItem.ExistsForBill(ctx, "customer_store", b.ID)
+			if invoiced {
+				continue
+			}
+			b.WeightAtBilling = store.Weight
+			b.QuantityAtBilling = store.Quantity
+			b.WeightUnitAtBilling = &lot.WeightUnit
+			b.QuantityUnitAtBilling = &lot.QuantityUnit
+			b.TotalAmount = billTotalFromSnapshot(b.BillType, b.Rate, b.WeightAtBilling, b.QuantityAtBilling)
+			if err := h.app.Models.CustomerStoreBill.Update(ctx, b); err != nil {
+				log.Printf("[STORES] refreshUnbilledStoreBills ERROR: customer store bill #%d - %v", b.ID, err)
+				continue
+			}
+			refreshed["customer_store"]++
+		}
+	}
+
+	// ---- Customer unload bills (one-time, unbilled) ----
+	// Unload bills are one-time per store; only refresh if not yet invoiced.
+	unloadBills, err := h.app.Models.CustomerUnloadBill.GetByStoreID(ctx, storeID)
+	if err == nil {
+		for i := range unloadBills {
+			b := &unloadBills[i]
+			invoiced, _ := h.app.Models.InvoiceItem.ExistsForBill(ctx, "customer_unload", b.ID)
+			if invoiced {
+				continue
+			}
+			b.WeightAtBilling = store.Weight
+			b.QuantityAtBilling = store.Quantity
+			b.WeightUnitAtBilling = &lot.WeightUnit
+			b.QuantityUnitAtBilling = &lot.QuantityUnit
+			b.TotalAmount = billTotalFromSnapshot(b.BillType, b.Rate, b.WeightAtBilling, b.QuantityAtBilling)
+			if err := h.app.Models.CustomerUnloadBill.Update(ctx, b); err != nil {
+				log.Printf("[STORES] refreshUnbilledStoreBills ERROR: customer unload bill #%d - %v", b.ID, err)
+				continue
+			}
+			refreshed["customer_unload"]++
+		}
+	}
+
+	// ---- Majhi bills (one-time per store, unbilled) ----
+	majhiBills, err := h.app.Models.MajhiBill.GetByStoreID(ctx, storeID)
+	if err == nil {
+		for i := range majhiBills {
+			b := &majhiBills[i]
+			invoiced, _ := h.app.Models.InvoiceItem.ExistsForBill(ctx, "majhi", b.ID)
+			if invoiced {
+				continue
+			}
+			b.WeightAtBilling = store.Weight
+			b.QuantityAtBilling = store.Quantity
+			b.WeightUnitAtBilling = &lot.WeightUnit
+			b.QuantityUnitAtBilling = &lot.QuantityUnit
+			b.TotalAmount = billTotalFromSnapshot(b.BillType, b.Rate, b.WeightAtBilling, b.QuantityAtBilling)
+			if err := h.app.Models.MajhiBill.Update(ctx, b); err != nil {
+				log.Printf("[STORES] refreshUnbilledStoreBills ERROR: majhi bill #%d - %v", b.ID, err)
+				continue
+			}
+			refreshed["majhi"]++
+		}
+	}
+
+	return refreshed
+}
+
+// =============================================================================
 // REFRESH CURRENT-MONTH BILLS
 // =============================================================================
 
@@ -390,6 +648,9 @@ func (h *Handler) DeleteStoreHandler(w http.ResponseWriter, r *http.Request) {
 //
 // Rate is NOT touched. Only the frozen quantity snapshot is refreshed, so
 // the total recomputes from the same rate × fresh weight/quantity.
+//
+// Bills already attached to an invoice are SKIPPED, since their amounts
+// are locked in the invoice.
 func (h *Handler) RefreshStoreBillsHandler(w http.ResponseWriter, r *http.Request) {
 	id, ok := utils.GetParamID(w, r)
 	if !ok {
@@ -422,81 +683,9 @@ func (h *Handler) RefreshStoreBillsHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	currentMonth := time.Now().Format("2006-01")
-
-	refreshed := map[string]int{}
-
-	// ---- Godown bills (current month) ----
-	godownBills, err := h.app.Models.GodownBill.GetByStoreID(r.Context(), id)
-	if err != nil {
-		log.Printf("[STORES] RefreshStoreBillsHandler ERROR: failed to fetch godown bills - %v", err)
-		utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch godown bills")
-		return
-	}
-	for i := range godownBills {
-		b := &godownBills[i]
-		if b.MonthYear != currentMonth {
-			continue
-		}
-		b.WeightAtBilling = store.Weight
-		b.QuantityAtBilling = store.Quantity
-		b.WeightUnitAtBilling = &lot.WeightUnit
-		b.QuantityUnitAtBilling = &lot.QuantityUnit
-		b.TotalAmount = billTotalFromSnapshot(b.BillType, b.Rate, b.WeightAtBilling, b.QuantityAtBilling)
-		if err := h.app.Models.GodownBill.Update(r.Context(), b); err != nil {
-			log.Printf("[STORES] RefreshStoreBillsHandler ERROR: failed to update godown bill #%d - %v", b.ID, err)
-			utils.ErrorJson(w, http.StatusInternalServerError, "failed to refresh godown bill")
-			return
-		}
-		refreshed["godown"]++
-	}
-
-	// ---- Customer store bills (current month) ----
-	customerBills, err := h.app.Models.CustomerStoreBill.GetByStoreID(r.Context(), id)
-	if err != nil {
-		log.Printf("[STORES] RefreshStoreBillsHandler ERROR: failed to fetch customer store bills - %v", err)
-		utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch customer store bills")
-		return
-	}
-	for i := range customerBills {
-		b := &customerBills[i]
-		if b.MonthYear != currentMonth {
-			continue
-		}
-		b.WeightAtBilling = store.Weight
-		b.QuantityAtBilling = store.Quantity
-		b.WeightUnitAtBilling = &lot.WeightUnit
-		b.QuantityUnitAtBilling = &lot.QuantityUnit
-		b.TotalAmount = billTotalFromSnapshot(b.BillType, b.Rate, b.WeightAtBilling, b.QuantityAtBilling)
-		if err := h.app.Models.CustomerStoreBill.Update(r.Context(), b); err != nil {
-			log.Printf("[STORES] RefreshStoreBillsHandler ERROR: failed to update customer store bill #%d - %v", b.ID, err)
-			utils.ErrorJson(w, http.StatusInternalServerError, "failed to refresh customer store bill")
-			return
-		}
-		refreshed["customer_store"]++
-	}
-
-	// ---- Majhi bills (one-time, no month — refresh all for this store) ----
-	majhiBills, err := h.app.Models.MajhiBill.GetByStoreID(r.Context(), id)
-	if err != nil {
-		log.Printf("[STORES] RefreshStoreBillsHandler ERROR: failed to fetch majhi bills - %v", err)
-		utils.ErrorJson(w, http.StatusInternalServerError, "failed to fetch majhi bills")
-		return
-	}
-	for i := range majhiBills {
-		b := &majhiBills[i]
-		b.WeightAtBilling = store.Weight
-		b.QuantityAtBilling = store.Quantity
-		b.WeightUnitAtBilling = &lot.WeightUnit
-		b.QuantityUnitAtBilling = &lot.QuantityUnit
-		b.TotalAmount = billTotalFromSnapshot(b.BillType, b.Rate, b.WeightAtBilling, b.QuantityAtBilling)
-		if err := h.app.Models.MajhiBill.Update(r.Context(), b); err != nil {
-			log.Printf("[STORES] RefreshStoreBillsHandler ERROR: failed to update majhi bill #%d - %v", b.ID, err)
-			utils.ErrorJson(w, http.StatusInternalServerError, "failed to refresh majhi bill")
-			return
-		}
-		refreshed["majhi"]++
-	}
+	// Reuse the same helper: refreshes current-month godown/customer_store
+	// and all unbilled majhi/customer_unload bills, skipping invoiced ones.
+	refreshed := h.refreshUnbilledStoreBills(r, id, store, lot)
 
 	log.Printf("[STORES] RefreshStoreBillsHandler SUCCESS: store=%d refreshed=%v", id, refreshed)
 

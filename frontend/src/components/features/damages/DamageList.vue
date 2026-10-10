@@ -316,19 +316,24 @@ const confirmDelete = async () => {
     const success = await damagesStore.deleteDamage(selectedDamage.value.id)
     if (success) {
         deleteDialogOpen.value = false
-        await fetchDamages()
+        // Store inventory was restored by the DB trigger — refresh our cache.
+        await storesStore.fetchStores()
     }
 }
 
 const handleDamageCreated = async () => {
     createDialogOpen.value = false
     await fetchDamages()
+    // Store inventory was affected — refresh our cache.
+    await storesStore.fetchStores()
 }
 
 const handleDamageUpdated = async () => {
     editDialogOpen.value = false
     detailDialogOpen.value = false
     await fetchDamages()
+    // Store inventory may have been affected — refresh our cache.
+    await storesStore.fetchStores()
 }
 
 onMounted(() => { fetchDamages() })

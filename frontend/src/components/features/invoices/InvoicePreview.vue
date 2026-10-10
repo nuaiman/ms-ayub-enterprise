@@ -22,7 +22,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div class="p-3 rounded-lg bg-(--color-surface) border border-(--color-border)">
                     <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Invoice Number</p>
-                    <p class="text-sm font-semibold text-(--color-text-primary) mt-1">INV-{{ invoice?.id ?? 'â€”' }}</p>
+                    <p class="text-sm font-semibold text-(--color-text-primary) mt-1">INV-{{ invoice?.id ?? '-' }}</p>
                 </div>
                 <div class="p-3 rounded-lg bg-(--color-surface) border border-(--color-border)">
                     <p class="text-xs text-(--color-text-secondary) uppercase tracking-wider">Invoice Date</p>
@@ -78,7 +78,7 @@
                                 <div class="invoice-title">INVOICE</div>
                                 <div class="invoice-meta-line">
                                     <span class="invoice-meta-key">Invoice #</span>
-                                    <span class="invoice-meta-val">INV-{{ invoice?.id ?? 'â€”' }}</span>
+                                    <span class="invoice-meta-val">INV-{{ invoice?.id ?? '-' }}</span>
                                 </div>
                                 <div class="invoice-meta-line">
                                     <span class="invoice-meta-key">Date</span>
@@ -117,7 +117,7 @@
                         <div v-else class="invoice-continuation">
                             <div class="invoice-continuation-left">
                                 <div class="invoice-continuation-title">
-                                    Invoice â€” {{ party.name }}
+                                    Invoice - {{ party.name }}
                                 </div>
                                 <div class="invoice-continuation-sub">
                                     <span v-if="invoice?.id">Ref: INV-{{ invoice.id }}</span>
@@ -282,7 +282,7 @@
                         <div class="invoice-title">INVOICE</div>
                         <div class="invoice-meta-line">
                             <span class="invoice-meta-key">Invoice #</span>
-                            <span class="invoice-meta-val">INV-{{ invoice?.id ?? 'â€”' }}</span>
+                            <span class="invoice-meta-val">INV-{{ invoice?.id ?? '-' }}</span>
                         </div>
                         <div class="invoice-meta-line">
                             <span class="invoice-meta-key">Date</span>
@@ -320,7 +320,7 @@
                 <div v-else class="invoice-continuation">
                     <div class="invoice-continuation-left">
                         <div class="invoice-continuation-title">
-                            Invoice â€” {{ party.name }}
+                            Invoice - {{ party.name }}
                         </div>
                         <div class="invoice-continuation-sub">
                             <span v-if="invoice?.id">Ref: INV-{{ invoice.id }}</span>
@@ -461,7 +461,7 @@ const printMode = ref(false)
 
 const company = {
     name: 'M/S. AYUB ENTERPRISE',
-    subtitle: 'Commission Agent â€” Godown & Logistics',
+    subtitle: 'Commission Agent - Godown & Logistics',
     address: 'Ali Hossain Chairman Building (1st Floor), 958/27, Strand Road, Mazirghat, Chattogram.',
     contact: 'Cell : 01813-397288, 01705-727492, 01793-287709, 01864-106406',
     email: 'E-mail : mdayubenterprise@gmail.com',
@@ -503,7 +503,7 @@ const billReference = (it: InvoiceItem): string => {
 
 const party = computed(() => {
     const inv = props.invoice
-    if (!inv) return { name: 'â€”', phone: '', address: '', email: '' }
+    if (!inv) return { name: '-', phone: '', address: '', email: '' }
 
     switch (inv.entity_type) {
         case 'customer': {
@@ -557,7 +557,7 @@ const preparedByName = computed(() => {
 })
 
 const formatDate = (dateStr?: string | null): string => {
-    if (!dateStr) return 'â€”'
+    if (!dateStr) return '-'
     return new Date(dateStr).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
@@ -634,7 +634,7 @@ const handlePrint = async () => {
 
 <style>
 /* ============================================================================
-   Global styles â€” print portal lives outside the component subtree.
+   Global styles - print portal lives outside the component subtree.
    ============================================================================ */
 
 .invoice-page {
@@ -846,7 +846,7 @@ const handlePrint = async () => {
 }
 
 /* ============================================================================
-   TABLE â€” head is fixed; body fills the rest of the wrapper.
+   TABLE - head is fixed; body fills the rest of the wrapper.
    ============================================================================ */
 
 .invoice-table-wrap {

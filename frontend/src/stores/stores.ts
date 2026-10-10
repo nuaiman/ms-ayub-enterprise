@@ -16,6 +16,32 @@ import { useGlobalLoader } from "vue-global-loader";
 import type { AxiosError } from "axios";
 import { useLotsStore } from "./lots";
 
+export interface PreDeliveryAdjustPayload {
+  target_quantity: number;
+  target_weight: number;
+  reason?: string | null;
+}
+
+export interface PreDeliveryAdjustResponse {
+  adjustment: {
+    id: number;
+    user_id: number;
+    store_id: number;
+    adjustment_type: "delta" | "absolute";
+    input_weight: number;
+    input_quantity: number;
+    weight_delta: number;
+    quantity_delta: number;
+    reason: string | null;
+    notes: string | null;
+    adjusted_at: string;
+    created_at: string;
+    updated_at: string;
+  } | null;
+  store: Store;
+  bills_refreshed: Record<string, number>;
+}
+
 export const useStoresStore = defineStore("stores", () => {
   const { displayLoader, destroyLoader } = useGlobalLoader();
 
@@ -304,6 +330,41 @@ export const useStoresStore = defineStore("stores", () => {
     }
   };
 
+  /**
+   * Pre-delivery adjustment: bumps the store's quantity/weight UP to the
+   * given target values, so a subsequent delivery/damage can proceed.
+   *
+   * Silently returns null on failure (the caller should surface its own
+   * error and abort the delivery operation).
+   */
+  const applyPreDeliveryAdjustment = async (
+    storeId: number,
+    payload: PreDeliveryAdjustPayload
+  ): Promise<PreDeliveryAdjustResponse | null> => {
+    try {
+      const res = await api.post<ApiResponse<PreDeliveryAdjustResponse>>(
+        `/stores/${storeId}/pre-delivery-adjust`,
+        payload
+      );
+      if (!res.data.success) {
+        push.error(res.data.message);
+        return null;
+      }
+
+      // Update local store cache with the returned store snapshot.
+      const index = stores.value.findIndex((s) => s.id === storeId);
+      if (index !== -1 && res.data.data?.store) {
+        stores.value[index] = res.data.data.store;
+      }
+
+      return res.data.data;
+    } catch (error) {
+      const err = error as AxiosError<ApiResponse<null>>;
+      push.error(err.response?.data?.message || "Failed to apply pre-delivery adjustment");
+      return null;
+    }
+  };
+
   return {
     stores,
     searchQuery,
@@ -336,5 +397,6 @@ export const useStoresStore = defineStore("stores", () => {
     hasInventory,
 
     refreshStoreBills,
+    applyPreDeliveryAdjustment,
   };
 });

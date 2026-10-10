@@ -102,7 +102,7 @@
                         <div class="border-t border-(--color-border)">
                             <div v-if="itemsLoading[delivery.id]"
                                 class="px-3 py-3 text-xs text-(--color-text-secondary) italic">
-                                Loading itemsâ€¦
+                                Loading itemsÃ¢â‚¬Â¦
                             </div>
                             <div v-else-if="getItemsFor(delivery.id).length === 0"
                                 class="px-3 py-3 text-xs text-(--color-text-secondary) italic">
@@ -121,7 +121,7 @@
         <div v-if="!loading && filteredDeliveries.length > 0"
             class="flex items-center justify-between py-3 px-1 border-t border-(--color-border) shrink-0 mt-auto">
             <p class="text-xs text-(--color-text-secondary)">Showing {{ filteredDeliveries.length }} of {{
-                deliveriesStore.deliveries.length }} deliveries Â· {{ deliveriesStore.totalItemCount }} items</p>
+                deliveriesStore.deliveries.length }} deliveries Ã‚Â· {{ deliveriesStore.totalItemCount }} items</p>
         </div>
 
         <!-- ===================================================== -->
@@ -315,7 +315,7 @@ const handleCopyToClipboard = async () => {
         const items = getItemsFor(d.id)
         const customer = d.customer_id ? customersStore.getCustomerName(d.customer_id) : ''
         const receiver = [d.receiver_name, d.receiver_phone].filter(Boolean).join(' / ')
-        const route = `${d.from_location || ''} â†’ ${d.to_location || ''}`
+        const route = `${d.from_location || ''} Ã¢â€ â€™ ${d.to_location || ''}`
         lines.push(
             `${d.id}\t${customer}\t${new Date(d.delivery_date).toLocaleDateString()}\t${receiver}\t${route}\t${items.length}`
         )
@@ -390,6 +390,8 @@ const confirmItemDelete = async () => {
     const ok = await deliveriesStore.deleteDeliveryItem(selectedItem.value.id)
     if (ok) {
         deleteItemDialogOpen.value = false
+        // Store inventory was restored by the DB trigger — refresh our cache.
+        await storesStore.fetchStores()
     }
 }
 
@@ -409,6 +411,8 @@ const handleItemCreated = async () => {
     if (selectedDelivery.value) {
         await deliveriesStore.loadItemsFor(selectedDelivery.value.id, true)
     }
+    // Store inventory was affected by the item — refresh our cache.
+    await storesStore.fetchStores()
 }
 
 const handleItemUpdated = async () => {
@@ -416,6 +420,8 @@ const handleItemUpdated = async () => {
     if (selectedItem.value) {
         await deliveriesStore.loadItemsFor(selectedItem.value.delivery_id, true)
     }
+    // Store inventory was affected by the update — refresh our cache.
+    await storesStore.fetchStores()
 }
 
 onMounted(() => { fetchDeliveries() })

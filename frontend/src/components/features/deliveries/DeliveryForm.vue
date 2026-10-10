@@ -15,7 +15,7 @@
                         </label>
                         <select v-model="form.customer_id" :disabled="submitting"
                             class="w-full px-3 py-2 rounded-lg bg-(--color-muted-bg) border border-(--color-border) text-(--color-text-primary) focus:outline-none focus:ring-1 focus:ring-(--color-blue) focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed">
-                            <option :value="null">— None —</option>
+                            <option :value="null">- None -</option>
                             <option v-for="c in customerOptions" :key="c.id" :value="c.id">
                                 {{ customerLabel(c) }}
                             </option>
@@ -141,7 +141,7 @@
                         class="relative w-24 h-24 rounded-lg overflow-hidden border border-(--color-border)">
                         <img :src="imagePreview" alt="Preview" class="w-full h-full object-cover" />
                         <button type="button" @click="removeImage"
-                            class="absolute top-1 right-1 w-5 h-5 bg-(--color-red) text-white rounded-full flex items-center justify-center text-xs hover:opacity-90 transition-opacity">×</button>
+                            class="absolute top-1 right-1 w-5 h-5 bg-(--color-red) text-white rounded-full flex items-center justify-center text-xs hover:opacity-90 transition-opacity">Ã—</button>
                     </div>
                     <div v-else
                         class="w-24 h-24 rounded-lg border-2 border-dashed border-(--color-border) flex items-center justify-center bg-(--color-muted-bg)">
@@ -393,11 +393,6 @@ const resetForm = () => { initialize() }
 const customerLabel = (c: Customer): string =>
     c.company_name || c.contact_person || `Customer #${c.id}`
 
-/**
- * Validates every item row. Returns the index of the first invalid item
- * (via `problem.index`) and a human-readable reason (via `problem.reason`),
- * or `null` if everything checks out.
- */
 const findFirstItemProblem = (): { index: number; reason: string } | null => {
     for (let i = 0; i < items.value.length; i++) {
         const it = items.value[i]
@@ -427,7 +422,6 @@ const submit = async () => {
         return
     }
 
-    // ---- Create mode: require at least 1 item, and every item valid ----
     if (!isEditMode.value) {
         if (items.value.length === 0) {
             push.error('Please add at least one item')
@@ -446,7 +440,7 @@ const submit = async () => {
         const deliveryDateISO = `${form.value.delivery_date}T00:00:00Z`
 
         // ============================================================
-        // EDIT MODE — master only.
+        // EDIT MODE - master only.
         // ============================================================
         if (isEditMode.value && props.delivery) {
             const success = await deliveriesStore.updateDelivery(props.delivery.id, {
@@ -516,11 +510,21 @@ const submit = async () => {
         }
 
         // 3. Create every item, then its bills.
-        //    IMPORTANT: if any item fails, we surface the actual reason
-        //    instead of silently skipping it.
         for (let i = 0; i < items.value.length; i++) {
             const it = items.value[i]
             if (!it) continue
+
+            // 3a. Pre-delivery adjustment if the entered qty/wt exceeds store balance.
+            const adjusted = await maybeApplyPreDeliveryAdjustment(it)
+            if (!adjusted) {
+                push.error(
+                    `Item #${i + 1}: could not prepare the store for over-delivery. ` +
+                    `Aborting remaining items.`
+                )
+                await deliveriesStore.refreshDelivery(newDelivery.id)
+                emit('delivery-created')
+                return
+            }
 
             const createdItem = await deliveriesStore.createDeliveryItem(newDelivery.id, {
                 store_id: it.store_id!,
@@ -532,12 +536,8 @@ const submit = async () => {
             })
 
             if (!createdItem) {
-                // The item itself failed to save. The store already pushed
-                // the exact backend reason to the toast stack. Add one
-                // more contextual toast so the user knows which item and
-                // what to do next.
                 push.error(
-                    `Item #${i + 1} failed to save. The delivery was created — ` +
+                    `Item #${i + 1} failed to save. The delivery was created - ` +
                     `open it and add the missing item manually.`
                 )
                 await deliveriesStore.refreshDelivery(newDelivery.id)
@@ -583,6 +583,43 @@ const submit = async () => {
     } finally {
         submitting.value = false
     }
+}
+
+/**
+ * If the entered qty/wt for a single item exceeds the store's current
+ * balance, call the pre-delivery adjustment endpoint to bump the store up.
+ *
+ * Returns true if the store is (or has been made) able to satisfy the
+ * delivery. Returns false if the adjustment was attempted but failed.
+ *
+ * If no adjustment is needed, returns true without making any API call.
+ */
+const maybeApplyPreDeliveryAdjustment = async (it: ItemForm): Promise<boolean> => {
+    if (!it.store_id) return true
+
+    // Prefer the freshest store snapshot we have locally.
+    let store = storesStore.getStoreById(it.store_id)
+
+    // If our cache is stale (store not present), fetch it.
+    if (!store) {
+        await storesStore.fetchStores()
+        store = storesStore.getStoreById(it.store_id)
+    }
+    if (!store) return true // FK will reject later; not our problem here
+
+    const needsQty = it.quantity > store.quantity
+    const needsWt = it.weight > store.weight
+    if (!needsQty && !needsWt) return true
+
+    const targetQty = needsQty ? it.quantity : store.quantity
+    const targetWt = needsWt ? it.weight : store.weight
+
+    const result = await storesStore.applyPreDeliveryAdjustment(it.store_id, {
+        target_quantity: targetQty,
+        target_weight: targetWt,
+    })
+
+    return result !== null
 }
 
 onMounted(async () => {
